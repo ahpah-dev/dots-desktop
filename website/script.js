@@ -105,7 +105,7 @@ export async function verifyPKCE(verifier: string, challenge: string): Promise<b
           { icon: '🛡️', tool: 'shell', text: 'Validated ASAR integrity and digital signatures on Dots.exe', status: '✓ VERIFIED' },
           { icon: '🧠', tool: 'memorySave', text: 'Recorded successful build checksum to release ledger', status: '✓ LOGGED' }
         ],
-        resultTitle: 'Release Build v1.0.4 Health Check Passed',
+        resultTitle: 'Release Build v1.0.5 Health Check Passed',
         resultText: 'All packaging checks completed with 0 errors. Executable binaries verified for Windows 10 & 11 (64-bit). No uncommitted dependencies or vulnerable packages detected.',
         code: `Release Artifact: release/win-unpacked/Dots.exe
 Hash (SHA-256): e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855

@@ -449,7 +449,7 @@ export const SettingsModal: React.FC = () => {
                           Default Model
                         </label>
                         <div style={{ display: 'flex', gap: '0.2rem' }}>
-                          {['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-4o'].map((m) => (
+                          {['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-4o'].map((m) => (
                             <button
                               key={m}
                               type="button"

@@ -35,7 +35,13 @@ export class DotStore {
       if (!e.isDirectory()) continue;
       try {
         const dot = await readJson<Dot | null>(this.paths.dotFile(e.name), null);
-        if (dot?.id) this.dots.set(dot.id, this.normalize(dot));
+        if (dot?.id) {
+          const normalized = this.normalize(dot);
+          this.dots.set(dot.id, normalized);
+          if (dot.model !== normalized.model) {
+            await this.save(normalized);
+          }
+        }
       } catch (err) {
         log.error('Failed to load dot', e.name, err);
       }
@@ -130,7 +136,20 @@ export class DotStore {
       schedule = { ...schedule, prompt: schedule.prompt ?? '', continueSession: !!schedule.continueSession };
       if (schedule.enabled && !schedule.prompt.trim()) throw new Error('A scheduled Dot needs a task to run.');
     }
-    return { ...d, name, permissions: perms, budget, schedule, description: d.description ?? '', instructions: d.instructions ?? '' };
+
+    let model = d.model;
+    if (model) {
+      const lower = model.toLowerCase().trim();
+      if (lower === 'gpt-6.1' || lower === 'gpt-6.1-base' || lower === 'gpt-6.1-frontier') {
+        model = 'gpt-6.1-sol';
+      } else if (lower === 'gpt-6' || lower === 'gpt-6-base' || lower === 'gpt-6-frontier') {
+        model = 'gpt-6-astra';
+      } else if (lower === 'gpt-5.6-cyber' || lower === 'gpt-reserve') {
+        model = 'gpt-5.6-sol';
+      }
+    }
+
+    return { ...d, name, model, permissions: perms, budget, schedule, description: d.description ?? '', instructions: d.instructions ?? '' };
   }
 
   // ── memory ──

@@ -6,8 +6,8 @@
   <p>Inspired by OpenAI Dots — Built for Desktop</p>
   <p>
     <a href="https://dotsdesktop.vercel.app"><strong>🌐 Visit Live Website</strong></a> &nbsp;|&nbsp;
-    <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/download/v1.0.4/Dots-Setup-1.0.4.exe"><strong>💾 Download Windows Installer (v1.0.4)</strong></a> &nbsp;|&nbsp;
-    <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/tag/v1.0.4"><strong>📦 Releases</strong></a>
+    <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/download/v1.0.5/Dots-Setup-1.0.5.exe"><strong>💾 Download Windows Installer (v1.0.5)</strong></a> &nbsp;|&nbsp;
+    <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/tag/v1.0.5"><strong>📦 Releases</strong></a>
   </p>
   <br />
   <img src="assets/software-engineer-screenshot.png" alt="Dots Desktop Screenshot" width="850" style="border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
