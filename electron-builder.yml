@@ -1,0 +1,29 @@
+appId: app.dots.desktop
+productName: Dots
+copyright: Copyright © Dots
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**
+  - assets/**
+  - package.json
+asar: true
+win:
+  target:
+    - nsis
+    - portable
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
