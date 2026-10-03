@@ -1,7 +1,7 @@
 {
   "name": "dots-desktop",
   "productName": "Dots",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Persistent, autonomous AI agents (Dots) with their own workspace, memory, tools and schedules.",
   "main": "dist/main/index.js",
   "author": "Dots",

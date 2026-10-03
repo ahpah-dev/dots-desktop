@@ -218,6 +218,9 @@ function applySettings(s: AppSettings): void {
 
 async function bootstrap(): Promise<void> {
   await app.whenReady();
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('app.dots.desktop');
+  }
   initLogger(join(app.getPath('userData'), 'logs'));
   log.info(`Starting Dots ${app.getVersion()} on ${process.platform}`);
 
