@@ -8,6 +8,9 @@ files:
   - dist/**
   - assets/**
   - package.json
+extraResources:
+  - from: assets/icon.ico
+    to: icon.ico
 asar: true
 win:
   icon: assets/icon.ico
@@ -15,6 +18,7 @@ win:
     - nsis
     - portable
 nsis:
+  include: build/installer.nsh
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
