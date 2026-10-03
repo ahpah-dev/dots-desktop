@@ -18,14 +18,25 @@ const log = createLogger('codex');
 /** Translate a Dot's permissions into Codex CLI configuration overrides. */
 export function buildCodexConfigArgs(dot: Dot, model: string | undefined, useUserConfig: boolean): string[] {
   const p = dot.permissions;
-  const sandbox = p.outsideWorkspace ? 'danger-full-access' : p.files === 'write' ? 'workspace-write' : 'read-only';
   const args: string[] = [];
   if (!useUserConfig) args.push('--ignore-user-config');
   if (model) args.push('-m', model);
   if (dot.reasoningEffort) args.push('-c', `model_reasoning_effort=${dot.reasoningEffort}`);
-  args.push('-c', `sandbox_mode=${sandbox}`);
-  args.push('-c', 'approval_policy=never'); // headless: nobody is there to approve; the sandbox is the guardrail
-  if (sandbox === 'workspace-write') args.push('-c', `sandbox_workspace_write.network_access=${p.web}`);
+
+  // On Windows, configure elevated sandbox mode so shell CreateProcess is not blocked by Windows container policy
+  if (process.platform === 'win32' && p.shell) {
+    args.push('-c', 'windows.sandbox=elevated');
+  }
+
+  if (p.outsideWorkspace) {
+    args.push('--dangerously-bypass-approvals-and-sandbox');
+  } else {
+    const sandbox = p.files === 'write' ? 'workspace-write' : 'read-only';
+    args.push('-c', `sandbox_mode=${sandbox}`);
+    args.push('-c', 'approval_policy=never'); // headless: nobody is there to approve; the sandbox is the guardrail
+    if (sandbox === 'workspace-write') args.push('-c', `sandbox_workspace_write.network_access=${p.web}`);
+  }
+
   args.push('-c', `web_search=${p.web ? 'live' : 'disabled'}`);
   return args;
 }

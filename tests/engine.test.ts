@@ -143,6 +143,30 @@ describe('codex event translator', () => {
     expect(prettifyCommand('powershell.exe -Command Get-ChildItem')).toBe('Get-ChildItem');
     expect(prettifyCommand('/bin/sh -c "ls -la"')).toBe('ls -la');
   });
+
+  it('builds codex config args with proper sandbox policy', async () => {
+    const { buildCodexConfigArgs } = await import('../src/main/providers/codex/provider');
+    const dot: any = {
+      permissions: {
+        files: 'write',
+        shell: true,
+        web: true,
+        outsideWorkspace: false,
+        approval: 'never'
+      },
+      reasoningEffort: 'medium'
+    };
+
+    const args = buildCodexConfigArgs(dot, 'gpt-6.1-sol', false);
+    expect(args).toContain('--ignore-user-config');
+    expect(args).toContain('-m');
+    expect(args).toContain('gpt-6.1-sol');
+    expect(args).toContain('sandbox_mode=workspace-write');
+    expect(args).toContain('approval_policy=never');
+    if (process.platform === 'win32') {
+      expect(args).toContain('windows.sandbox=elevated');
+    }
+  });
 });
 
 describe('model catalog and GPT-6/6.1 support', () => {
