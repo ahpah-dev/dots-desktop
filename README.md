@@ -4,6 +4,13 @@
   <img src="assets/icon.png" width="96" height="96" alt="Dots Logo" />
   <h3>Persistent, Autonomous AI Agents with Workspaces, Memory & Background Execution</h3>
   <p>Inspired by OpenAI Dots — Built for Desktop</p>
+  <p>
+    <a href="https://dots-desktop-seven.vercel.app"><strong>🌐 Visit Live Website</strong></a> &nbsp;|&nbsp;
+    <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/download/v1.0.4/Dots-Setup-1.0.4.exe"><strong>💾 Download Windows Installer (v1.0.4)</strong></a> &nbsp;|&nbsp;
+    <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/tag/v1.0.4"><strong>📦 Releases</strong></a>
+  </p>
+  <br />
+  <img src="website/assets/screenshot.png" alt="Dots Desktop Screenshot" width="850" style="border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
 </div>
 
 ---
