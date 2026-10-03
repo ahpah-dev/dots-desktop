@@ -148,6 +148,8 @@ Status: Clean (Signed & Verified)`
   const tabBody = document.getElementById('tabBody');
   const simulateRunBtn = document.getElementById('simulateRunBtn');
 
+  const agentSwitcher = document.getElementById('agentSwitcher');
+
   // ─────────────────────────────────────────────────────────────
   // 2. View Switcher: Interactive Demo vs Real Screenshot
   // ─────────────────────────────────────────────────────────────
@@ -157,6 +159,7 @@ Status: Clean (Signed & Verified)`
       viewScreenshotBtn.classList.remove('active');
       interactiveWorkspace.style.display = 'flex';
       screenshotWrapper.style.display = 'none';
+      if (agentSwitcher) agentSwitcher.style.display = 'flex';
       if (windowTitleText) windowTitleText.innerText = 'Dots Desktop — Autonomous Agent Studio (Dark Mode)';
     });
 
@@ -165,7 +168,8 @@ Status: Clean (Signed & Verified)`
       viewDemoBtn.classList.remove('active');
       interactiveWorkspace.style.display = 'none';
       screenshotWrapper.style.display = 'block';
-      if (windowTitleText) windowTitleText.innerText = 'Dots Desktop — Live Electron Application (Dark Mode)';
+      if (agentSwitcher) agentSwitcher.style.display = 'none';
+      if (windowTitleText) windowTitleText.innerText = 'Dots Desktop — Software Engineer (Live App)';
     });
   }
 
