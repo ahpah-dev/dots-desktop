@@ -1,59 +1,54 @@
 import type { ModelInfo } from './types';
 
 /**
- * Curated list of OpenAI GPT models, prioritizing the latest GPT-6 and GPT-6.1 series,
- * followed by specialized Codex models, o-series reasoning models, and GPT-4o.
+ * Curated list of official OpenAI GPT models, updated for October 2026.
+ * Features the latest GPT-6.1 Sol, GPT-6 Astra (flagship that powers Dots),
+ * GPT-6 Sol, GPT-6 Luna, GPT-5.6 series, and reasoning models.
  */
 export const KNOWN_GPT_MODELS: ModelInfo[] = [
-  // ─── GPT-6.1 Series (Latest Flagship) ───
+  // ─── GPT-6.1 Series (Latest) ───
   {
-    id: 'gpt-6.1',
-    label: 'GPT-6.1 (Latest Flagship)',
-    description: 'Frontier model with state-of-the-art coding, reasoning, and tool autonomy.',
+    id: 'gpt-6.1-sol',
+    label: 'GPT-6.1 Sol (Default & Recommended)',
+    description: 'OpenAI\'s latest model (Sep 2026). Balanced flagship performance optimized for agentic coding, computer use, and complex professional work.',
+    isDefault: true,
     reasoningEfforts: ['low', 'medium', 'high', 'max'],
     defaultReasoningEffort: 'medium'
   },
   {
-    id: 'gpt-6.1-turbo',
-    label: 'GPT-6.1 Turbo',
-    description: 'High-speed GPT-6.1 optimized for autonomous loops and quick iteration.',
-    reasoningEfforts: ['low', 'medium', 'high']
+    id: 'gpt-6.1',
+    label: 'GPT-6.1 (Frontier)',
+    description: 'Latest GPT-6.1 frontier model with advanced multi-step reasoning and autonomy.',
+    reasoningEfforts: ['low', 'medium', 'high', 'max'],
+    defaultReasoningEffort: 'medium'
   },
+
+  // ─── GPT-6 Series (Flagship Astra, Sol & Luna) ───
   {
-    id: 'gpt-6.1-mini',
-    label: 'GPT-6.1 Mini',
-    description: 'Lightweight, ultra-fast GPT-6.1 for background monitors and subtasks.'
-  },
-  {
-    id: 'gpt-6.1-codex',
-    label: 'GPT-6.1 Codex',
-    description: 'Dedicated GPT-6.1 variant tuned for deep codebase analysis and refactoring.',
+    id: 'gpt-6-astra',
+    label: 'GPT-6 Astra (Flagship)',
+    description: 'OpenAI\'s most capable model. Designed for deep reasoning, complex software engineering, and cybersecurity. Powers OpenAI Dots.',
     reasoningEfforts: ['low', 'medium', 'high', 'max'],
     defaultReasoningEffort: 'high'
   },
-
-  // ─── GPT-6 Series ───
   {
-    id: 'gpt-6',
-    label: 'GPT-6 (Frontier Intelligence)',
-    description: 'Advanced reasoning and architectural software synthesis.',
+    id: 'gpt-6-sol',
+    label: 'GPT-6 Sol',
+    description: 'Balanced GPT-6 intelligence tuned for developer workflows and task execution.',
     reasoningEfforts: ['low', 'medium', 'high', 'max'],
     defaultReasoningEffort: 'medium'
   },
   {
-    id: 'gpt-6-turbo',
-    label: 'GPT-6 Turbo',
-    description: 'Balanced throughput and reasoning for general engineering workflows.'
+    id: 'gpt-6-luna',
+    label: 'GPT-6 Luna',
+    description: 'Fast, efficient GPT-6 agent model for high-throughput, low-latency execution.',
+    reasoningEfforts: ['low', 'medium', 'high']
   },
   {
-    id: 'gpt-6-mini',
-    label: 'GPT-6 Mini',
-    description: 'Fast, cost-efficient GPT-6 for routine operations.'
-  },
-  {
-    id: 'gpt-6-codex',
-    label: 'GPT-6 Codex',
-    description: 'Agentic coding model for autonomous software tasks.'
+    id: 'gpt-6',
+    label: 'GPT-6 (Base Frontier)',
+    description: 'Base GPT-6 foundation model with deep reasoning and native tool use.',
+    reasoningEfforts: ['low', 'medium', 'high', 'max']
   },
 
   // ─── GPT-5.6 / 5.5 Series ───
@@ -66,12 +61,22 @@ export const KNOWN_GPT_MODELS: ModelInfo[] = [
   {
     id: 'gpt-5.6-terra',
     label: 'GPT-5.6 Terra',
-    description: 'Balanced coding and instruction execution.'
+    description: 'Balanced coding and instruction execution model.'
   },
   {
     id: 'gpt-5.6-luna',
     label: 'GPT-5.6 Luna',
     description: 'Fast, lightweight agent model.'
+  },
+  {
+    id: 'gpt-5.6-cyber',
+    label: 'GPT-5.6 Cyber',
+    description: 'Specialized model for security analysis and systems auditing.'
+  },
+  {
+    id: 'gpt-reserve',
+    label: 'GPT Reserve',
+    description: 'High-availability failover allocation model in Codex.'
   },
   {
     id: 'gpt-5.5',
@@ -104,12 +109,12 @@ export const KNOWN_GPT_MODELS: ModelInfo[] = [
   {
     id: 'gpt-4o',
     label: 'GPT-4o',
-    description: 'Fast, versatile multimodal foundation model.'
+    description: 'Versatile multimodal foundation model.'
   },
   {
     id: 'gpt-4o-mini',
     label: 'GPT-4o Mini',
-    description: 'Affordable and rapid general-purpose model.'
+    description: 'Fast and lightweight model.'
   }
 ];
 
@@ -125,7 +130,7 @@ export function mergeModelsWithCatalog(fetched: ModelInfo[]): ModelInfo[] {
     map.set(m.id.toLowerCase(), { ...m });
   }
 
-  // Merge in fetched models (overriding or supplementing labels/defaults/reasoning)
+  // Merge in fetched models
   for (const f of fetched) {
     const key = f.id.toLowerCase();
     const existing = map.get(key);
@@ -133,7 +138,9 @@ export function mergeModelsWithCatalog(fetched: ModelInfo[]): ModelInfo[] {
       map.set(key, {
         ...existing,
         ...f,
-        label: existing.label.includes('GPT-6') ? existing.label : (f.label || existing.label),
+        label: existing.label,
+        description: existing.description || f.description,
+        isDefault: f.isDefault !== undefined ? f.isDefault : existing.isDefault,
         reasoningEfforts: f.reasoningEfforts?.length ? f.reasoningEfforts : existing.reasoningEfforts,
         defaultReasoningEffort: f.defaultReasoningEffort || existing.defaultReasoningEffort
       });
@@ -184,9 +191,9 @@ export function groupModels(models: ModelInfo[]): ModelGroup[] {
     const id = m.id.toLowerCase();
     if (id.startsWith('gpt-6.1') || id.includes('6.1')) {
       gpt61.push(m);
-    } else if (id.startsWith('gpt-6') || id.includes('gpt-6')) {
+    } else if (id.startsWith('gpt-6') || id.includes('astra') || (id.includes('luna') && !id.includes('5.6')) || (id.includes('sol') && !id.includes('5.6'))) {
       gpt6.push(m);
-    } else if (id.startsWith('gpt-5') || id.includes('sol') || id.includes('terra') || id.includes('luna')) {
+    } else if (id.startsWith('gpt-5') || id.includes('5.6') || id.includes('reserve')) {
       gpt5.push(m);
     } else if (id.startsWith('o1') || id.startsWith('o3') || id.startsWith('o4')) {
       oSeries.push(m);
@@ -198,8 +205,8 @@ export function groupModels(models: ModelInfo[]): ModelGroup[] {
   }
 
   const groups: ModelGroup[] = [];
-  if (gpt61.length) groups.push({ label: 'GPT-6.1 Series (Latest Flagship)', models: gpt61 });
-  if (gpt6.length) groups.push({ label: 'GPT-6 Series (Frontier Intelligence)', models: gpt6 });
+  if (gpt61.length) groups.push({ label: 'GPT-6.1 Series (Latest Sol & Frontier)', models: gpt61 });
+  if (gpt6.length) groups.push({ label: 'GPT-6 Series (Flagship Astra, Sol & Luna)', models: gpt6 });
   if (gpt5.length) groups.push({ label: 'Codex / GPT-5.6 Series', models: gpt5 });
   if (oSeries.length) groups.push({ label: 'Reasoning (o-Series)', models: oSeries });
   if (gpt4.length) groups.push({ label: 'GPT-4o Series', models: gpt4 });

@@ -313,11 +313,11 @@ export const DotSettings: React.FC<DotSettingsProps> = ({ dotId }) => {
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', alignSelf: 'center', marginRight: '0.15rem' }}>Picks:</span>
                 {[
                   { id: 'auto', label: 'Auto' },
-                  { id: 'gpt-6.1', label: 'GPT-6.1' },
-                  { id: 'gpt-6.1-turbo', label: 'GPT-6.1 Turbo' },
-                  { id: 'gpt-6', label: 'GPT-6' },
-                  { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' },
-                  { id: 'gpt-4o', label: 'GPT-4o' }
+                  { id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol' },
+                  { id: 'gpt-6-astra', label: 'GPT-6 Astra' },
+                  { id: 'gpt-6-sol', label: 'GPT-6 Sol' },
+                  { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
+                  { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' }
                 ].map((chip) => (
                   <button
                     key={chip.id}
@@ -361,7 +361,7 @@ export const DotSettings: React.FC<DotSettingsProps> = ({ dotId }) => {
                 value={model === 'auto' ? '' : model}
                 onChange={(e) => setModel(e.target.value.trim() || 'auto')}
                 style={{ width: '220px', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
-                title="Type any custom model name (e.g. gpt-6.1, gpt-6, fine-tunes)"
+                title="Type any custom model name (e.g. gpt-6.1-sol, gpt-6-astra, fine-tunes)"
               />
             </div>
 
@@ -375,17 +375,24 @@ export const DotSettings: React.FC<DotSettingsProps> = ({ dotId }) => {
                   </p>
                 );
               }
-              if (model.startsWith('gpt-6.1')) {
+              if (model === 'gpt-6.1-sol') {
                 return (
                   <p style={{ fontSize: '0.75rem', color: '#818cf8', marginTop: '0.4rem', lineHeight: 1.4 }}>
-                    🚀 <strong>GPT-6.1:</strong> Latest flagship OpenAI model with advanced reasoning, coding mastery, and tool autonomy.
+                    🚀 <strong>GPT-6.1 Sol:</strong> Latest OpenAI model optimized for agentic coding and autonomous computer workflows.
                   </p>
                 );
               }
-              if (model.startsWith('gpt-6')) {
+              if (model === 'gpt-6-astra') {
                 return (
                   <p style={{ fontSize: '0.75rem', color: '#818cf8', marginTop: '0.4rem', lineHeight: 1.4 }}>
-                    ⚡ <strong>GPT-6:</strong> Next-generation frontier intelligence model.
+                    ⭐ <strong>GPT-6 Astra:</strong> Flagship OpenAI frontier model powering Dots with deep reasoning and engineering capabilities.
+                  </p>
+                );
+              }
+              if (model === 'gpt-6-luna') {
+                return (
+                  <p style={{ fontSize: '0.75rem', color: '#818cf8', marginTop: '0.4rem', lineHeight: 1.4 }}>
+                    ⚡ <strong>GPT-6 Luna:</strong> High-efficiency, low-latency GPT-6 model for rapid iteration.
                   </p>
                 );
               }

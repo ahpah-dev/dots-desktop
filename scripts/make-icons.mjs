@@ -68,6 +68,19 @@ function trayPixel(u, v, size) {
 }
 
 mkdirSync(resolve(root, 'assets'), { recursive: true });
-writeFileSync(resolve(root, 'assets/icon.png'), png(512, iconPixel));
+mkdirSync(resolve(root, 'build'), { recursive: true });
+const iconPngPath = resolve(root, 'assets/icon.png');
+writeFileSync(iconPngPath, png(512, iconPixel));
 writeFileSync(resolve(root, 'assets/tray.png'), png(32, trayPixel));
-console.log('Icons written to assets/');
+
+// Generate Windows .ico
+try {
+  const pngToIco = (await import('png-to-ico')).default;
+  const icoBuf = await pngToIco(iconPngPath);
+  writeFileSync(resolve(root, 'assets/icon.ico'), icoBuf);
+  writeFileSync(resolve(root, 'build/icon.ico'), icoBuf);
+  console.log('Generated assets/icon.ico and build/icon.ico');
+} catch (err) {
+  console.error('Failed to generate ico:', err);
+}
+console.log('Icons written to assets/ and build/');

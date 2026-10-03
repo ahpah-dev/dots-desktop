@@ -449,7 +449,7 @@ export const SettingsModal: React.FC = () => {
                           Default Model
                         </label>
                         <div style={{ display: 'flex', gap: '0.2rem' }}>
-                          {['gpt-6.1', 'gpt-6', 'gpt-6.1-turbo', 'gpt-4o'].map((m) => (
+                          {['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-4o'].map((m) => (
                             <button
                               key={m}
                               type="button"
@@ -464,7 +464,7 @@ export const SettingsModal: React.FC = () => {
                       </div>
                       <input
                         type="text"
-                        placeholder="e.g. gpt-6.1, gpt-6, or llama-3"
+                        placeholder="e.g. gpt-6.1-sol, gpt-6-astra, or llama-3"
                         value={newModel}
                         onChange={(e) => setNewModel(e.target.value)}
                         style={{ width: '100%', fontSize: '0.8rem' }}

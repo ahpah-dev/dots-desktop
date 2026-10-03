@@ -60,7 +60,7 @@ function createWindow(hidden: boolean): void {
     show: false,
     title: 'Dots',
     backgroundColor: dark ? '#0f1115' : '#f7f7f5',
-    icon: asset('icon.png'),
+    icon: process.platform === 'win32' ? asset('icon.ico') : asset('icon.png'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '..', 'preload', 'index.js'),

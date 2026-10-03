@@ -102,7 +102,7 @@ export const NewDotModal: React.FC = () => {
   const [files, setFiles] = useState<FileAccess>('write');
   const [shell, setShell] = useState(true);
   const [web, setWeb] = useState(true);
-  const [model, setModel] = useState('gpt-6.1');
+  const [model, setModel] = useState('gpt-6.1-sol');
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -325,11 +325,12 @@ export const NewDotModal: React.FC = () => {
                 </label>
                 <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                   {[
-                    { id: 'gpt-6.1', label: 'GPT-6.1' },
-                    { id: 'gpt-6.1-turbo', label: 'GPT-6.1 Turbo' },
-                    { id: 'gpt-6', label: 'GPT-6' },
-                    { id: 'auto', label: 'Auto' },
-                    { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' }
+                    { id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol' },
+                    { id: 'gpt-6-astra', label: 'GPT-6 Astra' },
+                    { id: 'gpt-6-sol', label: 'GPT-6 Sol' },
+                    { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
+                    { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' },
+                    { id: 'auto', label: 'Auto' }
                   ].map((chip) => (
                     <button
                       key={chip.id}
@@ -373,18 +374,23 @@ export const NewDotModal: React.FC = () => {
                   value={model === 'auto' ? '' : model}
                   onChange={(e) => setModel(e.target.value.trim() || 'auto')}
                   style={{ width: '180px', fontSize: '0.78rem', fontFamily: 'var(--font-mono)' }}
-                  title="Type any model ID (e.g. gpt-6.1, gpt-6, fine-tunes)"
+                  title="Type any model ID (e.g. gpt-6.1-sol, gpt-6-astra, fine-tunes)"
                 />
               </div>
 
-              {model.startsWith('gpt-6.1') && (
+              {model === 'gpt-6.1-sol' && (
                 <div style={{ fontSize: '0.72rem', color: '#818cf8', marginTop: '0.35rem' }}>
-                  🚀 <strong>GPT-6.1:</strong> State-of-the-art coding and autonomous reasoning.
+                  🚀 <strong>GPT-6.1 Sol:</strong> Latest OpenAI model optimized for agentic coding and computer workflows.
                 </div>
               )}
-              {model === 'gpt-6' && (
+              {model === 'gpt-6-astra' && (
                 <div style={{ fontSize: '0.72rem', color: '#818cf8', marginTop: '0.35rem' }}>
-                  ⚡ <strong>GPT-6:</strong> Frontier OpenAI foundation model.
+                  ⭐ <strong>GPT-6 Astra:</strong> Flagship OpenAI frontier model powering Dots with deep reasoning.
+                </div>
+              )}
+              {model === 'gpt-6-luna' && (
+                <div style={{ fontSize: '0.72rem', color: '#818cf8', marginTop: '0.35rem' }}>
+                  ⚡ <strong>GPT-6 Luna:</strong> High-efficiency, low-latency agent execution model.
                 </div>
               )}
             </div>
