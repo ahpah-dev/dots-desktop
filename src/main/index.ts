@@ -88,7 +88,7 @@ function createWindow(hidden: boolean): void {
           quitting = true;
           app.quit();
         }
-      }, 2500);
+      }, 3500);
     }
   });
 
@@ -282,8 +282,28 @@ async function bootstrap(): Promise<void> {
     quit: () => { quitting = true; app.quit(); }
   };
 
-  services = new Services(app.getPath('userData'), host);
+  const isDemo = process.argv.includes('--demo-mode');
+  let dataPath = app.getPath('userData');
+  if (isDemo) {
+    const { tmpdir } = await import('node:os');
+    const { seedDemoEnvironment } = await import('./util/demoSeed');
+    dataPath = join(tmpdir(), `dots-demo-${process.pid}`);
+    seedDemoEnvironment(dataPath);
+    nativeTheme.themeSource = 'dark';
+  }
+
+  services = new Services(dataPath, host);
   await services.init();
+  if (isDemo) {
+    services.auth.status = async () => ({
+      installed: true,
+      loggedIn: true,
+      mode: 'chatgpt',
+      plan: 'Pro',
+      email: 'Connected • ChatGPT Pro',
+      codexVersion: '2026.3.1'
+    });
+  }
   registerIpc(services);
   applySettings(services.settings.get());
 

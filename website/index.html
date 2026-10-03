@@ -102,7 +102,7 @@
       </div>
     </div>
 
-    <!-- App Screenshot Preview Window -->
+    <!-- App Interactive Preview Window -->
     <div class="preview-container" id="preview">
       <div class="window-frame">
         <div class="window-titlebar">
@@ -113,22 +113,155 @@
           </div>
           <div class="window-title">
             <img src="assets/icon.png" width="14" height="14" alt="icon">
-            <span>Dots Desktop — Web Researcher (Active Task)</span>
+            <span id="windowTitleText">Dots Desktop — Autonomous Agent Studio (Dark Mode)</span>
           </div>
           <div class="window-status">
             <span class="status-indicator"></span>
-            <span>Codex Connected</span>
+            <span>Codex Connected (GPT-6.1 Sol)</span>
           </div>
         </div>
 
-        <div class="screenshot-wrapper">
-          <img src="assets/screenshot.png" alt="Dots Desktop Application Screenshot" class="app-screenshot" id="mainScreenshot">
+        <!-- Window View & Agent Navigation -->
+        <div class="window-subbar">
+          <div class="view-switcher">
+            <button class="view-btn active" id="viewDemoBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Interactive Agent Studio</span>
+            </button>
+            <button class="view-btn" id="viewScreenshotBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              <span>Real App Screenshot</span>
+            </button>
+          </div>
+
+          <div class="agent-switcher" id="agentSwitcher">
+            <button class="agent-chip active" data-agent="engineer">
+              <span class="chip-emoji">⚡</span>
+              <span class="chip-name">Autonomous Engineer</span>
+            </button>
+            <button class="agent-chip" data-agent="market">
+              <span class="chip-emoji">🔍</span>
+              <span class="chip-name">Market Intelligence</span>
+            </button>
+            <button class="agent-chip" data-agent="watchdog">
+              <span class="chip-emoji">⏱️</span>
+              <span class="chip-name">Release Watchdog</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 1. Interactive Agent Workspace (Default) -->
+        <div class="interactive-workspace" id="interactiveWorkspace">
+          <!-- Sidebar -->
+          <div class="mock-sidebar">
+            <div class="mock-sidebar-header">
+              <div class="mock-logo">
+                <span class="mock-dot-badge"></span>
+                <span>Dots</span>
+                <span class="mock-ver">v1.0.4</span>
+              </div>
+              <button class="mock-new-btn">+ New Dot</button>
+            </div>
+
+            <div class="mock-dots-list">
+              <div class="mock-section-label">YOUR DOTS (3)</div>
+              <div class="mock-dot-row active" data-agent="engineer">
+                <span class="mock-dot-avatar bg-indigo">⚡</span>
+                <div class="mock-dot-info">
+                  <div class="mock-dot-name">Autonomous Engineer</div>
+                  <div class="mock-dot-meta">idle • GPT-6.1 Sol</div>
+                </div>
+              </div>
+              <div class="mock-dot-row" data-agent="market">
+                <span class="mock-dot-avatar bg-emerald">🔍</span>
+                <div class="mock-dot-info">
+                  <div class="mock-dot-name">Market Intelligence</div>
+                  <div class="mock-dot-meta">idle • GPT-6 Astra</div>
+                </div>
+              </div>
+              <div class="mock-dot-row" data-agent="watchdog">
+                <span class="mock-dot-avatar bg-amber">⏱️</span>
+                <div class="mock-dot-info">
+                  <div class="mock-dot-name">Release Watchdog</div>
+                  <div class="mock-dot-meta">scheduled • GPT-5.2</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mock-sidebar-footer">
+              <div class="mock-account">
+                <span class="mock-online-dot"></span>
+                <div>
+                  <div class="mock-account-title">Codex (Pro)</div>
+                  <div class="mock-account-sub">Connected • ChatGPT Pro</div>
+                </div>
+              </div>
+              <button class="mock-gear-btn" title="Settings">⚙</button>
+            </div>
+          </div>
+
+          <!-- Main Stage -->
+          <div class="mock-main">
+            <!-- Header -->
+            <div class="mock-main-header">
+              <div class="mock-header-left">
+                <span class="mock-header-emoji" id="agentHeaderEmoji">⚡</span>
+                <div>
+                  <div class="mock-header-title-row">
+                    <h3 class="mock-agent-name" id="agentHeaderName">Autonomous Engineer</h3>
+                    <span class="mock-badge" id="agentHeaderBadge">idle</span>
+                    <span class="mock-model-pill" id="agentHeaderModel">GPT-6.1 Sol Preview</span>
+                  </div>
+                  <p class="mock-agent-desc" id="agentHeaderDesc">Senior full-stack autonomous engineer. Refactors architecture, executes terminal tasks, and verifies tests.</p>
+                </div>
+              </div>
+              <div class="mock-header-actions">
+                <button class="mock-btn-outline">Open Folder</button>
+                <button class="mock-btn-outline">Pause</button>
+              </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="mock-nav-tabs">
+              <button class="mock-tab active" data-tab="tasks">Tasks & Activity</button>
+              <button class="mock-tab" data-tab="memory">Durable Memory</button>
+              <button class="mock-tab" data-tab="schedule">Background Schedule</button>
+              <button class="mock-tab" data-tab="files">Workspace Files</button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="mock-tab-body" id="tabBody">
+              <!-- Content rendered dynamically by script.js -->
+            </div>
+
+            <!-- Bottom Prompt Input -->
+            <div class="mock-prompt-bar">
+              <div class="mock-input-field">
+                <span class="mock-input-placeholder" id="mockInputPlaceholder">Assign a task to Autonomous Engineer... (Press Ctrl+Enter to run)</span>
+              </div>
+              <div class="mock-prompt-actions">
+                <label class="mock-checkbox-label">
+                  <input type="checkbox" checked disabled>
+                  <span>Persistent Session</span>
+                </label>
+                <button class="mock-run-btn" id="simulateRunBtn">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <span>Simulate Run</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Authentic App Screenshot View (Alternative) -->
+        <div class="screenshot-wrapper" id="screenshotWrapper" style="display: none;">
+          <img src="assets/screenshot.png" alt="Dots Desktop Application Dark Mode Screenshot" class="app-screenshot" id="mainScreenshot">
           <div class="screenshot-overlay">
             <button class="expand-btn" id="expandBtn">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
               </svg>
-              <span>Click to view full size</span>
+              <span>Click to view high-res screenshot</span>
             </button>
           </div>
         </div>

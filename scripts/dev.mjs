@@ -17,7 +17,7 @@ await new Promise((res, rej) => {
   b.on('exit', (c) => (c === 0 ? res() : rej(new Error('main build failed'))));
 });
 
-const app = spawn(electronPath, ['.'], {
+const app = spawn(electronPath, ['.', ...process.argv.slice(2)], {
   cwd: root,
   stdio: 'inherit',
   env: { ...process.env, VITE_DEV_SERVER_URL: url }
