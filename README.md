@@ -10,7 +10,7 @@
     <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/tag/v1.0.4"><strong>📦 Releases</strong></a>
   </p>
   <br />
-  <img src="website/assets/screenshot.png" alt="Dots Desktop Screenshot" width="850" style="border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
+  <img src="assets/screenshot.png" alt="Dots Desktop Screenshot" width="850" style="border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
 </div>
 
 ---
