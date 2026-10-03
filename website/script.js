@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
       emoji: '⚡',
       badge: 'idle',
       badgeColor: '#10b981',
-      model: 'GPT-6.1 Sol Preview',
+      model: 'GPT-6.1 Sol',
       desc: 'Senior full-stack autonomous engineer. Refactors architecture, executes terminal tasks, and verifies tests.',
       placeholder: 'Assign a task to Autonomous Engineer... (Press Ctrl+Enter to run)',
       tasks: {
@@ -93,7 +93,7 @@ export async function verifyPKCE(verifier: string, challenge: string): Promise<b
       emoji: '⏱️',
       badge: 'scheduled',
       badgeColor: '#f59e0b',
-      model: 'GPT-5.2 Codex',
+      model: 'GPT-5.6 Sol',
       desc: 'Automated CI/CD health auditor running scheduled background smoke tests and verifying build outputs.',
       placeholder: 'Trigger immediate audit with Release Watchdog... (Press Ctrl+Enter to run)',
       tasks: {

@@ -35,7 +35,7 @@ export function seedDemoEnvironment(dir: string): void {
     emoji: '⚡',
     instructions: 'Senior software engineer. Specializes in TypeScript, full-stack architecture, refactoring, and verifying unit test suites.',
     providerId: 'codex',
-    model: 'gpt-6.1-sol-preview',
+    model: 'gpt-6.1-sol',
     reasoningEffort: 'high',
     workspacePath: join(dir, 'workspaces', 'autonomous-engineer'),
     permissions: {
@@ -196,7 +196,7 @@ export function seedDemoEnvironment(dir: string): void {
     emoji: '⏱️',
     instructions: 'Autonomous release monitor. Checks commit statuses, runs smoke tests, and notifies on failure.',
     providerId: 'codex',
-    model: 'gpt-5.2-codex',
+    model: 'gpt-5.6-sol',
     workspacePath: join(dir, 'workspaces', 'release-watchdog'),
     permissions: {
       allowedCommands: [],

@@ -169,8 +169,8 @@ describe('codex event translator', () => {
   });
 });
 
-describe('model catalog and GPT-6/6.1 support', () => {
-  it('includes latest GPT-6 and GPT-6.1 models in catalogue', async () => {
+describe('model catalog and GPT-6 Astra, Sol & Luna support', () => {
+  it('includes verified GPT-6 Astra, Sol, and Luna models and excludes nonexistent base IDs', async () => {
     const { KNOWN_GPT_MODELS, mergeModelsWithCatalog, groupModels } = await import('../src/shared/models');
     
     const ids = KNOWN_GPT_MODELS.map((m) => m.id);
@@ -178,8 +178,8 @@ describe('model catalog and GPT-6/6.1 support', () => {
     expect(ids).toContain('gpt-6-astra');
     expect(ids).toContain('gpt-6-sol');
     expect(ids).toContain('gpt-6-luna');
-    expect(ids).toContain('gpt-6.1');
-    expect(ids).toContain('gpt-6');
+    expect(ids).not.toContain('gpt-6.1');
+    expect(ids).not.toContain('gpt-6');
     expect(ids).toContain('gpt-5.6-sol');
 
     // Test merging with Codex app-server returned models
@@ -197,7 +197,6 @@ describe('model catalog and GPT-6/6.1 support', () => {
     // Grouping
     const groups = groupModels(merged);
     const groupLabels = groups.map((g) => g.label);
-    expect(groupLabels).toContain('GPT-6.1 Series (Latest Sol & Frontier)');
-    expect(groupLabels).toContain('GPT-6 Series (Flagship Astra, Sol & Luna)');
+    expect(groupLabels).toContain('GPT-6 Series (Astra, Sol & Luna)');
   });
 });

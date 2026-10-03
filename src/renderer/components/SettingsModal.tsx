@@ -42,7 +42,7 @@ export const SettingsModal: React.FC = () => {
   // Add Provider Profile state
   const [newLabel, setNewLabel] = useState('');
   const [newBaseUrl, setNewBaseUrl] = useState('https://api.openai.com/v1');
-  const [newModel, setNewModel] = useState('gpt-6.1');
+  const [newModel, setNewModel] = useState('gpt-6.1-sol');
   const [newKey, setNewKey] = useState('');
   const [addingProvider, setAddingProvider] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);

@@ -6,82 +6,65 @@ import type { ModelInfo } from './types';
  * GPT-6 Sol, GPT-6 Luna, GPT-5.6 series, and reasoning models.
  */
 export const KNOWN_GPT_MODELS: ModelInfo[] = [
-  // ─── GPT-6.1 Series (Latest) ───
+  // ─── GPT-6 Series (Astra, Sol & Luna) ───
   {
     id: 'gpt-6.1-sol',
     label: 'GPT-6.1 Sol (Default & Recommended)',
-    description: 'OpenAI\'s latest model (Sep 2026). Balanced flagship performance optimized for agentic coding, computer use, and complex professional work.',
+    description: 'Latest workhorse model for coding and everyday work. Balanced flagship performance optimized for agentic coding and professional workflows.',
     isDefault: true,
-    reasoningEfforts: ['low', 'medium', 'high', 'max'],
+    reasoningEfforts: ['low', 'medium', 'high', 'xhigh', 'max'],
     defaultReasoningEffort: 'medium'
   },
-  {
-    id: 'gpt-6.1',
-    label: 'GPT-6.1 (Frontier)',
-    description: 'Latest GPT-6.1 frontier model with advanced multi-step reasoning and autonomy.',
-    reasoningEfforts: ['low', 'medium', 'high', 'max'],
-    defaultReasoningEffort: 'medium'
-  },
-
-  // ─── GPT-6 Series (Flagship Astra, Sol & Luna) ───
   {
     id: 'gpt-6-astra',
     label: 'GPT-6 Astra (Flagship)',
-    description: 'OpenAI\'s most capable model. Designed for deep reasoning, complex software engineering, and cybersecurity. Powers OpenAI Dots.',
-    reasoningEfforts: ['low', 'medium', 'high', 'max'],
+    description: 'Frontier intelligence for the most demanding work. Designed for deep reasoning, complex software engineering, and systems architecture. Powers OpenAI Dots.',
+    reasoningEfforts: ['low', 'medium', 'high', 'xhigh', 'max'],
     defaultReasoningEffort: 'high'
   },
   {
     id: 'gpt-6-sol',
     label: 'GPT-6 Sol',
-    description: 'Balanced GPT-6 intelligence tuned for developer workflows and task execution.',
-    reasoningEfforts: ['low', 'medium', 'high', 'max'],
+    description: 'Previous generation workhorse model for coding and developer workflows.',
+    reasoningEfforts: ['low', 'medium', 'high', 'xhigh', 'max'],
     defaultReasoningEffort: 'medium'
   },
   {
     id: 'gpt-6-luna',
-    label: 'GPT-6 Luna',
-    description: 'Fast, efficient GPT-6 agent model for high-throughput, low-latency execution.',
-    reasoningEfforts: ['low', 'medium', 'high']
-  },
-  {
-    id: 'gpt-6',
-    label: 'GPT-6 (Base Frontier)',
-    description: 'Base GPT-6 foundation model with deep reasoning and native tool use.',
-    reasoningEfforts: ['low', 'medium', 'high', 'max']
+    label: 'GPT-6 Luna (Fast)',
+    description: 'Fast and affordable model for easier tasks, rapid iteration, and lightweight background automation.',
+    reasoningEfforts: ['low', 'medium', 'high', 'xhigh', 'max'],
+    defaultReasoningEffort: 'medium'
   },
 
-  // ─── GPT-5.6 / 5.5 Series ───
+  // ─── Codex / GPT-5.6 & 5.5 Series ───
   {
     id: 'gpt-5.6-sol',
     label: 'GPT-5.6 Sol',
-    description: 'High-capability reasoning and coding model in Codex.',
-    reasoningEfforts: ['low', 'medium', 'high', 'max']
+    description: 'Older generation workhorse model in Codex.',
+    reasoningEfforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+    defaultReasoningEffort: 'low'
   },
   {
     id: 'gpt-5.6-terra',
     label: 'GPT-5.6 Terra',
-    description: 'Balanced coding and instruction execution model.'
+    description: 'Older balanced model for straightforward work.',
+    reasoningEfforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+    defaultReasoningEffort: 'medium'
   },
   {
     id: 'gpt-5.6-luna',
     label: 'GPT-5.6 Luna',
-    description: 'Fast, lightweight agent model.'
-  },
-  {
-    id: 'gpt-5.6-cyber',
-    label: 'GPT-5.6 Cyber',
-    description: 'Specialized model for security analysis and systems auditing.'
-  },
-  {
-    id: 'gpt-reserve',
-    label: 'GPT Reserve',
-    description: 'High-availability failover allocation model in Codex.'
+    description: 'Older fast and efficient model.',
+    reasoningEfforts: ['low', 'medium', 'high', 'xhigh', 'max'],
+    defaultReasoningEffort: 'medium'
   },
   {
     id: 'gpt-5.5',
     label: 'GPT-5.5',
-    description: 'Reliable general-purpose coding model.'
+    description: 'Legacy coding model.',
+    reasoningEfforts: ['low', 'medium', 'high', 'xhigh'],
+    defaultReasoningEffort: 'medium'
   },
 
   // ─── Reasoning (o-Series) ───
@@ -180,7 +163,6 @@ export interface ModelGroup {
 }
 
 export function groupModels(models: ModelInfo[]): ModelGroup[] {
-  const gpt61: ModelInfo[] = [];
   const gpt6: ModelInfo[] = [];
   const gpt5: ModelInfo[] = [];
   const oSeries: ModelInfo[] = [];
@@ -189,11 +171,9 @@ export function groupModels(models: ModelInfo[]): ModelGroup[] {
 
   for (const m of models) {
     const id = m.id.toLowerCase();
-    if (id.startsWith('gpt-6.1') || id.includes('6.1')) {
-      gpt61.push(m);
-    } else if (id.startsWith('gpt-6') || id.includes('astra') || (id.includes('luna') && !id.includes('5.6')) || (id.includes('sol') && !id.includes('5.6'))) {
+    if (id.startsWith('gpt-6') || id.includes('astra') || (id.includes('luna') && !id.includes('5.6')) || (id.includes('sol') && !id.includes('5.6'))) {
       gpt6.push(m);
-    } else if (id.startsWith('gpt-5') || id.includes('5.6') || id.includes('reserve')) {
+    } else if (id.startsWith('gpt-5') || id.includes('5.6')) {
       gpt5.push(m);
     } else if (id.startsWith('o1') || id.startsWith('o3') || id.startsWith('o4')) {
       oSeries.push(m);
@@ -205,8 +185,7 @@ export function groupModels(models: ModelInfo[]): ModelGroup[] {
   }
 
   const groups: ModelGroup[] = [];
-  if (gpt61.length) groups.push({ label: 'GPT-6.1 Series (Latest Sol & Frontier)', models: gpt61 });
-  if (gpt6.length) groups.push({ label: 'GPT-6 Series (Flagship Astra, Sol & Luna)', models: gpt6 });
+  if (gpt6.length) groups.push({ label: 'GPT-6 Series (Astra, Sol & Luna)', models: gpt6 });
   if (gpt5.length) groups.push({ label: 'Codex / GPT-5.6 Series', models: gpt5 });
   if (oSeries.length) groups.push({ label: 'Reasoning (o-Series)', models: oSeries });
   if (gpt4.length) groups.push({ label: 'GPT-4o Series', models: gpt4 });
