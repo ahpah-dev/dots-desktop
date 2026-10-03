@@ -37,6 +37,16 @@ export const DotFiles: React.FC<DotFilesProps> = ({ dotId }) => {
     }
   };
 
+  const handleOpenFile = async (relPath: string) => {
+    if (!activeDot?.workspacePath) return;
+    try {
+      const full = activeDot.workspacePath.replace(/\\/g, '/') + '/' + relPath.replace(/^\.?\//, '');
+      await window.dots.api.openPath(full);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to open file', 'error');
+    }
+  };
+
   const filtered = files.filter((f) => f.path.toLowerCase().includes(search.toLowerCase()));
 
   const formatSize = (bytes: number) => {
@@ -126,6 +136,7 @@ export const DotFiles: React.FC<DotFilesProps> = ({ dotId }) => {
             {filtered.map((item, i) => (
               <div
                 key={i}
+                onClick={() => !item.isDir && handleOpenFile(item.path)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -133,10 +144,12 @@ export const DotFiles: React.FC<DotFilesProps> = ({ dotId }) => {
                   padding: '0.65rem 1rem',
                   borderBottom: i < filtered.length - 1 ? '1px solid var(--border-subtle)' : 'none',
                   fontSize: '0.825rem',
+                  cursor: !item.isDir ? 'pointer' : 'default',
                   transition: 'background var(--transition-fast)'
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-card-hover)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                title={!item.isDir ? `Click to open ${item.path}` : item.path}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
                   {item.isDir ? (
@@ -152,15 +165,15 @@ export const DotFiles: React.FC<DotFilesProps> = ({ dotId }) => {
                       overflow: 'hidden',
                       textOverflow: 'ellipsis'
                     }}
-                    title={item.path}
                   >
                     {item.path}
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', color: 'var(--text-dim)', fontSize: '0.75rem', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-dim)', fontSize: '0.75rem', flexShrink: 0 }}>
                   <span>{!item.isDir ? formatSize(item.size) : 'Folder'}</span>
                   <span>{new Date(item.mtime).toLocaleDateString()}</span>
+                  {!item.isDir && <ExternalLink size={13} style={{ color: '#818cf8', opacity: 0.8 }} />}
                 </div>
               </div>
             ))}

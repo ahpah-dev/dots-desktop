@@ -93,14 +93,47 @@ function createWindow(hidden: boolean): void {
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
+    if (/^https?:\/\//i.test(url)) {
+      void shell.openExternal(url);
+    } else {
+      let filePath = url;
+      if (filePath.startsWith('file:///')) filePath = filePath.slice(8);
+      else if (filePath.startsWith('file://')) filePath = filePath.slice(7);
+      try {
+        filePath = decodeURIComponent(filePath);
+      } catch {}
+      void shell.openPath(filePath);
+    }
     return { action: 'deny' };
   });
+
   win.webContents.on('will-navigate', (e, url) => {
-    const internal = DEV_URL ? url.startsWith(DEV_URL) : url.startsWith('file://');
-    if (!internal) {
+    // Only allow navigating to the internal app renderer
+    const isRenderer = DEV_URL
+      ? url.startsWith(DEV_URL)
+      : (url.startsWith('file://') && (url.includes('/renderer/index.html') || url.includes('\\renderer\\index.html')));
+
+    if (!isRenderer) {
       e.preventDefault();
-      if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
+      if (/^https?:\/\//i.test(url)) {
+        void shell.openExternal(url);
+      } else {
+        let filePath = url;
+        if (filePath.startsWith('file:///')) filePath = filePath.slice(8);
+        else if (filePath.startsWith('file://')) filePath = filePath.slice(7);
+        try {
+          filePath = decodeURIComponent(filePath);
+        } catch {}
+        void shell.openPath(filePath);
+      }
+    }
+  });
+
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r'))) {
+      if (DEV_URL) void win?.loadURL(DEV_URL);
+      else void win?.loadFile(join(__dirname, '..', 'renderer', 'index.html'));
+      event.preventDefault();
     }
   });
   win.webContents.on('render-process-gone', (_e, details) => {

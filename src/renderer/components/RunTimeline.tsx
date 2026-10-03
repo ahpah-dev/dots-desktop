@@ -102,6 +102,54 @@ export const RunTimeline: React.FC<RunTimelineProps> = ({ dotId }) => {
     }
   };
 
+  const resolveFilePath = (href: string) => {
+    let filePath = href.trim();
+    if (filePath.startsWith('file:///')) filePath = filePath.slice(8);
+    else if (filePath.startsWith('file://')) filePath = filePath.slice(7);
+    else if (filePath.startsWith('/') && /^[a-zA-Z]:/.test(filePath.slice(1))) {
+      filePath = filePath.slice(1);
+    } else if (filePath.startsWith('/') && activeDot?.workspacePath) {
+      filePath = activeDot.workspacePath.replace(/\\/g, '/') + filePath;
+    } else if (!filePath.includes(':') && activeDot?.workspacePath) {
+      filePath = activeDot.workspacePath.replace(/\\/g, '/') + '/' + filePath;
+    }
+    try {
+      filePath = decodeURIComponent(filePath);
+    } catch {}
+    return filePath;
+  };
+
+  const markdownComponents = {
+    a: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+      const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (!href) return;
+        if (/^https?:\/\//i.test(href)) {
+          window.dots.api.openExternal(href);
+        } else {
+          const target = resolveFilePath(href);
+          window.dots.api.openPath(target);
+        }
+      };
+      return (
+        <a
+          href={href}
+          onClick={handleClick}
+          style={{
+            color: '#818cf8',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            fontWeight: 500
+          }}
+          title={href}
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    }
+  };
+
   const getToolIcon = (category: ToolCategory) => {
     switch (category) {
       case 'shell':
@@ -305,7 +353,7 @@ export const RunTimeline: React.FC<RunTimelineProps> = ({ dotId }) => {
                     }}
                   >
                     <div className="markdown-body">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{ev.text}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{ev.text}</ReactMarkdown>
                     </div>
                   </div>
                 );
@@ -450,9 +498,13 @@ export const RunTimeline: React.FC<RunTimelineProps> = ({ dotId }) => {
               }
 
               if (ev.type === 'file') {
+                const fullPath = activeDot?.workspacePath
+                  ? activeDot.workspacePath.replace(/\\/g, '/') + '/' + ev.path.replace(/^\.?\//, '')
+                  : ev.path;
                 return (
                   <div
                     key={key}
+                    onClick={() => window.dots.api.openPath(fullPath)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -462,14 +514,17 @@ export const RunTimeline: React.FC<RunTimelineProps> = ({ dotId }) => {
                       border: '1px solid rgba(52, 211, 153, 0.2)',
                       borderRadius: 'var(--radius-sm)',
                       fontSize: '0.785rem',
-                      color: '#34d399'
+                      color: '#34d399',
+                      cursor: 'pointer'
                     }}
+                    title={`Click to open ${ev.path}`}
                   >
                     <FileCode size={13} />
                     <span>{ev.change === 'add' ? 'Created' : ev.change === 'delete' ? 'Deleted' : 'Modified'}:</span>
                     <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-main)', fontWeight: 500 }}>
                       {ev.path}
                     </span>
+                    <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.7 }} />
                   </div>
                 );
               }
@@ -526,7 +581,7 @@ export const RunTimeline: React.FC<RunTimelineProps> = ({ dotId }) => {
                     </div>
 
                     <div className="markdown-body">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{ev.text}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{ev.text}</ReactMarkdown>
                     </div>
                   </div>
                 );
@@ -549,7 +604,7 @@ export const RunTimeline: React.FC<RunTimelineProps> = ({ dotId }) => {
                   <span className="spin">◓</span> Generating response...
                 </div>
                 <div className="markdown-body">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingDraft}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{streamingDraft}</ReactMarkdown>
                 </div>
               </div>
             )}
