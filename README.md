@@ -5,7 +5,7 @@
   <h3>Persistent, Autonomous AI Agents with Workspaces, Memory & Background Execution</h3>
   <p>Inspired by OpenAI Dots — Built for Desktop</p>
   <p>
-    <a href="https://dots-desktop-seven.vercel.app"><strong>🌐 Visit Live Website</strong></a> &nbsp;|&nbsp;
+    <a href="https://dotsdesktop.vercel.app"><strong>🌐 Visit Live Website</strong></a> &nbsp;|&nbsp;
     <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/download/v1.0.4/Dots-Setup-1.0.4.exe"><strong>💾 Download Windows Installer (v1.0.4)</strong></a> &nbsp;|&nbsp;
     <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/tag/v1.0.4"><strong>📦 Releases</strong></a>
   </p>
