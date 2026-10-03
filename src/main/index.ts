@@ -71,7 +71,26 @@ function createWindow(hidden: boolean): void {
     }
   });
 
-  win.once('ready-to-show', () => { if (!hidden) win?.show(); });
+  win.once('ready-to-show', () => {
+    if (!hidden) win?.show();
+    if (process.argv.includes('--capture-screenshot')) {
+      const idx = process.argv.indexOf('--capture-screenshot');
+      const targetPath = process.argv[idx + 1] || 'screenshot.png';
+      setTimeout(async () => {
+        try {
+          const img = await win?.webContents.capturePage();
+          if (img) {
+            const { writeFileSync } = await import('node:fs');
+            writeFileSync(targetPath, img.toPNG());
+            log.info('Screenshot captured to', targetPath);
+          }
+        } finally {
+          quitting = true;
+          app.quit();
+        }
+      }, 2500);
+    }
+  });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url);

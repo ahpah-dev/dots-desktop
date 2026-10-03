@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dots Desktop — Persistent Autonomous AI Agents with OpenAI Codex</title>
+  <meta name="description" content="Standalone desktop application for persistent autonomous AI agents (Dots) with workspaces, long-term memory, background scheduling, and OpenAI Codex support.">
+  <link rel="icon" type="image/x-icon" href="assets/icon.ico">
+  <link rel="icon" type="image/png" href="assets/icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ambient background glow -->
+  <div class="glow-bg"></div>
+
+  <!-- Navigation -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="#" class="brand">
+        <img src="assets/icon.png" alt="Dots Logo" class="brand-icon">
+        <span class="brand-name">Dots</span>
+        <span class="version-tag">v1.0.4</span>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#models">Models</a>
+        <a href="#preview">Interface</a>
+        <a href="#download">Download</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="https://github.com/davidegeric-cloud/dots-desktop" target="_blank" rel="noopener noreferrer" class="btn btn-ghost github-nav-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+        <a href="#download" class="btn btn-primary nav-download-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-container">
+      <div class="announcement-badge">
+        <span class="pulse-dot"></span>
+        <span class="badge-text">Updated for October 2026</span>
+        <span class="badge-sep">•</span>
+        <span class="badge-highlight">Official GPT-6.1 Sol & GPT-6 Astra Support</span>
+      </div>
+
+      <h1 class="hero-title">
+        Autonomous AI agents that live on your desktop.
+      </h1>
+
+      <p class="hero-subtitle">
+        Create persistent AI workers (“Dots”) that write code, browse the web, remember context, and execute background tasks — powered natively by your local OpenAI Codex account.
+      </p>
+
+      <div class="hero-actions">
+        <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/download/v1.0.4/Dots-Setup-1.0.4.exe" class="btn btn-hero-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <div class="btn-text-group">
+            <span class="btn-main-text">Download for Windows</span>
+            <span class="btn-sub-text">Installer v1.0.4 (90 MB)</span>
+          </div>
+        </a>
+
+        <a href="https://github.com/davidegeric-cloud/dots-desktop" target="_blank" rel="noopener noreferrer" class="btn btn-hero-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <div class="btn-text-group">
+            <span class="btn-main-text">Explore Codebase</span>
+            <span class="btn-sub-text">GitHub Repository</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="system-req-pills">
+        <span class="req-item">✓ Windows 10 & 11 (64-bit)</span>
+        <span class="req-dot">•</span>
+        <span class="req-item">✓ Zero API Key Setup (Auto-Connects to Codex)</span>
+        <span class="req-dot">•</span>
+        <span class="req-item">✓ Free & MIT Licensed</span>
+      </div>
+    </div>
+
+    <!-- App Screenshot Preview Window -->
+    <div class="preview-container" id="preview">
+      <div class="window-frame">
+        <div class="window-titlebar">
+          <div class="window-controls">
+            <span class="control-dot close"></span>
+            <span class="control-dot minimize"></span>
+            <span class="control-dot maximize"></span>
+          </div>
+          <div class="window-title">
+            <img src="assets/icon.png" width="14" height="14" alt="icon">
+            <span>Dots Desktop — Web Researcher (Active Task)</span>
+          </div>
+          <div class="window-status">
+            <span class="status-indicator"></span>
+            <span>Codex Connected</span>
+          </div>
+        </div>
+
+        <div class="screenshot-wrapper">
+          <img src="assets/screenshot.png" alt="Dots Desktop Application Screenshot" class="app-screenshot" id="mainScreenshot">
+          <div class="screenshot-overlay">
+            <button class="expand-btn" id="expandBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+              </svg>
+              <span>Click to view full size</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature Highlights -->
+  <section class="features-section" id="features">
+    <div class="section-container">
+      <div class="section-header">
+        <h2 class="section-title">Built for authentic autonomous workflows</h2>
+        <p class="section-subtitle">
+          Dots gives every agent its own persistent workspace, long-term memory scratchpad, and sandboxed system tools.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon-wrapper" style="--accent: #6366f1;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Persistent Agent Workspaces</h3>
+          <p class="feature-card-desc">
+            Each Dot owns an isolated directory on disk, a dedicated <code>scratchpad.md</code> memory journal, and scoped permissions that persist across reboots.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper" style="--accent: #10b981;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Zero API Key Auto-Auth</h3>
+          <p class="feature-card-desc">
+            Automatically connects to your local authenticated OpenAI Codex session via official JSON-RPC. Never copy or expose API tokens manually.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper" style="--accent: #f59e0b;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" y1="19" x2="20" y2="19"></line>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Elevated PowerShell Sandboxing</h3>
+          <p class="feature-card-desc">
+            Windows container policy configured with elevated sandbox execution. Your coding agents can run tests, inspect Git repositories, and build projects without policy blocks.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper" style="--accent: #ec4899;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Background Schedules & Tray</h3>
+          <p class="feature-card-desc">
+            Runs scheduled autonomous cadences (cron / interval) when minimized or closed to the Windows system tray, protected with power suspension blocker.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper" style="--accent: #3b82f6;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Live Web Research & Chromium</h3>
+          <p class="feature-card-desc">
+            DuckDuckGo search and sandboxed headless Chromium page extraction allow agents to browse the web, verify pricing, read documentation, and compile intelligence.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper" style="--accent: #8b5cf6;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">OS-Level Secure Storage</h3>
+          <p class="feature-card-desc">
+            Support for direct OpenAI-compatible endpoints (Groq, Ollama, OpenRouter). Secrets are encrypted locally using Windows DPAPI via Electron <code>safeStorage</code>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Models Section -->
+  <section class="models-section" id="models">
+    <div class="section-container">
+      <div class="section-header">
+        <h2 class="section-title">Latest OpenAI Models Supported</h2>
+        <p class="section-subtitle">
+          Dots natively integrates with OpenAI's official October 2026 model lineup, including full control over reasoning effort.
+        </p>
+      </div>
+
+      <div class="models-table-card">
+        <table class="models-table">
+          <thead>
+            <tr>
+              <th>Model Name</th>
+              <th>API Identifier</th>
+              <th>Primary Architecture & Capabilities</th>
+              <th>Default Reasoning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="highlight-row">
+              <td>
+                <div class="model-badge-group">
+                  <strong>GPT-6.1 Sol</strong>
+                  <span class="tag tag-default">Default</span>
+                </div>
+              </td>
+              <td><code>gpt-6.1-sol</code></td>
+              <td>Balanced flagship model optimized for agentic coding, computer workflows, and professional multi-step tasks.</td>
+              <td><span class="reasoning-pill medium">Medium (Low - Max)</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="model-badge-group">
+                  <strong>GPT-6 Astra</strong>
+                  <span class="tag tag-flagship">Flagship</span>
+                </div>
+              </td>
+              <td><code>gpt-6-astra</code></td>
+              <td>OpenAI’s most capable model. Designed for deep multi-step reasoning, complex refactoring, and security auditing. Powers OpenAI Dots.</td>
+              <td><span class="reasoning-pill high">High (Low - Max)</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="model-badge-group">
+                  <strong>GPT-6 Sol</strong>
+                </div>
+              </td>
+              <td><code>gpt-6-sol</code></td>
+              <td>Balanced GPT-6 foundation model tuned for developer workflows, codebase maintenance, and execution speed.</td>
+              <td><span class="reasoning-pill medium">Medium</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="model-badge-group">
+                  <strong>GPT-6 Luna</strong>
+                  <span class="tag tag-speed">Fast</span>
+                </div>
+              </td>
+              <td><code>gpt-6-luna</code></td>
+              <td>High-throughput, low-latency agent model designed for rapid iteration, web scraping, and background monitoring.</td>
+              <td><span class="reasoning-pill low">Low - High</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="model-badge-group">
+                  <strong>GPT-5.6 Sol / Terra</strong>
+                </div>
+              </td>
+              <td><code>gpt-5.6-sol</code></td>
+              <td>High-capacity coding and reasoning models included in the local Codex CLI suite.</td>
+              <td><span class="reasoning-pill medium">Medium</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="model-badge-group">
+                  <strong>OpenAI o3 & o3-mini</strong>
+                </div>
+              </td>
+              <td><code>o3</code> / <code>o3-mini</code></td>
+              <td>Frontier STEM and mathematical reasoning models with configurable reasoning tokens.</td>
+              <td><span class="reasoning-pill high">High</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section class="download-section" id="download">
+    <div class="section-container">
+      <div class="download-box">
+        <div class="download-icon-circle">
+          <img src="assets/icon.png" alt="Dots App Icon" width="64" height="64">
+        </div>
+
+        <h2 class="download-title">Get Dots Desktop for Windows</h2>
+        <p class="download-desc">
+          Download the latest production release with the single NSIS installer, or clone and build from the open source repository.
+        </p>
+
+        <div class="download-button-row">
+          <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/download/v1.0.4/Dots-Setup-1.0.4.exe" class="btn btn-download-primary">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <div class="btn-text-group">
+              <span class="btn-main-text">Download Dots Setup 1.0.4.exe</span>
+              <span class="btn-sub-text">Windows Installer • 89.7 MB</span>
+            </div>
+          </a>
+
+          <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/tag/v1.0.4" target="_blank" rel="noopener noreferrer" class="btn btn-download-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>Release Notes</span>
+          </a>
+        </div>
+
+        <div class="quick-terminal">
+          <div class="terminal-header">
+            <span>Or build from source</span>
+            <button class="copy-btn" id="copyCloneBtn">Copy</button>
+          </div>
+          <pre><code>git clone https://github.com/davidegeric-cloud/dots-desktop.git
+cd dots-desktop
+npm install
+npm run dist</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Image Lightbox Modal -->
+  <div class="lightbox-modal" id="lightboxModal">
+    <div class="lightbox-backdrop" id="lightboxBackdrop"></div>
+    <div class="lightbox-content">
+      <button class="lightbox-close" id="lightboxClose">&times;</button>
+      <img src="assets/screenshot.png" alt="Enlarged Dots App Screenshot" class="lightbox-image">
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <img src="assets/icon.png" width="20" height="20" alt="logo">
+          <span>Dots Desktop</span>
+        </div>
+        <p class="footer-tagline">
+          Persistent, autonomous AI agents inspired by OpenAI Dots.
+        </p>
+      </div>
+
+      <div class="footer-links">
+        <a href="https://github.com/davidegeric-cloud/dots-desktop" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
+        <a href="https://github.com/davidegeric-cloud/dots-desktop/releases" target="_blank" rel="noopener noreferrer">All Releases</a>
+        <a href="https://github.com/davidegeric-cloud/dots-desktop/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>
+        <a href="https://github.com/davidegeric-cloud/dots-desktop/issues" target="_blank" rel="noopener noreferrer">Report Issue</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
