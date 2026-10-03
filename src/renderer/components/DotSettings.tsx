@@ -13,6 +13,7 @@ import {
 import { useApp } from '../context/AppContext';
 import type { DotPatch, FileAccess, ModelInfo, ProviderOption } from '@shared/types';
 import { CODEX_PROVIDER_ID } from '@shared/types';
+import { groupModels } from '@shared/models';
 
 interface DotSettingsProps {
   dotId: string;
@@ -286,41 +287,110 @@ export const DotSettings: React.FC<DotSettingsProps> = ({ dotId }) => {
             <Cpu size={16} /> Model & Intelligence
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Provider
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+              Provider
+            </label>
+            <select
+              value={providerId}
+              onChange={(e) => setProviderId(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              {providerOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label} {!opt.available ? `(${opt.reason})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.35rem' }}>
+              <label style={{ fontSize: '0.785rem', color: 'var(--text-muted)' }}>
+                Model {loadingModels ? '(Loading catalogue...)' : ''}
               </label>
-              <select
-                value={providerId}
-                onChange={(e) => setProviderId(e.target.value)}
-                style={{ width: '100%' }}
-              >
-                {providerOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.label} {!opt.available ? `(${opt.reason})` : ''}
-                  </option>
+              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', alignSelf: 'center', marginRight: '0.15rem' }}>Picks:</span>
+                {[
+                  { id: 'auto', label: 'Auto' },
+                  { id: 'gpt-6.1', label: 'GPT-6.1' },
+                  { id: 'gpt-6.1-turbo', label: 'GPT-6.1 Turbo' },
+                  { id: 'gpt-6', label: 'GPT-6' },
+                  { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' },
+                  { id: 'gpt-4o', label: 'GPT-4o' }
+                ].map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    className={model === chip.id ? 'btn-primary' : 'btn-ghost'}
+                    style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem', height: 'auto' }}
+                    onClick={() => setModel(chip.id)}
+                  >
+                    {chip.label}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Model {loadingModels ? '(Loading...)' : ''}
-              </label>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <select
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                style={{ width: '100%' }}
+                style={{ flex: 1 }}
               >
-                <option value="auto">Automatic (Recommended)</option>
-                {models.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label} {m.isDefault ? '(Default)' : ''}
-                  </option>
+                <option value="auto">✨ Automatic (Provider Recommended)</option>
+                {groupModels(models).map((grp) => (
+                  <optgroup key={grp.label} label={grp.label}>
+                    {grp.models.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label} {m.isDefault ? '(Default)' : ''}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
+                {model !== 'auto' && !models.some((m) => m.id.toLowerCase() === model.toLowerCase()) && (
+                  <optgroup label="Custom Specified Model">
+                    <option value={model}>{model} (Custom)</option>
+                  </optgroup>
+                )}
               </select>
+
+              <input
+                type="text"
+                placeholder="Or custom model ID..."
+                value={model === 'auto' ? '' : model}
+                onChange={(e) => setModel(e.target.value.trim() || 'auto')}
+                style={{ width: '220px', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
+                title="Type any custom model name (e.g. gpt-6.1, gpt-6, fine-tunes)"
+              />
             </div>
+
+            {/* Model description & capabilities callout */}
+            {(() => {
+              const found = models.find((m) => m.id.toLowerCase() === model.toLowerCase());
+              if (found?.description) {
+                return (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.4rem', lineHeight: 1.4 }}>
+                    💡 <strong style={{ color: 'var(--text-muted)' }}>{found.label}:</strong> {found.description}
+                  </p>
+                );
+              }
+              if (model.startsWith('gpt-6.1')) {
+                return (
+                  <p style={{ fontSize: '0.75rem', color: '#818cf8', marginTop: '0.4rem', lineHeight: 1.4 }}>
+                    🚀 <strong>GPT-6.1:</strong> Latest flagship OpenAI model with advanced reasoning, coding mastery, and tool autonomy.
+                  </p>
+                );
+              }
+              if (model.startsWith('gpt-6')) {
+                return (
+                  <p style={{ fontSize: '0.75rem', color: '#818cf8', marginTop: '0.4rem', lineHeight: 1.4 }}>
+                    ⚡ <strong>GPT-6:</strong> Next-generation frontier intelligence model.
+                  </p>
+                );
+              }
+              return null;
+            })()}
           </div>
 
           <div>

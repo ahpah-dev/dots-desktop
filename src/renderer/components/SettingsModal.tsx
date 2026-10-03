@@ -42,7 +42,7 @@ export const SettingsModal: React.FC = () => {
   // Add Provider Profile state
   const [newLabel, setNewLabel] = useState('');
   const [newBaseUrl, setNewBaseUrl] = useState('https://api.openai.com/v1');
-  const [newModel, setNewModel] = useState('gpt-4o');
+  const [newModel, setNewModel] = useState('gpt-6.1');
   const [newKey, setNewKey] = useState('');
   const [addingProvider, setAddingProvider] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -444,12 +444,27 @@ export const SettingsModal: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.725rem', color: 'var(--text-dim)', marginBottom: '0.25rem' }}>
-                        Default Model
-                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                        <label style={{ fontSize: '0.725rem', color: 'var(--text-dim)' }}>
+                          Default Model
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.2rem' }}>
+                          {['gpt-6.1', 'gpt-6', 'gpt-6.1-turbo', 'gpt-4o'].map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              className={newModel === m ? 'btn-primary' : 'btn-ghost'}
+                              style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', height: 'auto' }}
+                              onClick={() => setNewModel(m)}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <input
                         type="text"
-                        placeholder="e.g. gpt-4o or llama3"
+                        placeholder="e.g. gpt-6.1, gpt-6, or llama-3"
                         value={newModel}
                         onChange={(e) => setNewModel(e.target.value)}
                         style={{ width: '100%', fontSize: '0.8rem' }}

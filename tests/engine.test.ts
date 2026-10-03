@@ -144,3 +144,36 @@ describe('codex event translator', () => {
     expect(prettifyCommand('/bin/sh -c "ls -la"')).toBe('ls -la');
   });
 });
+
+describe('model catalog and GPT-6/6.1 support', () => {
+  it('includes latest GPT-6 and GPT-6.1 models in catalogue', async () => {
+    const { KNOWN_GPT_MODELS, mergeModelsWithCatalog, groupModels } = await import('../src/shared/models');
+    
+    const ids = KNOWN_GPT_MODELS.map((m) => m.id);
+    expect(ids).toContain('gpt-6.1');
+    expect(ids).toContain('gpt-6.1-turbo');
+    expect(ids).toContain('gpt-6.1-mini');
+    expect(ids).toContain('gpt-6.1-codex');
+    expect(ids).toContain('gpt-6');
+    expect(ids).toContain('gpt-6-turbo');
+    expect(ids).toContain('gpt-6-mini');
+
+    // Test merging with Codex app-server returned models
+    const fetched = [
+      { id: 'gpt-5.6-sol', label: 'GPT-5.6-Sol', isDefault: true },
+      { id: 'custom-fine-tune', label: 'Fine Tune v1' }
+    ];
+    const merged = mergeModelsWithCatalog(fetched);
+    const mergedIds = merged.map((m) => m.id);
+
+    expect(mergedIds[0]).toBe('gpt-6.1');
+    expect(mergedIds).toContain('gpt-6');
+    expect(mergedIds).toContain('custom-fine-tune');
+    
+    // Grouping
+    const groups = groupModels(merged);
+    const groupLabels = groups.map((g) => g.label);
+    expect(groupLabels).toContain('GPT-6.1 Series (Latest Flagship)');
+    expect(groupLabels).toContain('GPT-6 Series (Frontier Intelligence)');
+  });
+});

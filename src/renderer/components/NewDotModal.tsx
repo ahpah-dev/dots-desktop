@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Sparkles, Folder, Cpu, Plus, Code, Search, Clock, FileText } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import type { DotInput, FileAccess } from '@shared/types';
+import type { DotInput, FileAccess, ModelInfo } from '@shared/types';
 import { CODEX_PROVIDER_ID } from '@shared/types';
+import { groupModels } from '@shared/models';
 
 interface Template {
   id: string;
@@ -101,7 +102,28 @@ export const NewDotModal: React.FC = () => {
   const [files, setFiles] = useState<FileAccess>('write');
   const [shell, setShell] = useState(true);
   const [web, setWeb] = useState(true);
+  const [model, setModel] = useState('gpt-6.1');
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // Load models whenever providerId changes or modal opens
+  useEffect(() => {
+    let active = true;
+    setLoadingModels(true);
+    window.dots.api
+      .listModels(providerId)
+      .then((res) => {
+        if (active) setModels(res);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setLoadingModels(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [providerId, showNewDotModal]);
 
   // Update default workspace whenever name changes
   useEffect(() => {
@@ -157,7 +179,7 @@ export const NewDotModal: React.FC = () => {
         instructions: instructions.trim(),
         workspacePath: workspacePath.trim() || undefined,
         providerId,
-        model: 'auto',
+        model: model.trim() || 'auto',
         notify: true,
         permissions: {
           files,
@@ -277,22 +299,95 @@ export const NewDotModal: React.FC = () => {
             />
           </div>
 
-          {/* Model Provider */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-              Model Provider
-            </label>
-            <select
-              value={providerId}
-              onChange={(e) => setProviderId(e.target.value)}
-              style={{ width: '100%' }}
-            >
-              {providerOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label} {!opt.available ? `(${opt.reason})` : ''}
-                </option>
-              ))}
-            </select>
+          {/* Model Provider & Model Selection */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                Model Provider
+              </label>
+              <select
+                value={providerId}
+                onChange={(e) => setProviderId(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                {providerOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label} {!opt.available ? `(${opt.reason})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.35rem' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Model {loadingModels ? '(Loading catalogue...)' : ''}
+                </label>
+                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                  {[
+                    { id: 'gpt-6.1', label: 'GPT-6.1' },
+                    { id: 'gpt-6.1-turbo', label: 'GPT-6.1 Turbo' },
+                    { id: 'gpt-6', label: 'GPT-6' },
+                    { id: 'auto', label: 'Auto' },
+                    { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' }
+                  ].map((chip) => (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      className={model === chip.id ? 'btn-primary' : 'btn-ghost'}
+                      style={{ fontSize: '0.68rem', padding: '0.12rem 0.4rem', height: 'auto' }}
+                      onClick={() => setModel(chip.id)}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  style={{ flex: 1 }}
+                >
+                  <option value="auto">✨ Automatic (Provider Recommended)</option>
+                  {groupModels(models).map((grp) => (
+                    <optgroup key={grp.label} label={grp.label}>
+                      {grp.models.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.label} {m.isDefault ? '(Default)' : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                  {model !== 'auto' && !models.some((m) => m.id.toLowerCase() === model.toLowerCase()) && (
+                    <optgroup label="Custom Specified Model">
+                      <option value={model}>{model} (Custom)</option>
+                    </optgroup>
+                  )}
+                </select>
+
+                <input
+                  type="text"
+                  placeholder="Custom model ID..."
+                  value={model === 'auto' ? '' : model}
+                  onChange={(e) => setModel(e.target.value.trim() || 'auto')}
+                  style={{ width: '180px', fontSize: '0.78rem', fontFamily: 'var(--font-mono)' }}
+                  title="Type any model ID (e.g. gpt-6.1, gpt-6, fine-tunes)"
+                />
+              </div>
+
+              {model.startsWith('gpt-6.1') && (
+                <div style={{ fontSize: '0.72rem', color: '#818cf8', marginTop: '0.35rem' }}>
+                  🚀 <strong>GPT-6.1:</strong> State-of-the-art coding and autonomous reasoning.
+                </div>
+              )}
+              {model === 'gpt-6' && (
+                <div style={{ fontSize: '0.72rem', color: '#818cf8', marginTop: '0.35rem' }}>
+                  ⚡ <strong>GPT-6:</strong> Frontier OpenAI foundation model.
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Workspace Path */}

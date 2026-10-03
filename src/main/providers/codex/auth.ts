@@ -1,4 +1,5 @@
 import type { CodexAuthStatus, LoginProgress, ModelInfo } from '@shared/types';
+import { mergeModelsWithCatalog } from '@shared/models';
 import { AppServerSession } from './appServer';
 import { codexVersion, locateCodex } from './locator';
 import { Emitter, errorMessage } from '../../util/misc';
@@ -85,7 +86,7 @@ export class CodexAuthService {
   async models(): Promise<ModelInfo[]> {
     if (this.modelCache && Date.now() - this.modelCache.at < MODELS_TTL_MS) return this.modelCache.models;
     const exe = this.path();
-    if (!exe) return [];
+    if (!exe) return mergeModelsWithCatalog([]);
     let session: AppServerSession | undefined;
     try {
       session = await AppServerSession.open(exe);
@@ -106,11 +107,12 @@ export class CodexAuthService {
         cursor = res?.nextCursor ?? null;
         if (!cursor) break;
       }
-      this.modelCache = { at: Date.now(), models };
-      return models;
+      const merged = mergeModelsWithCatalog(models);
+      this.modelCache = { at: Date.now(), models: merged };
+      return merged;
     } catch (err) {
       log.warn('model/list failed', errorMessage(err));
-      return this.modelCache?.models ?? [];
+      return this.modelCache?.models ?? mergeModelsWithCatalog([]);
     } finally {
       session?.close();
     }

@@ -1,4 +1,5 @@
 import type { ModelInfo, ProviderProfile, Usage } from '@shared/types';
+import { mergeModelsWithCatalog } from '@shared/models';
 import { CancelledError, ProviderError, type AgentProvider, type ProviderResult, type RunContext } from '../types';
 import { chatCompletion, listModelIds, type ChatMessage } from './chat';
 import { toolsFor } from '../../tools/registry';
@@ -30,8 +31,13 @@ export class OpenAICompatibleProvider implements AgentProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
-    const ids = await listModelIds(this.profile.baseUrl, await this.key(), AbortSignal.timeout(25_000));
-    return ids.map((id) => ({ id, label: id, isDefault: id === this.profile.defaultModel }));
+    try {
+      const ids = await listModelIds(this.profile.baseUrl, await this.key(), AbortSignal.timeout(25_000));
+      const list = ids.map((id) => ({ id, label: id, isDefault: id === this.profile.defaultModel }));
+      return mergeModelsWithCatalog(list);
+    } catch {
+      return mergeModelsWithCatalog([{ id: this.profile.defaultModel, label: this.profile.defaultModel, isDefault: true }]);
+    }
   }
 
   async test(): Promise<{ ok: boolean; message: string }> {
