@@ -1494,7 +1494,8 @@ body {
 
   /* Interactive Workspace Mobile */
   .window-subbar { flex-direction: column; align-items: stretch; }
-  .agent-switcher { overflow-x: auto; padding-bottom: 0.25rem; }
+  .view-switcher { flex-wrap: wrap; }
+  .agent-switcher { min-width: 0; max-width: 100%; overflow-x: auto; padding-bottom: 0.25rem; }
   .interactive-workspace { flex-direction: column; }
   .mock-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border-subtle); }
   .mock-dots-list { display: flex; overflow-x: auto; gap: 0.5rem; padding: 0.5rem; }
@@ -1503,5 +1504,12 @@ body {
   .mock-main-header { flex-direction: column; }
   .mock-header-actions { width: 100%; justify-content: flex-start; }
   .mock-nav-tabs { overflow-x: auto; }
+}
+
+@media (max-width: 480px) {
+  .nav-container { padding-inline: 1rem; }
+  .brand { gap: 0.4rem; }
+  .nav-actions { gap: 0.5rem; }
+  .github-nav-btn span { display: none; }
 }
 
