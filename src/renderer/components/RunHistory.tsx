@@ -82,6 +82,7 @@ export const RunHistory: React.FC = () => {
               return (
                 <div
                   key={r.id}
+                  className="history-item"
                   onClick={() => setSelectedRunId(r.id)}
                   style={{
                     padding: '0.5rem 0.65rem',

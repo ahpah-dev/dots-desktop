@@ -257,12 +257,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!settings) return;
     const theme = settings.theme;
     if (theme === 'system') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      const preference = window.matchMedia('(prefers-color-scheme: dark)');
+      const applyTheme = () => document.documentElement.setAttribute('data-theme', preference.matches ? 'dark' : 'light');
+      applyTheme();
+      preference.addEventListener('change', applyTheme);
+      return () => preference.removeEventListener('change', applyTheme);
     } else {
       document.documentElement.setAttribute('data-theme', theme);
     }
-  }, [settings]);
+    return undefined;
+  }, [settings?.theme]);
 
   const activeDot = useMemo(() => {
     return bootstrap?.dots.find((d) => d.id === activeDotId) ?? null;

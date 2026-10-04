@@ -76,14 +76,31 @@ export interface DotsApi {
 
 export type DotsApiMethod = keyof DotsApi;
 
+export interface WindowState {
+  maximized: boolean;
+  focused: boolean;
+  fullscreen: boolean;
+}
+
+export type WindowAction = 'minimize' | 'toggle-maximize' | 'close';
+
 /** What the preload script exposes on `window.dots`. */
 export interface DotsBridge {
   api: DotsApi;
   onEvent(listener: (event: PushEvent) => void): () => void;
+  window: {
+    customTitleBar: boolean;
+    getState(): Promise<WindowState>;
+    control(action: WindowAction): Promise<void>;
+    onStateChanged(listener: (state: WindowState) => void): () => void;
+  };
 }
 
 export const API_CHANNEL_PREFIX = 'api:';
 export const PUSH_CHANNEL = 'push';
+export const WINDOW_STATE_CHANNEL = 'window:state';
+export const WINDOW_CONTROL_CHANNEL = 'window:control';
+export const WINDOW_GET_STATE_CHANNEL = 'window:get-state';
 
 /** Names of every API method, used to build the bridge without reflection on an interface. */
 export const API_METHODS: DotsApiMethod[] = [

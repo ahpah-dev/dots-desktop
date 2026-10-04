@@ -6,6 +6,7 @@ import { ApprovalBanner } from './components/ApprovalBanner';
 import { NewDotModal } from './components/NewDotModal';
 import { SettingsModal } from './components/SettingsModal';
 import { OnboardingModal } from './components/OnboardingModal';
+import { TitleBar } from './components/TitleBar';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -13,36 +14,39 @@ export const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div
-        style={{
-          width: '100vw',
-          height: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--bg-app)',
-          color: 'var(--text-muted)'
-        }}
-      >
+      <div className="app-shell">
+        <TitleBar />
         <div
-          className="spin"
           style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: 'var(--radius-full)',
-            border: '2px solid var(--border-medium)',
-            borderTopColor: 'var(--accent-primary)',
-            marginBottom: '1rem'
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--bg-app)',
+            color: 'var(--text-muted)'
           }}
-        />
-        <div style={{ fontSize: '0.85rem' }}>Initializing Dots...</div>
+        >
+          <div
+            className="spin"
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: 'var(--radius-full)',
+              border: '2px solid var(--border-medium)',
+              borderTopColor: 'var(--accent-primary)',
+              marginBottom: '1rem'
+            }}
+          />
+          <div style={{ fontSize: '0.85rem' }}>Initializing Dots...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="app-shell">
+      <TitleBar />
       {/* Toast Notification Float */}
       <div
         style={{
@@ -103,7 +107,7 @@ export const App: React.FC = () => {
       <ApprovalBanner />
 
       {/* Main Workspace Layout */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="workspace-layout">
         <Sidebar />
         <DotView />
       </div>

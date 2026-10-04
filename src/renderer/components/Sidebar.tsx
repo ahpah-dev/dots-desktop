@@ -51,6 +51,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
+      className="sidebar"
       style={{
         width: '270px',
         background: 'var(--bg-sidebar)',
@@ -209,27 +210,16 @@ export const Sidebar: React.FC = () => {
               return (
                 <div
                   key={dot.id}
-                  onClick={() => setActiveDotId(dot.id)}
+                  className={`dot-list-item${isActive ? ' is-active' : ''}`}
                   style={{
-                    padding: '0.55rem 0.65rem',
                     borderRadius: 'var(--radius-md)',
-                    background: isActive ? 'var(--bg-card-hover)' : 'transparent',
-                    border: `1px solid ${isActive ? 'var(--border-medium)' : 'transparent'}`,
-                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '0.5rem',
-                    transition: 'all var(--transition-fast)'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) e.currentTarget.style.background = 'var(--bg-card)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) e.currentTarget.style.background = 'transparent';
+                    gap: '0.5rem'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
+                  <button className="dot-select" aria-pressed={isActive} aria-label={`Select ${dot.name}`} onClick={() => setActiveDotId(dot.id)}>
                     {/* Dot Avatar */}
                     <div
                       style={{
@@ -304,18 +294,19 @@ export const Sidebar: React.FC = () => {
                         )}
                       </div>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Pause / Resume Button */}
                   <button
-                    className="btn-ghost"
+                    className={`btn-ghost dot-pause-control${dot.paused ? ' is-paused' : ''}`}
                     style={{
                       padding: '0.25rem',
-                      opacity: isActive || dot.paused ? 0.8 : 0.2,
+                      marginRight: '0.65rem',
                       borderRadius: 'var(--radius-sm)'
                     }}
                     onClick={(e) => togglePause(e, dot)}
                     title={dot.paused ? 'Resume Dot' : 'Pause Dot'}
+                    aria-label={`${dot.paused ? 'Resume' : 'Pause'} ${dot.name}`}
                   >
                     {dot.paused ? <Play size={13} style={{ color: '#10b981' }} /> : <Pause size={13} />}
                   </button>

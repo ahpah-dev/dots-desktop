@@ -1,5 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { API_CHANNEL_PREFIX, API_METHODS, PUSH_CHANNEL, type DotsApi, type DotsBridge } from '@shared/api';
+import {
+  API_CHANNEL_PREFIX, API_METHODS, PUSH_CHANNEL, WINDOW_STATE_CHANNEL,
+  WINDOW_CONTROL_CHANNEL, WINDOW_GET_STATE_CHANNEL, type DotsApi, type DotsBridge, type WindowState
+} from '@shared/api';
 import type { PushEvent } from '@shared/types';
 
 /** Electron prefixes remote errors with "Error invoking remote method…"; show only the useful part. */
@@ -22,6 +25,16 @@ for (const name of API_METHODS) {
 
 const bridge: DotsBridge = {
   api: api as unknown as DotsApi,
+  window: {
+    customTitleBar: process.platform === 'win32',
+    getState: () => ipcRenderer.invoke(WINDOW_GET_STATE_CHANNEL),
+    control: (action) => ipcRenderer.invoke(WINDOW_CONTROL_CHANNEL, action),
+    onStateChanged(listener) {
+      const handler = (_e: Electron.IpcRendererEvent, state: WindowState) => listener(state);
+      ipcRenderer.on(WINDOW_STATE_CHANNEL, handler);
+      return () => ipcRenderer.removeListener(WINDOW_STATE_CHANNEL, handler);
+    }
+  },
   onEvent(listener) {
     const handler = (_e: Electron.IpcRendererEvent, event: PushEvent) => listener(event);
     ipcRenderer.on(PUSH_CHANNEL, handler);

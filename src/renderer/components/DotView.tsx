@@ -71,9 +71,10 @@ export const DotView: React.FC = () => {
   ];
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div className="dot-workspace" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Top Header Bar */}
       <div
+        className="workspace-header"
         style={{
           padding: '1rem 1.25rem 0.5rem',
           borderBottom: '1px solid var(--border-subtle)',
@@ -143,22 +144,15 @@ export const DotView: React.FC = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.25rem' }}>
+        <div className="workspace-tabs" aria-label="Dot sections">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className="btn-ghost"
-                style={{
-                  fontSize: '0.825rem',
-                  padding: '0.4rem 0.75rem',
-                  borderRadius: 'var(--radius-sm)',
-                  borderBottom: `2px solid ${isActive ? 'var(--accent-primary)' : 'transparent'}`,
-                  color: isActive ? 'var(--text-main)' : 'var(--text-muted)',
-                  fontWeight: isActive ? 600 : 500
-                }}
+                className={`workspace-tab${isActive ? ' is-active' : ''}`}
+                aria-pressed={isActive}
               >
                 {tab.icon}
                 {tab.label}
@@ -169,7 +163,7 @@ export const DotView: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="workspace-content" key={activeTab}>
         {activeTab === 'tasks' && (
           <>
             <RunTimeline dotId={activeDot.id} />

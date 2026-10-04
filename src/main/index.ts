@@ -3,7 +3,10 @@ import {
   powerSaveBlocker, safeStorage, session, shell, type IpcMainInvokeEvent
 } from 'electron';
 import { join } from 'node:path';
-import { API_CHANNEL_PREFIX, API_METHODS, PUSH_CHANNEL } from '@shared/api';
+import {
+  API_CHANNEL_PREFIX, API_METHODS, PUSH_CHANNEL, WINDOW_STATE_CHANNEL,
+  WINDOW_CONTROL_CHANNEL, WINDOW_GET_STATE_CHANNEL, type WindowState
+} from '@shared/api';
 import type { AppSettings, ApprovalRequest, Dot, PushEvent, Run } from '@shared/types';
 import { Services, type Host } from './services';
 import { createLogger, initLogger } from './util/logger';
@@ -59,7 +62,8 @@ function createWindow(hidden: boolean): void {
     minHeight: 620,
     show: false,
     title: 'Dots',
-    backgroundColor: dark ? '#0f1115' : '#f7f7f5',
+    backgroundColor: dark ? '#0c0d10' : '#f8fafc',
+    frame: process.platform !== 'win32',
     icon: process.platform === 'win32' ? asset('icon.ico') : asset('icon.png'),
     autoHideMenuBar: true,
     webPreferences: {
@@ -70,6 +74,17 @@ function createWindow(hidden: boolean): void {
       spellcheck: true
     }
   });
+
+  const publishWindowState = () => {
+    if (win && !win.isDestroyed()) win.webContents.send(WINDOW_STATE_CHANNEL, getWindowState());
+  };
+  win.on('maximize', publishWindowState);
+  win.on('unmaximize', publishWindowState);
+  win.on('focus', publishWindowState);
+  win.on('blur', publishWindowState);
+  win.on('enter-full-screen', publishWindowState);
+  win.on('leave-full-screen', publishWindowState);
+  win.webContents.on('did-finish-load', publishWindowState);
 
   win.once('ready-to-show', () => {
     if (!hidden) win?.show();
@@ -170,6 +185,14 @@ function createWindow(hidden: boolean): void {
 
 // ───────────── IPC ─────────────
 
+function getWindowState(): WindowState {
+  return {
+    maximized: win?.isMaximized() ?? false,
+    focused: win?.isFocused() ?? false,
+    fullscreen: win?.isFullScreen() ?? false
+  };
+}
+
 function isTrustedSender(e: IpcMainInvokeEvent): boolean {
   if (!win || e.sender !== win.webContents) return false;
   const url = e.senderFrame?.url ?? '';
@@ -177,6 +200,25 @@ function isTrustedSender(e: IpcMainInvokeEvent): boolean {
 }
 
 function registerIpc(svc: Services): void {
+  ipcMain.handle(WINDOW_GET_STATE_CHANNEL, (e) => {
+    if (!isTrustedSender(e)) throw new Error('Untrusted sender');
+    return getWindowState();
+  });
+  ipcMain.handle(WINDOW_CONTROL_CHANNEL, (e, action: unknown) => {
+    if (!isTrustedSender(e)) throw new Error('Untrusted sender');
+    if (!win || win.isDestroyed()) return;
+    switch (action) {
+      case 'minimize': win.minimize(); break;
+      case 'toggle-maximize':
+        if (win.isFullScreen()) win.setFullScreen(false);
+        else if (win.isMaximized()) win.unmaximize();
+        else win.maximize();
+        break;
+      // Use the existing close handler, including background task / tray behavior.
+      case 'close': win.close(); break;
+      default: throw new Error('Invalid window action');
+    }
+  });
   for (const name of API_METHODS) {
     ipcMain.handle(`${API_CHANNEL_PREFIX}${name}`, async (e, ...args: unknown[]) => {
       if (!isTrustedSender(e)) throw new Error('Untrusted sender');
@@ -261,6 +303,7 @@ function notifyApproval(req: ApprovalRequest): void {
 
 function applySettings(s: AppSettings): void {
   nativeTheme.themeSource = s.theme;
+  win?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#0c0d10' : '#f8fafc');
   if (app.isPackaged) {
     app.setLoginItemSettings({ openAtLogin: s.launchAtLogin, args: s.launchAtLogin ? ['--hidden'] : [] });
   }
