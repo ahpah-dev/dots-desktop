@@ -1,5 +1,11 @@
 # Changelog
 
+## Website — October 6, 2026
+
+- Added scroll reveals, pointer-responsive cards and characters, gentle ambient motion, and reduced-motion support.
+- Added a 58-second promotional film with original motion graphics, app screens, and original music.
+- Added native playback controls, chapter shortcuts, English captions, and a readable transcript. Video downloads only when played.
+
 ## 2.0.1 — October 6, 2026
 
 - Unified sage-and-cream four-dot logo across the app, Windows icons, tray, website, and GitHub README.

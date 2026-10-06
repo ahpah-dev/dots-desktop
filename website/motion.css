@@ -1,0 +1,76 @@
+/* Motion stays light: transform and opacity, with a complete reduced-motion path. */
+.scroll-progress{position:fixed;inset:0 auto auto 0;height:3px;width:100%;background:linear-gradient(90deg,#91b782,#35785c);transform:scaleX(var(--scroll-progress,0));transform-origin:left;z-index:30;pointer-events:none}
+.hero-copy>h1{animation:hero-arrive .9s cubic-bezier(.2,.8,.2,1) both}
+.hero-copy>p{animation:hero-arrive .9s .14s cubic-bezier(.2,.8,.2,1) both}
+.hero-actions,.hero-footnote{animation:hero-arrive .9s .24s cubic-bezier(.2,.8,.2,1) both}
+.hero-world{transform:translate3d(var(--pointer-x,0px),var(--pointer-y,0px),0);transition:transform .7s cubic-bezier(.2,.8,.2,1)}
+.world-grid{animation:grid-drift 22s ease-in-out infinite alternate}
+.character-main .character-eyes{animation:character-blink 6s infinite;transform-origin:center}
+.floating-note{animation:note-drift 8s ease-in-out infinite 1s}
+.orbit-label{animation:orbit-drift 7s ease-in-out infinite}
+.hero-world.is-resting *{animation-play-state:paused!important}
+.button span,.text-link span,.release-pill b{transition:translate .25s}
+.button:hover span,.text-link:hover span,.release-pill:hover b{translate:3px 0}
+.inline-play{font-size:10px;color:#6b8b5e}
+.motion-ready [data-reveal]{transition:opacity .7s var(--reveal-delay,0ms),translate .8s var(--reveal-delay,0ms) cubic-bezier(.2,.8,.2,1),transform .35s,box-shadow .35s}
+.motion-ready [data-reveal]:not(.is-visible){opacity:0;translate:0 24px}
+.possibility-card{transform:perspective(900px) rotateX(var(--tilt-x,0deg)) rotateY(var(--tilt-y,0deg));transition:transform .35s,box-shadow .35s;isolation:isolate}
+.possibility-card:hover{box-shadow:0 18px 40px #34552b15}
+.possibility-card::after{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(circle at var(--spot-x,50%) var(--spot-y,50%),#ffffff8c,transparent 65%);opacity:0;transition:opacity .35s;pointer-events:none}
+.possibility-card:hover::after{opacity:1}
+.possibility-card:hover .mini-character{animation:small-hello .9s ease-in-out}
+.tour-tabs button{transition:background .25s,color .25s,box-shadow .25s}
+.tour-copy.is-changing{animation:tour-enter .4s cubic-bezier(.2,.8,.2,1)}
+.detail-icon{transition:transform .3s,background .3s}
+.detail-grid article:hover .detail-icon{transform:rotate(-8deg) translateY(-3px);background:#dce8cf}
+.provider-tags>span{transition:translate .25s,border-color .25s}
+.provider-tags>span:hover{translate:0 -3px;border-color:#a4b795}
+.demo-section{padding-top:36px;padding-bottom:66px;scroll-margin-top:28px}
+.demo-intro{display:grid;grid-template-columns:1fr .65fr;align-items:end;gap:80px;margin-bottom:35px}
+.demo-intro>p{font-size:13px;max-width:390px;padding-bottom:5px}
+.film-shell{background:#233f31;border:1px solid #3c5641;border-radius:24px;overflow:hidden;box-shadow:0 24px 60px #253d2a14}
+.film-stage{position:relative;background:#233f31;aspect-ratio:16/9;isolation:isolate}
+.film-stage video{display:block;width:100%;height:100%;object-fit:contain;border-radius:0;background:#233f31}
+.film-stage video:focus-visible{outline:3px solid #a7caa0;outline-offset:-4px}
+.film-play{position:absolute;left:50%;top:52%;translate:-50% -50%;display:flex;flex-direction:column;align-items:center;gap:13px;color:#fff;border:0;padding:15px;background:none;z-index:2;transition:opacity .25s,scale .25s}
+.film-play:hover{scale:1.05}
+.film-play-icon{display:flex;align-items:center;justify-content:center;width:76px;height:76px;border:1px solid #ffffff50;border-radius:50%;background:#f8f9f5e8;box-shadow:0 8px 35px #13271830;color:#35785c;position:relative}
+.film-play-icon::after{content:'';position:absolute;inset:-8px;border:1px solid #ffffff35;border-radius:50%;animation:play-breathe 3s ease-in-out infinite}
+.film-play-icon svg{width:26px;height:26px;margin-left:3px}
+.film-play-label{font-size:14px;font-weight:500;text-align:center;text-shadow:0 1px 12px #132718}
+.film-play-label small{display:block;font-size:10px;font-weight:400;letter-spacing:.3px;margin-top:7px;color:#d2e0cb}
+.film-tag{position:absolute;top:24px;right:25px;font-size:8px;letter-spacing:1.4px;color:#d4e3ca;display:flex;gap:7px;align-items:center;pointer-events:none}
+.film-tag i{height:5px;width:5px;border-radius:50%;background:#a8c497;box-shadow:0 0 0 4px #a8c49715}
+.film-stage.has-started .film-play,.film-stage.has-started .film-tag{display:none}
+.film-play:disabled{opacity:.7;cursor:progress}
+.film-footer{display:flex;justify-content:space-between;align-items:center;padding:17px 24px;gap:20px;border-top:1px solid #ffffff0c}
+.film-footer p{font-size:10px;color:#a7bca2;line-height:1.5}
+.film-footer>span{font-size:9px;color:#a7bca2;white-space:nowrap;letter-spacing:.5px}
+.film-footer i{font-style:normal;padding:0 8px;color:#758f70}
+.film-status{font-size:11px;text-align:center;min-height:0;margin-top:10px}
+.film-status:empty{display:none}
+.film-chapters{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:19px}
+.film-chapters button{display:flex;align-items:center;gap:10px;text-align:left;padding:17px 15px;border:1px solid var(--line);background:#f2f5ed;border-radius:11px;color:#778a6d;transition:background .25s,border-color .25s,translate .25s}
+.film-chapters button:hover,.film-chapters button[aria-current=true]{background:#e8efdf;border-color:#a9be98;translate:0 -2px}
+.film-chapters span{font-size:9px;color:#9ba98e}
+.film-chapters strong{font-size:11px;font-weight:500;color:#546b4c}
+.film-chapters i{font-style:normal;margin-left:auto;font-size:13px}
+.film-transcript{margin-top:18px;border-bottom:1px solid var(--line);padding-bottom:13px}
+.film-transcript summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none;color:#8a9881;font-size:10px;width:max-content;gap:18px}
+.film-transcript summary::-webkit-details-marker{display:none}
+.film-transcript summary>span{font-size:16px;transition:rotate .2s}
+.film-transcript[open] summary>span{rotate:45deg}
+.film-transcript>div{display:grid;grid-template-columns:1fr 1fr;gap:14px 30px;padding:22px 0 8px}
+.film-transcript p{font-size:11px;line-height:1.8}
+.film-transcript strong{color:#546b4c;font-weight:500}
+@keyframes hero-arrive{from{opacity:0;translate:0 20px;filter:blur(4px)}to{opacity:1;translate:0 0;filter:blur(0)}}
+@keyframes grid-drift{from{rotate:-3deg;scale:1}to{rotate:3deg;scale:1.05}}
+@keyframes character-blink{0%,45%,49%,100%{scale:1 1}47%{scale:1 .12}}
+@keyframes note-drift{0%,100%{translate:0 0;rotate:0deg}50%{translate:0 -7px;rotate:-1deg}}
+@keyframes orbit-drift{0%,100%{translate:0 0}50%{translate:3px -6px}}
+@keyframes small-hello{0%,100%{translate:0 0;rotate:0deg}30%{translate:0 -5px;rotate:-5deg}65%{rotate:4deg}}
+@keyframes tour-enter{from{opacity:.25;translate:0 8px}to{opacity:1;translate:0 0}}
+@keyframes play-breathe{0%,100%{scale:1;opacity:.5}50%{scale:1.08;opacity:1}}
+@media(max-width:1050px){.site-header nav{gap:20px;font-size:12px}.demo-intro{gap:40px}.film-chapters button{padding-inline:12px;gap:7px}.film-chapters strong{font-size:10px}}
+@media(max-width:760px){.demo-section{padding-top:18px;padding-bottom:44px}.demo-intro{grid-template-columns:1fr;gap:18px;margin-bottom:25px}.demo-intro>p{font-size:12px;max-width:100%;padding:0}.film-shell{border-radius:17px}.film-play{top:49%;gap:8px;padding:8px}.film-play-icon{width:49px;height:49px}.film-play-icon svg{width:20px;height:20px}.film-play-icon::after{inset:-5px}.film-play-label{font-size:11px}.film-play-label small{font-size:8px;margin-top:5px}.film-tag{top:11px;right:12px;font-size:5px;letter-spacing:.8px;gap:5px}.film-tag i{height:3px;width:3px}.film-footer{padding:12px 14px;gap:12px}.film-footer p{font-size:8px}.film-footer>span{font-size:7px}.film-chapters{grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}.film-chapters button{padding:13px 11px;gap:7px}.film-chapters strong{font-size:9px}.film-transcript{margin-top:15px}.film-transcript>div{grid-template-columns:1fr;gap:12px}.film-transcript p{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.motion-ready [data-reveal]:not(.is-visible){opacity:1;translate:none}.hero-world,.possibility-card{transform:none!important}.scroll-progress{display:none}*{scroll-behavior:auto!important}.film-play-icon::after{display:none}}

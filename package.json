@@ -17,9 +17,13 @@
     "test": "vitest run",
     "test:smoke": "node scripts/smoke-test.mjs",
     "dist": "npm run build && electron-builder",
-    "dist:dir": "npm run build && electron-builder --dir"
+    "dist:dir": "npm run build && electron-builder --dir",
+    "media:capture": "node scripts/capture-demo.mjs",
+    "media:render": "node scripts/render-promo.mjs",
+    "test:website": "node scripts/test-website.mjs"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.0.10",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -27,6 +31,7 @@
     "electron": "^39.0.0",
     "electron-builder": "^26.0.0",
     "esbuild": "^0.25.0",
+    "ffmpeg-static": "^5.3.0",
     "lucide-react": "^0.470.0",
     "playwright": "^1.63.0",
     "png-to-ico": "^3.0.2",
@@ -42,6 +47,7 @@
     "electron@39.8.10": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
-    "electron-winstaller@5.4.0": true
+    "electron-winstaller@5.4.0": true,
+    "ffmpeg-static@5.3.0": true
   }
 }

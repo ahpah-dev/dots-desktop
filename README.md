@@ -88,6 +88,21 @@ npm run dist
 
 Artifacts are generated under `release/`: `Dots-Setup-2.0.1.exe` and `Dots-2.0.1-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
+## Website and demo film
+
+The website includes scroll reveals, interactive characters and cards, and a 58-second promotional film. Playback starts on request with native controls, chapter shortcuts, English captions, and a transcript. Reduced-motion preferences keep the content visible without automatic motion. The film combines real app screens, original motion graphics, and an original synth score.
+
+To regenerate the media and verify the player:
+
+```powershell
+npm run build
+npm run media:capture
+npm run media:render
+npm run test:website
+```
+
+Media is saved under `website/assets/`. Test `DOTS_WEBSITE_URL` can point to the deployed site for the same playback checks. Rendering uses the development-only Canvas and FFmpeg packages; they are not included in the website or desktop installer.
+
 ## Project structure
 
 | Folder | Responsibility |
