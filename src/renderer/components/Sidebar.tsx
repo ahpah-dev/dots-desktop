@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useApp, type ViewType } from "../context/AppContext";
 import { DotAvatar } from "./DotAvatar";
+import { LogoMark } from "./LogoMark";
 
 export const Sidebar: React.FC = () => {
   const {
@@ -56,12 +57,7 @@ export const Sidebar: React.FC = () => {
         onClick={() => setView("home")}
         aria-label="Dots overview"
       >
-        <span className="brand-symbol">
-          <i />
-          <i />
-          <i />
-          <i />
-        </span>
+        <span className="brand-symbol"><LogoMark /></span>
         <span>
           dots<span className="brand-edition">DESKTOP</span>
         </span>

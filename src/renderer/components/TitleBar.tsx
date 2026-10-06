@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Copy, Layers, Minus, Square, X } from "lucide-react";
+import { Copy, Minus, Square, X } from "lucide-react";
+import { LogoMark } from "./LogoMark";
 import type { WindowAction, WindowState } from "@shared/api";
 import { useApp } from "../context/AppContext";
 
@@ -48,7 +49,7 @@ export function TitleBar() {
       className={`title-bar${state.focused ? "" : " title-bar-inactive"}`}
     >
       <div className="title-bar-brand">
-        <Layers size={14} strokeWidth={1.8} />
+        <LogoMark size={18} />
         <span>Dots</span>
       </div>
       <div className="title-bar-context">

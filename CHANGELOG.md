@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1 — October 6, 2026
+
+- Unified sage-and-cream four-dot logo across the app, Windows icons, tray, website, and GitHub README.
+- Fresh conversation workspace screenshot on GitHub and the website.
+
 ## 2.0.0 — October 6, 2026
 
 A substantial redesign around persistent teammates and ongoing work.

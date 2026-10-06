@@ -175,22 +175,10 @@ textarea {
   color: var(--text-dim);
 }
 .brand-symbol {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
-  transform: rotate(-12deg);
-}
-.brand-symbol i {
-  border-radius: 50%;
-  background: var(--accent-primary);
-}
-.brand-symbol i:nth-child(2) {
-  opacity: 0.45;
-}
-.brand-symbol i:nth-child(3) {
-  opacity: 0.7;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  flex-shrink: 0;
 }
 .sidebar-search {
   display: flex;

@@ -1,4 +1,4 @@
-// Generates assets/icon.png (512px) and assets/tray.png (32px) — a cluster of three "dots".
+// Generates the shared sage four-dot app icon and monochrome tray mark.
 // Pure Node (zlib only) so builds need no image tooling.
 import { deflateSync } from 'node:zlib';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -42,17 +42,22 @@ function png(size, pixel) {
 }
 
 const smooth = (edge, d, aa) => Math.max(0, Math.min(1, (edge - d) / aa + 0.5));
-const DOTS = [[0.34, 0.36, 0.17, [129, 140, 248]], [0.68, 0.40, 0.14, [52, 211, 153]], [0.5, 0.68, 0.15, [251, 146, 60]]];
+const DOTS = [
+  [22 / 64, 22 / 64, 7.5 / 64, [251, 250, 247]],
+  [42 / 64, 22 / 64, 7.5 / 64, [251, 250, 247]],
+  [22 / 64, 42 / 64, 7.5 / 64, [197, 220, 200]],
+  [42 / 64, 42 / 64, 7.5 / 64, [153, 198, 173]],
+];
 
 function iconPixel(u, v, size) {
   const aa = 1.5 / size;
   // rounded-square background
-  const cx = Math.abs(u - 0.5) - 0.38, cy = Math.abs(v - 0.5) - 0.38;
-  const r = 0.14;
+  const cx = Math.abs(u - 0.5) - 28 / 64, cy = Math.abs(v - 0.5) - 28 / 64;
+  const r = 16 / 64;
   const dist = Math.hypot(Math.max(cx + r, 0), Math.max(cy + r, 0)) + Math.min(Math.max(cx + r, cy + r), 0) - r;
   const bg = smooth(0, dist, aa);
   if (bg <= 0) return [0, 0, 0, 0];
-  let col = [24 + v * 14, 26 + v * 16, 40 + v * 22];
+  let col = [53, 120, 92];
   for (const [dx, dy, dr, c] of DOTS) {
     const a = smooth(dr, Math.hypot(u - dx, v - dy), aa);
     if (a > 0) col = col.map((p, i) => p * (1 - a) + c[i] * a);
@@ -82,5 +87,6 @@ try {
   console.log('Generated assets/icon.ico and build/icon.ico');
 } catch (err) {
   console.error('Failed to generate ico:', err);
+  process.exitCode = 1;
 }
 console.log('Icons written to assets/ and build/');
