@@ -15,6 +15,11 @@ import { firstLine } from './util/misc';
 const log = createLogger('main');
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
 const startHidden = process.argv.includes('--hidden');
+// Preview uses isolated application data and a separate instance lock.
+// It never opens or modifies the user's actual Dots store.
+if (process.argv.includes('--demo-mode')) {
+  app.setPath('userData', join(app.getPath('temp'), `dots-demo-${process.pid}`));
+}
 
 let services: Services | null = null;
 let win: BrowserWindow | null = null;
@@ -56,13 +61,13 @@ function showWindow(nav?: PushEvent): void {
 function createWindow(hidden: boolean): void {
   const dark = nativeTheme.shouldUseDarkColors;
   win = new BrowserWindow({
-    width: 1240,
-    height: 800,
+    width: 1440,
+    height: 920,
     minWidth: 960,
     minHeight: 620,
     show: false,
     title: 'Dots',
-    backgroundColor: dark ? '#0c0d10' : '#f8fafc',
+    backgroundColor: dark ? '#191c1a' : '#fbfaf7',
     frame: process.platform !== 'win32',
     icon: process.platform === 'win32' ? asset('icon.ico') : asset('icon.png'),
     autoHideMenuBar: true,
@@ -303,7 +308,7 @@ function notifyApproval(req: ApprovalRequest): void {
 
 function applySettings(s: AppSettings): void {
   nativeTheme.themeSource = s.theme;
-  win?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#0c0d10' : '#f8fafc');
+  win?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#191c1a' : '#fbfaf7');
   if (app.isPackaged) {
     app.setLoginItemSettings({ openAtLogin: s.launchAtLogin, args: s.launchAtLogin ? ['--hidden'] : [] });
   }

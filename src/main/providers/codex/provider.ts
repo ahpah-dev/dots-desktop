@@ -22,6 +22,8 @@ export function buildCodexConfigArgs(dot: Dot, model: string | undefined, useUse
   if (!useUserConfig) args.push('--ignore-user-config');
   if (model) args.push('-m', model);
   if (dot.reasoningEffort) args.push('-c', `model_reasoning_effort=${dot.reasoningEffort}`);
+  args.push('-c', `features.shell_tool=${p.shell}`);
+  args.push('-c', 'shell_environment_policy.ignore_default_excludes=false');
 
   // On Windows, configure elevated sandbox mode so shell CreateProcess is not blocked by Windows container policy
   if (process.platform === 'win32' && p.shell) {
@@ -61,6 +63,9 @@ export class CodexProvider implements AgentProvider {
   }
 
   async run(ctx: RunContext): Promise<ProviderResult> {
+    if (ctx.dot.permissions.approval === 'ask' || ctx.dot.permissions.rules?.some((rule) => rule.effect === 'ask' || rule.effect === 'deny')) {
+      throw new ProviderError('Action approvals and custom ask/deny rules need an OpenAI-compatible provider, which enforces them on each tool call. Switch this Dot\'s provider or remove those approval requirements before running Codex.');
+    }
     const exe = this.auth.path();
     if (!exe) throw new ProviderError('The Codex CLI was not found. Install Codex or point Dots at it in Settings → Accounts.');
     const status = await this.auth.status();

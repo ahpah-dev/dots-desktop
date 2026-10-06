@@ -11,8 +11,15 @@ import {
   type DotInput,
   type DotPatch,
   type DotSummary,
+  type DotTask,
+  type DotTaskInput,
+  type DotTaskPatch,
+  type Followup,
+  type FollowupInput,
   type LoginProgress,
   type ModelInfo,
+  type MemoryNote,
+  type MemoryNoteInput,
   type ProviderOption,
   type ProviderProfile,
   type ProviderProfileInput,
@@ -26,6 +33,7 @@ import { DotStore } from './storage/dotStore';
 import { ProviderStore } from './storage/providerStore';
 import { RunStore } from './storage/runStore';
 import { SettingsStore, defaultSettings } from './storage/settingsStore';
+import { WorkStore } from './storage/workStore';
 import { CodexAuthService } from './providers/codex/auth';
 import { ProviderRegistry } from './providers/registry';
 import { ApprovalGate } from './engine/approvals';
@@ -61,6 +69,7 @@ export class Services implements DotsApi {
   readonly providerStore: ProviderStore;
   readonly dots: DotStore;
   readonly runs: RunStore;
+  readonly work: WorkStore;
   readonly auth: CodexAuthService;
   readonly registry: ProviderRegistry;
   readonly approvals = new ApprovalGate();
@@ -74,10 +83,11 @@ export class Services implements DotsApi {
     this.providerStore = new ProviderStore(this.paths.providers, this.creds);
     this.dots = new DotStore(this.paths);
     this.runs = new RunStore(this.paths);
+    this.work = new WorkStore(this.paths, this.dots);
     this.auth = new CodexAuthService(() => this.settings.get().codexPathOverride, (url) => host.openExternal(url));
     this.registry = new ProviderRegistry(this.auth, this.providerStore);
-    this.manager = new RunManager(this.dots, this.runs, this.registry, this.settings, this.approvals);
-    this.scheduler = new Scheduler(this.dots, this.manager, (id) => this.pushDot(id));
+    this.manager = new RunManager(this.dots, this.runs, this.registry, this.settings, this.approvals, this.work);
+    this.scheduler = new Scheduler(this.dots, this.manager, (id) => this.pushDot(id), this.work);
   }
 
   async init(): Promise<void> {
@@ -85,12 +95,19 @@ export class Services implements DotsApi {
     await this.providerStore.init();
     await this.dots.init();
     await this.runs.init(this.dots.list().map((d) => d.id));
-    for (const d of this.dots.list()) await this.scheduler.refresh(d);
+    await this.work.init((id) => this.runs.get(id));
+    // Keep persisted overdue dates so an app restart does not skip the pending check.
+    for (const d of this.dots.list()) if (d.nextRunAt == null) await this.scheduler.refresh(d);
     this.wire();
     this.scheduler.start();
   }
 
   private wire(): void {
+    this.work.changed.on((dotId) => {
+      this.host.push({ type: 'tasks', dotId, tasks: this.work.listTasks(dotId) });
+      this.host.push({ type: 'followups', dotId, followups: this.work.listFollowups(dotId) });
+    });
+    this.dots.memoryChanged.on((dotId) => this.host.push({ type: 'memory', dotId, notes: this.dots.listMemoryNotes(dotId) }));
     this.runs.runChanged.on((run) => {
       this.host.push({ type: 'run', run });
       this.pushDot(run.dotId);
@@ -250,13 +267,18 @@ export class Services implements DotsApi {
   }
 
   async updateDot(id: string, patch: DotPatch): Promise<DotSummary> {
+    const current = this.dots.require(id);
     if (patch.providerId) await this.assertProviderUsable(patch.providerId);
     if (patch.workspacePath !== undefined) {
-      if (this.manager.isBusy(id)) throw new Error('Wait for the current task to finish before changing the workspace.');
-      patch = { ...patch, workspacePath: this.validateWorkspace(patch.workspacePath) };
+      const workspacePath = this.validateWorkspace(patch.workspacePath);
+      if (resolve(workspacePath) !== resolve(current.workspacePath) && this.manager.isBusy(id)) throw new Error('Wait for the current task to finish before changing the workspace.');
+      patch = { ...patch, workspacePath };
     }
+    // Revoking access must stop an in-flight provider that captured the previous permission set.
+    const permissionState = (permissions: Dot['permissions']) => JSON.stringify([permissions.files, permissions.shell, permissions.web, permissions.outsideWorkspace, permissions.approval, permissions.rules ?? []]);
+    if (patch.permissions && permissionState(patch.permissions) !== permissionState(current.permissions) && this.manager.isBusy(id)) await this.manager.cancelForDot(id, 'user');
     const dot = await this.dots.update(id, patch);
-    const refreshed = await this.scheduler.refresh(dot);
+    const refreshed = patch.schedule !== undefined || patch.paused !== undefined ? await this.scheduler.refresh(dot) : dot;
     const summary = this.summarize(refreshed);
     this.host.push({ type: 'dot', dot: summary });
     return summary;
@@ -267,6 +289,7 @@ export class Services implements DotsApi {
     await this.manager.cancelForDot(id, 'user');
     for (let i = 0; i < 50 && this.manager.isBusy(id); i++) await new Promise((r) => setTimeout(r, 100));
     await this.dots.delete(id);
+    this.work.forgetDot(id);
     // Only ever auto-delete workspaces that Dots created itself, never a folder the user pointed us at.
     const root = resolve(this.settings.get().defaultWorkspaceRoot);
     const ws = resolve(dot.workspacePath);
@@ -288,7 +311,7 @@ export class Services implements DotsApi {
 
   async resetDotSession(id: string): Promise<DotSummary> {
     if (this.manager.isBusy(id)) throw new Error('Wait for the current task to finish first.');
-    await this.dots.touch(id, { threadId: null });
+    await this.dots.touch(id, { threadId: null, sessionResetAt: Date.now() });
     await this.dots.writeThread(id, { messages: [], updatedAt: Date.now() });
     const summary = this.summarize(this.dots.require(id));
     this.host.push({ type: 'dot', dot: summary });
@@ -313,9 +336,16 @@ export class Services implements DotsApi {
 
   async startRun(dotId: string, prompt: string, options?: RunOptions): Promise<Run> {
     const dot = this.dots.require(dotId);
-    const run = await this.manager.start(dotId, prompt, { trigger: 'manual', newSession: options?.newSession });
+    if (options?.conversationId && !this.runs.listForDot(dotId, Number.MAX_SAFE_INTEGER).some((r) => r.conversationId === options.conversationId)) throw new Error('That conversation does not belong to this Dot.');
+    const run = await this.manager.start(dotId, prompt, { trigger: 'manual', newSession: options?.newSession, conversationId: options?.conversationId });
     log.info(`Started run ${run.id} for "${dot.name}"`);
     return run;
+  }
+
+  async continueRun(runId: string, prompt: string): Promise<Run> {
+    const previous = this.runs.get(runId);
+    if (!previous) throw new Error('That conversation no longer exists.');
+    return this.manager.start(previous.dotId, prompt, { trigger: 'manual', conversationId: previous.conversationId ?? `legacy-${previous.dotId}`, parentRunId: previous.id, taskId: previous.taskId });
   }
 
   cancelRun(runId: string): Promise<void> {
@@ -324,6 +354,10 @@ export class Services implements DotsApi {
 
   async listRuns(dotId: string, limit = 50): Promise<Run[]> {
     return this.runs.listForDot(dotId, limit);
+  }
+
+  async listActivity(limit = 200): Promise<Run[]> {
+    return this.runs.listAll(limit).filter((run) => !!this.dots.get(run.dotId));
   }
 
   getRunEvents(runId: string): Promise<RunEvent[]> {
@@ -342,6 +376,52 @@ export class Services implements DotsApi {
     return this.approvals.list();
   }
 
+  // ───────────── responsibilities & wakeups ─────────────
+
+  async listTasks(dotId: string): Promise<DotTask[]> { return this.work.listTasks(dotId); }
+  createTask(dotId: string, input: DotTaskInput): Promise<DotTask> { return this.work.createTask(dotId, input); }
+
+  async updateTask(id: string, patch: DotTaskPatch): Promise<DotTask> {
+    const task = await this.work.updateTask(id, patch);
+    if (patch.status && patch.status !== 'active') {
+      await this.manager.cancelForTask(id, 'paused');
+    }
+    return task;
+  }
+
+  async deleteTask(id: string): Promise<void> {
+    this.work.task(id);
+    await this.manager.cancelForTask(id);
+    await this.work.deleteTask(id);
+  }
+
+  async runTask(id: string): Promise<Run> {
+    const task = this.work.task(id);
+    if (task.status !== 'active') throw new Error('Resume this responsibility before running it.');
+    const run = await this.manager.start(task.dotId, task.prompt, { trigger: 'manual', newSession: !task.continueSession, conversationId: task.conversationId, taskId: task.id });
+    await this.work.touchTask(id, { lastRunId: run.id });
+    return run;
+  }
+
+  async listFollowups(dotId: string): Promise<Followup[]> { return this.work.listFollowups(dotId); }
+
+  createFollowup(dotId: string, input: FollowupInput): Promise<Followup> {
+    this.dots.require(dotId);
+    const run = input.runId ? this.runs.get(input.runId) : undefined;
+    if (input.runId && (!run || run.dotId !== dotId)) throw new Error('That conversation does not belong to this Dot.');
+    const task = input.taskId ? this.work.task(input.taskId) : undefined;
+    if (task && task.dotId !== dotId) throw new Error('That responsibility belongs to another Dot.');
+    const conversationId = run?.conversationId ?? (run ? `legacy-${dotId}` : task?.conversationId);
+    return this.work.createFollowup(dotId, input, conversationId);
+  }
+
+  async cancelFollowup(id: string): Promise<void> {
+    const followup = this.work.followup(id);
+    if (followup.status === 'completed' || followup.status === 'failed' || followup.status === 'cancelled') return;
+    await this.work.updateFollowup(id, { status: 'cancelled' });
+    if (followup.runId) await this.manager.cancel(followup.runId);
+  }
+
   // ───────────── memory ─────────────
 
   getMemory(dotId: string): Promise<string> {
@@ -350,6 +430,10 @@ export class Services implements DotsApi {
   saveMemory(dotId: string, text: string): Promise<void> {
     return this.dots.writeMemory(dotId, text);
   }
+
+  async listMemoryNotes(dotId: string): Promise<MemoryNote[]> { return this.dots.listMemoryNotes(dotId); }
+  saveMemoryNote(dotId: string, input: MemoryNoteInput): Promise<MemoryNote> { return this.dots.saveMemoryNote(dotId, input); }
+  deleteMemoryNote(dotId: string, id: string): Promise<void> { return this.dots.deleteMemoryNote(dotId, id); }
 
   // ───────────── system ─────────────
 

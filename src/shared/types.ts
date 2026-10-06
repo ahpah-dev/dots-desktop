@@ -6,14 +6,14 @@
 // ───────────────────────────── Providers ─────────────────────────────
 
 /** Built-in provider id for the OpenAI Codex CLI. */
-export const CODEX_PROVIDER_ID = 'codex';
+export const CODEX_PROVIDER_ID = "codex";
 
-export type ProviderKind = 'codex' | 'openai-compatible';
+export type ProviderKind = "codex" | "openai-compatible";
 
 /** A user-configured OpenAI-compatible endpoint. The API key itself is never stored here. */
 export interface ProviderProfile {
   id: string;
-  kind: 'openai-compatible';
+  kind: "openai-compatible";
   label: string;
   baseUrl: string; // e.g. https://api.openai.com/v1
   defaultModel: string;
@@ -48,7 +48,7 @@ export interface ModelInfo {
 
 // ───────────────────────────── Authentication ─────────────────────────────
 
-export type CodexAuthMode = 'chatgpt' | 'apikey' | 'unknown';
+export type CodexAuthMode = "chatgpt" | "apikey" | "unknown";
 
 export interface CodexAuthStatus {
   /** Whether a Codex executable could be located. */
@@ -65,7 +65,7 @@ export interface CodexAuthStatus {
 
 export interface LoginProgress {
   active: boolean;
-  method?: 'browser' | 'device' | 'api-key';
+  method?: "browser" | "device" | "api-key";
   /** URL the user should open (device-code or browser flow). */
   url?: string;
   /** One-time device code, when applicable. */
@@ -77,8 +77,24 @@ export interface LoginProgress {
 
 // ───────────────────────────── Dots ─────────────────────────────
 
-export type FileAccess = 'read' | 'write';
-export type ApprovalMode = 'never' | 'ask';
+export type FileAccess = "read" | "write";
+export type ApprovalMode = "never" | "ask";
+
+export interface PermissionRule {
+  id: string;
+  /** Tool name (for example run_command) or * for every tool. */
+  action: string;
+  effect: "allow" | "ask" | "deny";
+  /** Optional case-insensitive text fragment matched against tool arguments. */
+  pattern?: string;
+}
+
+export interface DotAvatarConfig {
+  shape: "circle" | "squircle" | "blob";
+  eyes: "dot" | "happy" | "sleepy";
+  glasses: "none" | "round" | "square";
+  accessory: "none" | "cap" | "sprout" | "headphones";
+}
 
 export interface Permissions {
   /** Access to files inside the Dot's workspace. */
@@ -91,12 +107,14 @@ export interface Permissions {
   outsideWorkspace: boolean;
   /** Ask before risky actions (shell, writes). Only enforceable for non-Codex providers. */
   approval: ApprovalMode;
+  /** Ordered custom tool rules, enforced by OpenAI-compatible providers. Deny takes precedence. */
+  rules?: PermissionRule[];
 }
 
 export type ScheduleSpec =
-  | { kind: 'interval'; everyMinutes: number }
-  | { kind: 'daily'; time: string; days: number[] } // time "HH:MM" local, days 0=Sun..6=Sat
-  | { kind: 'cron'; expr: string }; // 5-field cron, local time
+  | { kind: "interval"; everyMinutes: number }
+  | { kind: "daily"; time: string; days: number[] } // time "HH:MM" local, days 0=Sun..6=Sat
+  | { kind: "cron"; expr: string }; // 5-field cron, local time
 
 export interface Schedule {
   enabled: boolean;
@@ -120,6 +138,7 @@ export interface Dot {
   description: string;
   color: string; // hex
   emoji: string;
+  avatar?: DotAvatarConfig;
   instructions: string;
   providerId: string;
   /** 'auto' lets the provider choose its recommended model. */
@@ -137,28 +156,45 @@ export interface Dot {
   nextRunAt?: number | null;
   /** Provider conversation handle (Codex thread id) for session continuity. */
   threadId?: string | null;
+  /** Start a fresh default conversation after a user reset or workspace change. */
+  sessionResetAt?: number;
 }
 
 export type DotInput = Pick<
   Dot,
-  'name' | 'description' | 'color' | 'emoji' | 'instructions' | 'providerId' | 'model' | 'permissions' | 'notify'
+  | "name"
+  | "description"
+  | "color"
+  | "emoji"
+  | "instructions"
+  | "providerId"
+  | "model"
+  | "permissions"
+  | "notify"
 > &
-  Partial<Pick<Dot, 'workspacePath' | 'budget' | 'schedule' | 'reasoningEffort'>>;
+  Partial<
+    Pick<
+      Dot,
+      "workspacePath" | "budget" | "schedule" | "reasoningEffort" | "avatar"
+    >
+  >;
 
-export type DotPatch = Partial<Omit<Dot, 'id' | 'createdAt' | 'updatedAt'>>;
+export type DotPatch = Partial<Omit<Dot, "id" | "createdAt" | "updatedAt">>;
 
-export type DotStatus = 'idle' | 'queued' | 'running' | 'awaiting-approval' | 'paused';
+export type DotStatus =
+  "idle" | "queued" | "running" | "awaiting-approval" | "paused";
 
 export interface DotSummary extends Dot {
   status: DotStatus;
   activeRunId?: string;
-  lastRun?: Pick<Run, 'id' | 'status' | 'endedAt' | 'title'>;
+  lastRun?: Pick<Run, "id" | "status" | "endedAt" | "title">;
 }
 
 // ───────────────────────────── Runs ─────────────────────────────
 
-export type RunTrigger = 'manual' | 'schedule' | 'followup';
-export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'interrupted';
+export type RunTrigger = "manual" | "schedule" | "followup";
+export type RunStatus =
+  "queued" | "running" | "succeeded" | "failed" | "cancelled" | "interrupted";
 
 export interface Usage {
   inputTokens: number;
@@ -173,6 +209,11 @@ export interface Run {
   title: string;
   prompt: string;
   newSession: boolean;
+  /** Independent provider conversation; follow-up runs retain this id. */
+  conversationId?: string;
+  parentRunId?: string;
+  taskId?: string;
+  followupId?: string;
   status: RunStatus;
   createdAt: number;
   startedAt?: number;
@@ -182,17 +223,17 @@ export interface Run {
   usage?: Usage;
 }
 
-export type ToolStatus = 'running' | 'ok' | 'error';
+export type ToolStatus = "running" | "ok" | "error";
 
 export type RunEventBody =
-  | { type: 'status'; status: RunStatus; note?: string }
-  | { type: 'user'; text: string }
-  | { type: 'message'; id: string; text: string }
+  | { type: "status"; status: RunStatus; note?: string }
+  | { type: "user"; text: string }
+  | { type: "message"; id: string; text: string }
   /** Live, in-progress assistant text. Streamed to the UI but never persisted. */
-  | { type: 'draft'; id: string; text: string }
-  | { type: 'reasoning'; id: string; text: string }
+  | { type: "draft"; id: string; text: string }
+  | { type: "reasoning"; id: string; text: string }
   | {
-      type: 'tool';
+      type: "tool";
       id: string;
       /** Category used for icons: shell | file | web | search | memory | mcp | other */
       category: ToolCategory;
@@ -201,15 +242,82 @@ export type RunEventBody =
       output?: string;
       status: ToolStatus;
     }
-  | { type: 'plan'; items: { text: string; done: boolean }[] }
-  | { type: 'file'; path: string; change: 'add' | 'update' | 'delete' }
-  | { type: 'log'; level: 'info' | 'warn' | 'error'; text: string }
-  | { type: 'usage'; usage: Usage }
-  | { type: 'final'; text: string };
+  | { type: "plan"; items: { text: string; done: boolean }[] }
+  | { type: "file"; path: string; change: "add" | "update" | "delete" }
+  | { type: "log"; level: "info" | "warn" | "error"; text: string }
+  | { type: "usage"; usage: Usage }
+  | { type: "final"; text: string };
 
-export type ToolCategory = 'shell' | 'file' | 'web' | 'search' | 'memory' | 'mcp' | 'other';
+export type ToolCategory =
+  "shell" | "file" | "web" | "search" | "memory" | "mcp" | "other";
 
-export type RunEvent = RunEventBody & { runId: string; dotId: string; seq: number; ts: number };
+// Ongoing responsibilities, one-time wakeups, and editable durable knowledge.
+export interface DotTask {
+  id: string;
+  dotId: string;
+  title: string;
+  prompt: string;
+  status: "active" | "paused" | "completed";
+  schedule: ScheduleSpec | null;
+  continueSession: boolean;
+  conversationId: string;
+  nextRunAt: number | null;
+  lastRunId?: string;
+  lastRunAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type DotTaskInput = Pick<DotTask, "title" | "prompt"> &
+  Partial<Pick<DotTask, "schedule" | "continueSession">>;
+export type DotTaskPatch = Partial<
+  Pick<DotTask, "title" | "prompt" | "status" | "schedule" | "continueSession">
+>;
+
+export interface Followup {
+  id: string;
+  dotId: string;
+  prompt: string;
+  dueAt: number;
+  status: "pending" | "running" | "completed" | "cancelled" | "failed";
+  conversationId?: string;
+  taskId?: string;
+  runId?: string;
+  error?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface FollowupInput {
+  prompt: string;
+  dueAt: number;
+  /** Continue a selected conversation rather than the Dot's latest conversation. */
+  runId?: string;
+  taskId?: string;
+}
+
+export interface MemoryNote {
+  id: string;
+  dotId: string;
+  text: string;
+  category: "preference" | "fact" | "decision" | "project";
+  source: "manual" | "agent";
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MemoryNoteInput {
+  id?: string;
+  text: string;
+  category: MemoryNote["category"];
+}
+
+export type RunEvent = RunEventBody & {
+  runId: string;
+  dotId: string;
+  seq: number;
+  ts: number;
+};
 
 // ───────────────────────────── Approvals ─────────────────────────────
 
@@ -218,7 +326,7 @@ export interface ApprovalRequest {
   runId: string;
   dotId: string;
   dotName: string;
-  kind: 'shell' | 'write' | 'other';
+  kind: "shell" | "write" | "other";
   summary: string;
   detail?: string;
   createdAt: number;
@@ -239,16 +347,16 @@ export interface AppSettings {
   codexPathOverride: string;
   /** Where new Dot workspaces are created. */
   defaultWorkspaceRoot: string;
-  theme: 'system' | 'light' | 'dark';
+  theme: "system" | "light" | "dark";
   onboardingComplete: boolean;
 }
 
 export const DEFAULT_PERMISSIONS: Permissions = {
-  files: 'write',
+  files: "write",
   shell: true,
   web: true,
   outsideWorkspace: false,
-  approval: 'never'
+  approval: "never",
 };
 
 export const DEFAULT_BUDGET: Budget = { maxMinutes: 30, maxSteps: 60 };
@@ -266,15 +374,18 @@ export interface Bootstrap {
 }
 
 export type PushEvent =
-  | { type: 'dot'; dot: DotSummary }
-  | { type: 'dot-removed'; dotId: string }
-  | { type: 'run'; run: Run }
-  | { type: 'run-event'; event: RunEvent }
-  | { type: 'auth'; auth: CodexAuthStatus }
-  | { type: 'login'; progress: LoginProgress }
-  | { type: 'settings'; settings: AppSettings }
-  | { type: 'providers'; providers: ProviderProfile[] }
-  | { type: 'approval'; approval: ApprovalRequest }
-  | { type: 'approval-resolved'; id: string }
-  | { type: 'toast'; level: 'info' | 'success' | 'error'; text: string }
-  | { type: 'navigate'; dotId?: string; runId?: string };
+  | { type: "dot"; dot: DotSummary }
+  | { type: "dot-removed"; dotId: string }
+  | { type: "run"; run: Run }
+  | { type: "run-event"; event: RunEvent }
+  | { type: "tasks"; dotId: string; tasks: DotTask[] }
+  | { type: "followups"; dotId: string; followups: Followup[] }
+  | { type: "memory"; dotId: string; notes: MemoryNote[] }
+  | { type: "auth"; auth: CodexAuthStatus }
+  | { type: "login"; progress: LoginProgress }
+  | { type: "settings"; settings: AppSettings }
+  | { type: "providers"; providers: ProviderProfile[] }
+  | { type: "approval"; approval: ApprovalRequest }
+  | { type: "approval-resolved"; id: string }
+  | { type: "toast"; level: "info" | "success" | "error"; text: string }
+  | { type: "navigate"; dotId?: string; runId?: string };

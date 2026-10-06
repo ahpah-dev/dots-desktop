@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
-  Send,
+  ArrowUp,
   Terminal,
   FileCode,
   Globe,
@@ -16,19 +16,62 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  ExternalLink,
   RotateCcw,
-  Sparkles,
-  Layers
-} from 'lucide-react';
-import { useApp } from '../context/AppContext';
-import type { Run, RunEvent, ToolCategory } from '@shared/types';
+  Target,
+  Layers,
+  Volume2,
+  X,
+  Folder,
+  Plus,
+} from "lucide-react";
+import { useApp } from "../context/AppContext";
+import { DotAvatar } from "./DotAvatar";
+import type { Run, RunEvent, ToolCategory } from "@shared/types";
 
-interface RunTimelineProps {
-  dotId: string;
+const icons: Record<ToolCategory, React.ReactNode> = {
+  shell: <Terminal size={14} />,
+  file: <FileCode size={14} />,
+  web: <Globe size={14} />,
+  search: <Search size={14} />,
+  memory: <Brain size={14} />,
+  mcp: <Layers size={14} />,
+  other: <Layers size={14} />,
+};
+const readable: Record<string, string> = {
+  run_command: "Running a command",
+  read_file: "Reading a file",
+  write_file: "Writing a file",
+  edit_file: "Editing a file",
+  search_files: "Searching files",
+  web_search: "Searching the web",
+  web_fetch: "Reading a webpage",
+  remember: "Remembering this",
+  schedule_followup: "Scheduling a follow-up",
+};
+function consolidate(events: RunEvent[]): RunEvent[] {
+  const result: RunEvent[] = [];
+  const toolIndices = new Map<string, number>();
+  const final = events.find((e) => e.type === "final");
+  for (const e of events) {
+    if (
+      e.type === "message" &&
+      final?.type === "final" &&
+      e.text === final.text
+    )
+      continue;
+    if (e.type === "tool") {
+      const idx = toolIndices.get(e.id);
+      if (idx !== undefined) result[idx] = e;
+      else {
+        toolIndices.set(e.id, result.length);
+        result.push(e);
+      }
+    } else result.push(e);
+  }
+  return result;
 }
 
-export const RunTimeline: React.FC<RunTimelineProps> = ({ dotId }) => {
+export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
   const {
     activeDot,
     runs,
@@ -37,686 +80,609 @@ export const RunTimeline: React.FC<RunTimelineProps> = ({ dotId }) => {
     activeRunEvents,
     streamingDraft,
     showToast,
-    refreshRuns
+    refreshRuns,
+    setActiveTab,
   } = useApp();
-
-  const [prompt, setPrompt] = useState('');
-  const [newSession, setNewSession] = useState(false);
+  const [prompt, setPrompt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const selectedRun = runs.find((r) => r.id === selectedRunId) ?? runs[0] ?? null;
-  const isBusy = activeDot?.status === 'running' || activeDot?.status === 'queued';
-
-  // Auto-scroll on new events if user is near bottom
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [older, setOlder] = useState<{ run: Run; events: RunEvent[] }[]>([]);
+  const [wakeEditor, setWakeEditor] = useState(false);
+  const [wakePrompt, setWakePrompt] = useState("");
+  const [wakeMinutes, setWakeMinutes] = useState(60);
+  const [speaking, setSpeaking] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const nearBottom = useRef(true);
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  const selected = runs.find((r) => r.id === selectedRunId) ?? null;
+  const busy =
+    activeDot?.status === "running" ||
+    activeDot?.status === "queued" ||
+    activeDot?.status === "awaiting-approval";
+  const conversationId = selected?.conversationId;
+  const previous = useMemo(
+    () =>
+      conversationId
+        ? runs
+            .filter(
+              (r) =>
+                r.conversationId === conversationId &&
+                r.id !== selectedRunId &&
+                r.createdAt <= (selected?.createdAt ?? 0),
+            )
+            .sort((a, b) => a.createdAt - b.createdAt)
+        : [],
+    [runs, conversationId, selectedRunId, selected?.createdAt],
+  );
+  const previousIds = previous.map((r) => r.id).join("|");
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeRunEvents.length, streamingDraft]);
-
-  const toggleExpand = (id: string) => {
-    setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const handleStartRun = async (customPrompt?: string) => {
-    const textToRun = (customPrompt || prompt).trim();
-    if (!textToRun || isBusy || submitting) return;
-
+    let alive = true;
+    setOlder([]);
+    Promise.all(
+      previous.map(async (run) => ({
+        run,
+        events: await window.dots.api.getRunEvents(run.id),
+      })),
+    )
+      .then((turns) => {
+        if (alive) setOlder(turns);
+      })
+      .catch((e) => {
+        if (alive) showToast(e.message, "error");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [previousIds, showToast]);
+  useEffect(() => {
+    nearBottom.current = true;
+  }, [selectedRunId]);
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (scroller && nearBottom.current)
+      scroller.scrollTop = scroller.scrollHeight;
+  }, [activeRunEvents, streamingDraft, older]);
+  useEffect(
+    () => () => {
+      window.speechSynthesis?.cancel();
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!wakeEditor) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setWakeEditor(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [wakeEditor]);
+  const send = async (text = prompt) => {
+    if (!text.trim() || submitting || activeDot?.paused) return;
     try {
       setSubmitting(true);
-      const run = await window.dots.api.startRun(dotId, textToRun, { newSession });
-      setPrompt('');
+      const run = selected
+        ? await window.dots.api.continueRun(selected.id, text.trim())
+        : await window.dots.api.startRun(dotId, text.trim(), {
+            newSession: true,
+          });
+      setPrompt("");
       setSelectedRunId(run.id);
-      showToast(`Task started for "${activeDot?.name}"`, 'info');
       await refreshRuns();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to start task', 'error');
+      if (busy)
+        showToast(
+          "Message queued. Your dot will pick it up after its current work.",
+        );
+    } catch (e) {
+      showToast(
+        e instanceof Error ? e.message : "Could not send message",
+        "error",
+      );
     } finally {
       setSubmitting(false);
+      textarea.current?.focus();
     }
   };
-
-  const handleStopRun = async () => {
-    if (!selectedRun) return;
+  const copy = async (text: string) => {
     try {
-      await window.dots.api.cancelRun(selectedRun.id);
-      showToast('Stopping task...', 'info');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to stop task', 'error');
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      showToast("Could not copy the result", "error");
     }
   };
-
-  const handleCopyResult = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    showToast('Copied to clipboard', 'info');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault();
-      handleStartRun();
+  const openLink = (href: string) => {
+    if (/^https?:\/\//i.test(href)) {
+      void window.dots.api
+        .openExternal(href)
+        .catch((e) => showToast(e.message, "error"));
+      return;
     }
-  };
-
-  const resolveFilePath = (href: string) => {
-    let filePath = href.trim();
-    if (filePath.startsWith('file:///')) filePath = filePath.slice(8);
-    else if (filePath.startsWith('file://')) filePath = filePath.slice(7);
-    else if (filePath.startsWith('/') && /^[a-zA-Z]:/.test(filePath.slice(1))) {
-      filePath = filePath.slice(1);
-    } else if (filePath.startsWith('/') && activeDot?.workspacePath) {
-      filePath = activeDot.workspacePath.replace(/\\/g, '/') + filePath;
-    } else if (!filePath.includes(':') && activeDot?.workspacePath) {
-      filePath = activeDot.workspacePath.replace(/\\/g, '/') + '/' + filePath;
-    }
+    if (
+      /^[a-z]+:/i.test(href) &&
+      !/^file:/i.test(href) &&
+      !/^\w:[\\/]/.test(href)
+    )
+      return;
+    let target = href.replace(/^file:\/\/\//, "").replace(/^file:\/\//, "");
     try {
-      filePath = decodeURIComponent(filePath);
+      target = decodeURIComponent(target);
     } catch {}
-    return filePath;
+    if (target.startsWith("/") && /^\w:/.test(target.slice(1)))
+      target = target.slice(1);
+    else if (!/^\w:[\\/]/.test(target) && !target.startsWith("/"))
+      target = `${activeDot?.workspacePath}/${target}`;
+    void window.dots.api
+      .openPath(target)
+      .catch((e) => showToast(e.message, "error"));
   };
-
-  const markdownComponents = {
-    a: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
-      const handleClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        if (!href) return;
-        if (/^https?:\/\//i.test(href)) {
-          window.dots.api.openExternal(href);
-        } else {
-          const target = resolveFilePath(href);
-          window.dots.api.openPath(target);
-        }
-      };
-      return (
-        <a
-          href={href}
-          onClick={handleClick}
-          style={{
-            color: '#818cf8',
-            textDecoration: 'underline',
-            cursor: 'pointer',
-            fontWeight: 500
-          }}
-          title={href}
-          {...props}
-        >
-          {children}
-        </a>
-      );
-    }
-  };
-
-  const getToolIcon = (category: ToolCategory) => {
-    switch (category) {
-      case 'shell':
-        return <Terminal size={14} style={{ color: '#38bdf8' }} />;
-      case 'file':
-        return <FileCode size={14} style={{ color: '#34d399' }} />;
-      case 'search':
-        return <Search size={14} style={{ color: '#fbbf24' }} />;
-      case 'web':
-        return <Globe size={14} style={{ color: '#818cf8' }} />;
-      case 'memory':
-        return <Brain size={14} style={{ color: '#ec4899' }} />;
-      default:
-        return <Layers size={14} style={{ color: 'var(--text-muted)' }} />;
-    }
-  };
-
-  return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Task Header / Status Bar */}
-      {selectedRun && (
-        <div
-          style={{
-            padding: '0.65rem 1.25rem',
-            borderBottom: '1px solid var(--border-subtle)',
-            background: 'var(--bg-card)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1rem'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-            <span className={`pill pill-${selectedRun.status}`}>
-              {selectedRun.status === 'succeeded' && <CheckCircle2 size={12} />}
-              {selectedRun.status === 'failed' && <XCircle size={12} />}
-              {selectedRun.status === 'running' && <span className="spin">◓</span>}
-              {selectedRun.status === 'queued' && <Clock size={12} />}
-              {selectedRun.status}
-            </span>
-
-            <div
-              style={{
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: '450px'
-              }}
-              title={selectedRun.title}
-            >
-              {selectedRun.title}
-            </div>
-
-            {selectedRun.trigger === 'schedule' && (
-              <span
-                style={{
-                  fontSize: '0.7rem',
-                  color: 'var(--accent-warning)',
-                  background: 'rgba(245, 158, 11, 0.12)',
-                  padding: '0.15rem 0.45rem',
-                  borderRadius: 'var(--radius-sm)'
-                }}
-              >
-                Scheduled
-              </span>
-            )}
-
-            {selectedRun.usage && (
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
-                {(selectedRun.usage.inputTokens + selectedRun.usage.outputTokens).toLocaleString()} tokens
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {(selectedRun.status === 'running' || selectedRun.status === 'queued') && (
-              <button
-                className="btn-danger"
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
-                onClick={handleStopRun}
-              >
-                <Square size={13} /> Stop
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Events / Timeline Feed */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem' }}>
-        {!selectedRun ? (
-          /* Empty state with helpful prompt suggestions */
-          <div
-            style={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-              padding: '2rem'
+  const md = (text: string) => (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      urlTransform={(url) =>
+        /^(https?:|file:|[a-z]:[\\/]|\/|\.|#)/i.test(url) || !url.includes(":")
+          ? url
+          : ""
+      }
+      components={{
+        a: ({ href, children }) => (
+          <a
+            href={href}
+            onClick={(e) => {
+              e.preventDefault();
+              if (href) openLink(href);
             }}
           >
-            <div
-              style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: 'var(--radius-full)',
-                background: `${activeDot?.color || '#6366f1'}1a`,
-                border: `2px solid ${activeDot?.color || '#6366f1'}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.75rem',
-                marginBottom: '1rem'
-              }}
-            >
-              {activeDot?.emoji || '🤖'}
+            {children}
+          </a>
+        ),
+      }}
+    >
+      {text}
+    </ReactMarkdown>
+  );
+  const speak = (text: string) => {
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text.replace(/[#*_`]/g, ""));
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+    setSpeaking(true);
+  };
+  const renderEvents = (events: RunEvent[], run: Run) =>
+    consolidate(events).map((e) => {
+      const key = `${run.id}-${e.seq}`;
+      if (e.type === "message" || e.type === "final")
+        return (
+          <div
+            className={`assistant-message ${e.type === "final" ? "final-message" : ""}`}
+            key={key}
+          >
+            <div className="message-author">
+              <DotAvatar dot={activeDot ?? undefined} size={25} />
+              <strong>{activeDot?.name}</strong>
+              {e.type === "final" && (
+                <span className="message-complete">
+                  <Check size={12} /> Done
+                </span>
+              )}
             </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.35rem' }}>
-              {activeDot?.name} is ready
-            </h3>
-            <p style={{ maxWidth: '420px', fontSize: '0.875rem', marginBottom: '1.5rem', color: 'var(--text-muted)' }}>
-              Give this Dot a goal. It will autonomously inspect files, write code, run shell commands, browse the web, and store facts in its memory.
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem', maxWidth: '580px', width: '100%' }}>
-              {[
-                { title: 'Explore Workspace', p: 'List all files in your workspace, inspect the project setup, and give a concise overview.' },
-                { title: 'Live Web Research', p: 'Search the web for the latest developments in AI agents and write a concise briefing.' },
-                { title: 'Inspect & Run Tests', p: 'Check if there are any test files or scripts in the workspace and execute them.' },
-                { title: 'Code Improvement', p: 'Analyze the code in the workspace and suggest or implement modular improvements.' }
-              ].map((suggestion, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => handleStartRun(suggestion.p)}
-                  style={{
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '0.85rem 1rem',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-fast)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                    e.currentTarget.style.transform = 'translateY(0)';
+            <div className="markdown-body">{md(e.text)}</div>
+            {e.type === "final" && (
+              <div className="result-actions">
+                <button
+                  className="icon-button"
+                  aria-label="Copy result"
+                  title="Copy result"
+                  onClick={() => copy(e.text)}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                </button>
+                {!!window.speechSynthesis && (
+                  <button
+                    className="icon-button"
+                    aria-label={speaking ? "Stop reading" : "Read result aloud"}
+                    title="Read aloud"
+                    onClick={() => speak(e.text)}
+                  >
+                    <Volume2 size={14} />
+                  </button>
+                )}
+                <button
+                  className="text-button"
+                  onClick={() => {
+                    setWakePrompt(
+                      "Review the previous result and check what needs attention next.",
+                    );
+                    setWakeEditor(true);
                   }}
                 >
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.25rem' }}>
-                    {suggestion.title}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>
-                    {suggestion.p}
-                  </div>
-                </div>
+                  <Clock size={13} /> Follow up later
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      if (e.type === "tool" || e.type === "reasoning") {
+        const isOpen =
+          expanded[key] ?? (e.type === "tool" && e.status === "error");
+        return (
+          <div
+            className={`work-event ${e.type === "tool" && e.status === "error" ? "error" : ""}`}
+            key={key}
+          >
+            <button
+              className="work-event-toggle"
+              aria-expanded={isOpen}
+              onClick={() => setExpanded((p) => ({ ...p, [key]: !isOpen }))}
+            >
+              {e.type === "tool" ? icons[e.category] : <Brain size={14} />}
+              <span>
+                {e.type === "tool"
+                  ? (readable[e.name] ?? e.name)
+                  : "Thinking through the next step"}
+              </span>
+              {e.type === "tool" &&
+                (e.status === "ok" ? (
+                  <Check size={13} />
+                ) : e.status === "running" ? (
+                  <span className="mini-spinner" />
+                ) : (
+                  <XCircle size={13} />
+                ))}
+              {isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            </button>
+            {isOpen && (
+              <pre>
+                {e.type === "tool"
+                  ? [e.input, e.output].filter(Boolean).join("\n\n")
+                  : e.text}
+              </pre>
+            )}
+          </div>
+        );
+      }
+      if (e.type === "plan")
+        return (
+          <div className="plan-card" key={key}>
+            <span className="eyebrow">THE PLAN</span>
+            {e.items.map((i, j) => (
+              <div key={j}>
+                {i.done ? (
+                  <CheckCircle2 size={15} />
+                ) : (
+                  <span className="plan-circle" />
+                )}
+                <span>{i.text}</span>
+              </div>
+            ))}
+          </div>
+        );
+      if (e.type === "file")
+        return (
+          <button
+            key={key}
+            className="file-event"
+            onClick={() => openLink(e.path)}
+          >
+            <FileCode size={15} />
+            <span>
+              {e.change === "add"
+                ? "Created"
+                : e.change === "delete"
+                  ? "Deleted"
+                  : "Updated"}{" "}
+              <strong>{e.path}</strong>
+            </span>
+          </button>
+        );
+      if (e.type === "log" && e.level !== "info")
+        return (
+          <div key={key} className={`event-notice ${e.level}`}>
+            <AlertIcon level={e.level} />
+            {e.text}
+          </div>
+        );
+      return null;
+    });
+  const turns = [
+    ...older,
+    ...(selected ? [{ run: selected, events: activeRunEvents }] : []),
+  ];
+  return (
+    <div className="conversation">
+      {selected && (
+        <div className="conversation-context">
+          <span
+            className={`status-dot ${selected.status === "running" ? "status-running" : "status-idle"}`}
+          />
+          <span>
+            {selected.status === "running"
+              ? "Working on your request"
+              : selected.status === "queued"
+                ? "Queued for your dot"
+                : selected.status === "succeeded"
+                  ? "Conversation"
+                  : "Task " + selected.status}
+          </span>
+          <span className="conversation-context-title">{selected.title}</span>
+          {["running", "queued"].includes(selected.status) && (
+            <button
+              className="text-button danger"
+              onClick={() =>
+                window.dots.api
+                  .cancelRun(selected.id)
+                  .catch((e) => showToast(e.message, "error"))
+              }
+            >
+              <Square size={12} /> Stop task
+            </button>
+          )}
+        </div>
+      )}
+      <div
+        className="conversation-scroll"
+        ref={scrollRef}
+        onScroll={(e) => {
+          const s = e.currentTarget;
+          nearBottom.current =
+            s.scrollHeight - s.scrollTop - s.clientHeight < 100;
+        }}
+      >
+        {!selected ? (
+          <div className="conversation-welcome">
+            <DotAvatar dot={activeDot ?? undefined} size={92} animated />
+            <span className="eyebrow">YOUR DOT, YOUR NEXT CHAPTER</span>
+            <h1>What shall we take care of?</h1>
+            <p>
+              I'm {activeDot?.name}. Give me something to work on,
+              <br />
+              and we'll keep building from there.
+            </p>
+            <div className="conversation-suggestions">
+              {[
+                {
+                  icon: <Globe size={18} />,
+                  title: "Go a little deeper",
+                  text: "Research a topic, compare the options, and write a concise briefing with sources.",
+                },
+                {
+                  icon: <Target size={18} />,
+                  title: "Keep something moving",
+                  text: "Help me turn my priorities into a plan with clear next steps and decisions.",
+                },
+                {
+                  icon: <Folder size={18} />,
+                  title: "Make sense of my files",
+                  text: "Explore the files in your workspace and give me a useful overview.",
+                },
+              ].map((s) => (
+                <button
+                  key={s.title}
+                  onClick={() => {
+                    setPrompt(s.text);
+                    textarea.current?.focus();
+                  }}
+                >
+                  {s.icon}
+                  <strong>{s.title}</strong>
+                  <span>{s.text}</span>
+                </button>
               ))}
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', maxWidth: '880px', margin: '0 auto' }}>
-            {/* User prompt card */}
-            <div
-              style={{
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border-medium)',
-                borderRadius: 'var(--radius-md)',
-                padding: '1rem 1.15rem',
-                boxShadow: 'var(--shadow-sm)'
-              }}
-            >
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-primary)', marginBottom: '0.35rem' }}>
-                TASK INSTRUCTION
-              </div>
-              <div style={{ fontSize: '0.95rem', color: 'var(--text-main)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                {selectedRun.prompt}
-              </div>
-            </div>
-
-            {/* Timeline Events */}
-            {activeRunEvents.map((ev, index) => {
-              const key = `event-${index}-${ev.seq}`;
-
-              if (ev.type === 'message') {
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '1rem 1.15rem'
-                    }}
-                  >
-                    <div className="markdown-body">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{ev.text}</ReactMarkdown>
-                    </div>
-                  </div>
-                );
-              }
-
-              if (ev.type === 'reasoning') {
-                const isExpanded = expandedItems[key] ?? false;
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      background: 'rgba(99, 102, 241, 0.05)',
-                      border: '1px solid rgba(99, 102, 241, 0.2)',
-                      borderRadius: 'var(--radius-md)',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    <div
-                      onClick={() => toggleExpand(key)}
-                      style={{
-                        padding: '0.5rem 0.85rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        fontSize: '0.785rem',
-                        fontWeight: 600,
-                        color: '#818cf8'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                        <Brain size={14} />
-                        Thought process
-                      </div>
-                      {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                    </div>
-                    {isExpanded && (
-                      <div
-                        style={{
-                          padding: '0.75rem 1rem',
-                          borderTop: '1px solid rgba(99, 102, 241, 0.15)',
-                          fontSize: '0.825rem',
-                          color: 'var(--text-muted)',
-                          lineHeight: 1.5,
-                          whiteSpace: 'pre-wrap',
-                          fontFamily: 'var(--font-mono)'
-                        }}
-                      >
-                        {ev.text}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              if (ev.type === 'tool') {
-                const isExpanded = expandedItems[key] ?? (ev.status === 'running' || ev.status === 'error');
-                const isError = ev.status === 'error';
-
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      background: 'var(--bg-card)',
-                      border: `1px solid ${isError ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-subtle)'}`,
-                      borderRadius: 'var(--radius-md)',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    <div
-                      onClick={() => toggleExpand(key)}
-                      style={{
-                        padding: '0.55rem 0.85rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        background: 'var(--bg-card-hover)',
-                        fontSize: '0.8rem'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', minWidth: 0 }}>
-                        {getToolIcon(ev.category)}
-                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{ev.name}</span>
-                        {ev.input && (
-                          <span
-                            style={{
-                              color: 'var(--text-dim)',
-                              fontFamily: 'var(--font-mono)',
-                              fontSize: '0.75rem',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              maxWidth: '450px'
-                            }}
-                          >
-                            {ev.input}
-                          </span>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                        {ev.status === 'running' && (
-                          <span className="pill pill-running" style={{ fontSize: '0.65rem' }}>
-                            <span className="spin">◓</span> executing
-                          </span>
-                        )}
-                        {ev.status === 'ok' && (
-                          <span style={{ color: '#10b981', display: 'flex' }}>
-                            <Check size={14} />
-                          </span>
-                        )}
-                        {ev.status === 'error' && (
-                          <span className="pill pill-awaiting-approval" style={{ fontSize: '0.65rem' }}>
-                            Failed
-                          </span>
-                        )}
-                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                      </div>
-                    </div>
-
-                    {isExpanded && (ev.output || ev.input) && (
-                      <div
-                        style={{
-                          padding: '0.65rem 0.85rem',
-                          borderTop: '1px solid var(--border-subtle)',
-                          background: '#090a0d',
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: '0.775rem',
-                          color: isError ? '#f87171' : '#cbd5e1',
-                          maxHeight: '260px',
-                          overflowY: 'auto',
-                          whiteSpace: 'pre-wrap',
-                          lineHeight: 1.45
-                        }}
-                      >
-                        {ev.output || ev.input}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              if (ev.type === 'file') {
-                const fullPath = activeDot?.workspacePath
-                  ? activeDot.workspacePath.replace(/\\/g, '/') + '/' + ev.path.replace(/^\.?\//, '')
-                  : ev.path;
-                return (
-                  <div
-                    key={key}
-                    onClick={() => window.dots.api.openPath(fullPath)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.35rem 0.65rem',
-                      background: 'rgba(52, 211, 153, 0.08)',
-                      border: '1px solid rgba(52, 211, 153, 0.2)',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.785rem',
-                      color: '#34d399',
-                      cursor: 'pointer'
-                    }}
-                    title={`Click to open ${ev.path}`}
-                  >
-                    <FileCode size={13} />
-                    <span>{ev.change === 'add' ? 'Created' : ev.change === 'delete' ? 'Deleted' : 'Modified'}:</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-main)', fontWeight: 500 }}>
-                      {ev.path}
-                    </span>
-                    <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.7 }} />
-                  </div>
-                );
-              }
-
-              if (ev.type === 'log') {
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      fontSize: '0.75rem',
-                      color: ev.level === 'error' ? '#ef4444' : ev.level === 'warn' ? '#f59e0b' : 'var(--text-dim)',
-                      padding: '0.2rem 0.5rem'
-                    }}
-                  >
-                    • {ev.text}
-                  </div>
-                );
-              }
-
-              if (ev.type === 'final') {
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      background: 'var(--bg-card)',
-                      border: '1px solid rgba(16, 185, 129, 0.4)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '1.25rem',
-                      boxShadow: 'var(--shadow-md)',
-                      marginTop: '0.5rem'
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: '0.75rem',
-                        paddingBottom: '0.5rem',
-                        borderBottom: '1px solid var(--border-subtle)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: '#10b981', fontWeight: 600, fontSize: '0.85rem' }}>
-                        <CheckCircle2 size={16} /> Result
-                      </div>
+          <div className="conversation-messages">
+            {turns.map(({ run, events }) => (
+              <React.Fragment key={run.id}>
+                <div className="user-message">
+                  <span>You</span>
+                  <p>{run.prompt}</p>
+                </div>
+                {renderEvents(events, run)}
+                {run.status === "failed" && (
+                  <div className="task-error">
+                    <XCircle size={18} />
+                    <div>
+                      <strong>This task needs another try.</strong>
+                      <p>{run.error}</p>
                       <button
-                        className="btn-ghost"
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                        onClick={() => handleCopyResult(ev.text)}
+                        className="text-button"
+                        onClick={() => send(run.prompt)}
                       >
-                        {copied ? <Check size={12} /> : <Copy size={12} />}
-                        {copied ? 'Copied' : 'Copy'}
+                        <RotateCcw size={13} /> Try again
                       </button>
                     </div>
-
-                    <div className="markdown-body">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{ev.text}</ReactMarkdown>
-                    </div>
                   </div>
-                );
-              }
-
-              return null;
-            })}
-
-            {/* Live Streaming Draft preview */}
+                )}
+              </React.Fragment>
+            ))}
             {streamingDraft && (
-              <div
-                style={{
-                  background: 'var(--bg-card)',
-                  border: '1px solid rgba(99, 102, 241, 0.3)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '1rem 1.15rem'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.75rem', color: '#818cf8', marginBottom: '0.5rem' }}>
-                  <span className="spin">◓</span> Generating response...
+              <div className="assistant-message">
+                <div className="message-author">
+                  <DotAvatar dot={activeDot ?? undefined} size={25} />
+                  <strong>{activeDot?.name}</strong>
+                  <span className="mini-spinner" />
                 </div>
-                <div className="markdown-body">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{streamingDraft}</ReactMarkdown>
-                </div>
+                <div className="markdown-body">{md(streamingDraft)}</div>
               </div>
             )}
-
-            {/* Error banner if task failed */}
-            {selectedRun.status === 'failed' && selectedRun.error && (
-              <div
-                style={{
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '0.85rem 1rem',
-                  color: '#f87171',
-                  fontSize: '0.85rem'
-                }}
-              >
-                <div style={{ fontWeight: 600, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <XCircle size={15} /> Task Error
-                </div>
-                <div style={{ lineHeight: 1.45 }}>{selectedRun.error}</div>
+            {selected.status === "running" && !streamingDraft && (
+              <div className="working-indicator">
+                <span />
+                <span />
+                <span />
+                <span>{activeDot?.name} is working. You can keep talking.</span>
               </div>
             )}
-
-            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
-
-      {/* Prompt Input Bar */}
-      <div
-        style={{
-          padding: '0.85rem 1.25rem',
-          borderTop: '1px solid var(--border-subtle)',
-          background: 'var(--bg-card)'
-        }}
-      >
-        <div style={{ maxWidth: '880px', margin: '0 auto' }}>
-          <div
-            style={{
-              background: 'var(--bg-input)',
-              border: '1px solid var(--border-medium)',
-              borderRadius: 'var(--radius-md)',
-              padding: '0.65rem 0.85rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-              transition: 'border-color var(--transition-fast)'
-            }}
-            onFocus={() => {
-              const el = document.getElementById('prompt-input-container');
-              if (el) el.style.borderColor = 'var(--border-focus)';
-            }}
-          >
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                isBusy
-                  ? `${activeDot?.name} is currently working on a task...`
-                  : `Assign a task to ${activeDot?.name || 'Dot'}... (Press Ctrl+Enter to run)`
+      <div className="composer-wrap">
+        <div className="composer">
+          <textarea
+            ref={textarea}
+            aria-label={`Message ${activeDot?.name}`}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                !e.nativeEvent.isComposing
+              ) {
+                e.preventDefault();
+                void send();
               }
-              disabled={isBusy || submitting}
-              rows={2}
-              style={{
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
-                outline: 'none',
-                boxShadow: 'none',
-                color: 'var(--text-main)',
-                fontSize: '0.875rem',
-                lineHeight: 1.4,
-                resize: 'none'
-              }}
-            />
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.25rem' }}>
-              <label
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  fontSize: '0.75rem',
-                  color: 'var(--text-dim)',
-                  cursor: 'pointer'
+            }}
+            placeholder={
+              activeDot?.paused
+                ? "Resume your dot to continue"
+                : `Message ${activeDot?.name ?? "your dot"}…`
+            }
+            rows={2}
+            disabled={submitting || activeDot?.paused}
+          />
+          <div className="composer-actions">
+            <div>
+              <button
+                className="icon-button"
+                title="Browse workspace files"
+                aria-label="Browse workspace files"
+                onClick={() => setActiveTab("files")}
+              >
+                <Folder size={17} />
+              </button>
+              <button
+                className="icon-button"
+                title="Schedule a follow-up"
+                aria-label="Schedule a follow-up"
+                onClick={() => {
+                  setWakePrompt(prompt);
+                  setWakeEditor(true);
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={newSession}
-                  onChange={(e) => setNewSession(e.target.checked)}
-                />
-                Start fresh session (new thread)
-              </label>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button
-                  className="btn-primary"
-                  onClick={() => handleStartRun()}
-                  disabled={!prompt.trim() || isBusy || submitting}
-                  style={{ padding: '0.4rem 0.9rem', fontSize: '0.825rem' }}
-                >
-                  <Send size={13} /> Run Task
-                </button>
-              </div>
+                <Clock size={17} />
+              </button>
+              <span>
+                {activeDot?.model === "auto"
+                  ? "Recommended model"
+                  : activeDot?.model}
+              </span>
             </div>
+            <button
+              className="composer-send"
+              aria-label={busy ? "Queue message" : "Send message"}
+              title={busy ? "Queue after current task" : "Send message"}
+              disabled={!prompt.trim() || submitting || activeDot?.paused}
+              onClick={() => send()}
+            >
+              <ArrowUp size={18} />
+            </button>
           </div>
         </div>
+        <div className="composer-hint">
+          <span>
+            {busy
+              ? "Your next message will queue after the current task."
+              : "Your dot keeps its memory between conversations."}
+          </span>
+          <span>Enter to send · Shift Enter for a new line</span>
+        </div>
       </div>
+      {wakeEditor && (
+        <div className="modal-overlay" onClick={() => setWakeEditor(false)}>
+          <div
+            className="modal-box"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Schedule conversation follow-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-heading">
+              <h2>A little later</h2>
+              <button
+                className="icon-button"
+                aria-label="Close follow-up"
+                onClick={() => setWakeEditor(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-form">
+              <label>
+                What should your dot pick up?
+                <textarea
+                  autoFocus
+                  rows={4}
+                  value={wakePrompt}
+                  onChange={(e) => setWakePrompt(e.target.value)}
+                />
+              </label>
+              <label>
+                Follow up in
+                <select
+                  value={wakeMinutes}
+                  onChange={(e) => setWakeMinutes(Number(e.target.value))}
+                >
+                  <option value={15}>15 minutes</option>
+                  <option value={60}>1 hour</option>
+                  <option value={240}>4 hours</option>
+                  <option value={1440}>Tomorrow, at this time</option>
+                  <option value={10080}>Next week</option>
+                </select>
+              </label>
+              <p className="panel-note">
+                This continues the selected conversation. Dots needs to be
+                running to wake up.
+              </p>
+            </div>
+            <footer className="modal-footer">
+              <button
+                className="btn-secondary"
+                onClick={() => setWakeEditor(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                disabled={submitting || !wakePrompt.trim()}
+                onClick={async () => {
+                  try {
+                    setSubmitting(true);
+                    await window.dots.api.createFollowup(dotId, {
+                      prompt: wakePrompt,
+                      dueAt: Date.now() + wakeMinutes * 60000,
+                      runId: selected?.id,
+                    });
+                    setWakeEditor(false);
+                    showToast("Follow-up scheduled", "success");
+                  } catch (e) {
+                    showToast(
+                      e instanceof Error
+                        ? e.message
+                        : "Could not schedule follow-up",
+                      "error",
+                    );
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+              >
+                <Clock size={14} /> Schedule
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+function AlertIcon({ level }: { level: string }) {
+  return level === "error" ? <XCircle size={14} /> : <Clock size={14} />;
+}

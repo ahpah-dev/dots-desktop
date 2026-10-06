@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import type {
   AppSettings,
   ApprovalRequest,
@@ -10,9 +18,9 @@ import type {
   ProviderProfile,
   PushEvent,
   Run,
-  RunEvent
-} from '@shared/types';
-import type { DotsBridge } from '@shared/api';
+  RunEvent,
+} from "@shared/types";
+import type { DotsBridge } from "@shared/api";
 
 declare global {
   interface Window {
@@ -20,17 +28,25 @@ declare global {
   }
 }
 
-export type TabType = 'tasks' | 'memory' | 'files' | 'schedule' | 'settings';
+export type TabType =
+  "tasks" | "responsibilities" | "memory" | "files" | "schedule" | "settings";
+export type ViewType = "home" | "dot" | "activity" | "inbox" | "connections";
 
 interface Toast {
   id: string;
-  level: 'info' | 'success' | 'error';
+  level: "info" | "success" | "error";
   text: string;
 }
 
 interface AppContextValue {
   bootstrap: Bootstrap | null;
   loading: boolean;
+  bootstrapError: string | null;
+  view: ViewType;
+  setView: (view: ViewType) => void;
+  openDot: (id: string, runId?: string) => void;
+  showCommandPalette: boolean;
+  setShowCommandPalette: (show: boolean) => void;
   activeDotId: string | null;
   setActiveDotId: (id: string | null) => void;
   activeDot: DotSummary | null;
@@ -48,7 +64,7 @@ interface AppContextValue {
   providers: ProviderProfile[];
   providerOptions: ProviderOption[];
   toasts: Toast[];
-  showToast: (text: string, level?: 'info' | 'success' | 'error') => void;
+  showToast: (text: string, level?: "info" | "success" | "error") => void;
   dismissToast: (id: string) => void;
   showNewDotModal: boolean;
   setShowNewDotModal: (show: boolean) => void;
@@ -63,18 +79,25 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const [view, setView] = useState<ViewType>("home");
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [activeDotId, setActiveDotId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('tasks');
+  const [activeTab, setActiveTab] = useState<TabType>("tasks");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [activeRunEvents, setActiveRunEvents] = useState<RunEvent[]>([]);
   const [streamingDraft, setStreamingDraft] = useState<string | null>(null);
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [auth, setAuth] = useState<CodexAuthStatus | null>(null);
-  const [loginProgress, setLoginProgress] = useState<LoginProgress | null>(null);
+  const [loginProgress, setLoginProgress] = useState<LoginProgress | null>(
+    null,
+  );
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [providers, setProviders] = useState<ProviderProfile[]>([]);
   const [providerOptions, setProviderOptions] = useState<ProviderOption[]>([]);
@@ -82,14 +105,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [showNewDotModal, setShowNewDotModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
-
-  const showToast = useCallback((text: string, level: 'info' | 'success' | 'error' = 'info') => {
-    const id = Math.random().toString(36).slice(2);
-    setToasts((prev) => [...prev, { id, level, text }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4500);
+  const activeDotRef = useRef(activeDotId);
+  const runRef = useRef(selectedRunId);
+  const runsRequestRef = useRef(0);
+  const runUpdateVersionRef = useRef(0);
+  const pushedRunsRef = useRef(
+    new Map<string, { run: Run; version: number }>(),
+  );
+  activeDotRef.current = activeDotId;
+  runRef.current = selectedRunId;
+  const openDot = useCallback((id: string, runId?: string) => {
+    setActiveDotId(id);
+    if (runId) setSelectedRunId(runId);
+    setActiveTab("tasks");
+    setView("dot");
   }, []);
+
+  const showToast = useCallback(
+    (text: string, level: "info" | "success" | "error" = "info") => {
+      const id = Math.random().toString(36).slice(2);
+      setToasts((prev) => [...prev, { id, level, text }]);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 4500);
+    },
+    [],
+  );
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -97,6 +138,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshBootstrap = useCallback(async () => {
     try {
+      setBootstrapError(null);
       const data = await window.dots.api.getBootstrap();
       setBootstrap(data);
       setAuth(data.auth);
@@ -104,37 +146,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setProviders(data.providers);
       setApprovals(data.approvals);
 
-      if (!activeDotId && data.dots.length > 0) {
+      if (!activeDotRef.current && data.dots.length > 0) {
         setActiveDotId(data.dots[0].id);
       }
 
       // If user is not authenticated with Codex and has no providers and hasn't finished onboarding, trigger onboarding modal
-      if (!data.settings.onboardingComplete && (!data.auth.loggedIn || !data.auth.installed) && data.providers.length === 0) {
+      if (
+        !data.settings.onboardingComplete &&
+        (!data.auth.loggedIn || !data.auth.installed) &&
+        data.providers.length === 0
+      ) {
         setShowOnboardingModal(true);
       }
     } catch (err) {
-      console.error('Failed to load bootstrap', err);
+      setBootstrapError(
+        err instanceof Error
+          ? err.message
+          : "The workspace could not be opened.",
+      );
+      console.error("Failed to load bootstrap", err);
     } finally {
       setLoading(false);
     }
-  }, [activeDotId]);
+  }, []);
 
   const refreshProviders = useCallback(async () => {
     try {
       const opts = await window.dots.api.listProviderOptions();
       setProviderOptions(opts);
     } catch (err) {
-      console.error('Failed to list provider options', err);
+      console.error("Failed to list provider options", err);
     }
   }, []);
 
   const refreshRuns = useCallback(async () => {
+    const request = ++runsRequestRef.current;
+    const versionAtStart = runUpdateVersionRef.current;
     if (!activeDotId) {
       setRuns([]);
       return;
     }
     try {
-      const list = await window.dots.api.listRuns(activeDotId, 50);
+      // RunStore retains 200 runs per dot; global activity can link to any of them.
+      const snapshot = await window.dots.api.listRuns(activeDotId, 200);
+      if (
+        activeDotRef.current !== activeDotId ||
+        request !== runsRequestRef.current
+      )
+        return;
+      const merged = new Map(snapshot.map((run) => [run.id, run]));
+      for (const [id, update] of pushedRunsRef.current) {
+        if (update.run.dotId === activeDotId && update.version > versionAtStart)
+          merged.set(id, update.run);
+      }
+      const list = [...merged.values()].sort(
+        (a, b) => b.createdAt - a.createdAt,
+      );
       setRuns(list);
       // Auto select the first run if none selected, or if selected run is from another dot
       setSelectedRunId((current) => {
@@ -142,7 +209,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return list[0]?.id ?? null;
       });
     } catch (err) {
-      console.error('Failed to list runs', err);
+      console.error("Failed to list runs", err);
     }
   }, [activeDotId]);
 
@@ -154,11 +221,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // When active dot changes, refresh its runs
   useEffect(() => {
+    pushedRunsRef.current.clear();
+    setRuns([]);
+    setActiveRunEvents([]);
+    setStreamingDraft(null);
     refreshRuns();
   }, [refreshRuns]);
 
   // When selected run changes, load its events
   useEffect(() => {
+    let cancelled = false;
+    setActiveRunEvents([]);
+    setStreamingDraft(null);
     if (!selectedRunId) {
       setActiveRunEvents([]);
       setStreamingDraft(null);
@@ -167,82 +241,118 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.dots.api
       .getRunEvents(selectedRunId)
       .then((events) => {
-        setActiveRunEvents(events);
-        setStreamingDraft(null);
+        if (cancelled) return;
+        setActiveRunEvents((current) => {
+          const merged = new Map(
+            [...events, ...current]
+              .filter((e) => e.runId === selectedRunId)
+              .map((e) => [e.seq, e]),
+          );
+          return [...merged.values()].sort((a, b) => a.seq - b.seq);
+        });
       })
       .catch((err) => {
-        console.error('Failed to load events', err);
+        console.error("Failed to load events", err);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedRunId]);
 
   // Listen to main process push events
   useEffect(() => {
     const unsubscribe = window.dots.onEvent((event: PushEvent) => {
       switch (event.type) {
-        case 'dot':
+        case "dot":
           setBootstrap((prev) => {
             if (!prev) return prev;
             const exists = prev.dots.some((d) => d.id === event.dot.id);
-            const dots = exists ? prev.dots.map((d) => (d.id === event.dot.id ? event.dot : d)) : [...prev.dots, event.dot];
+            const dots = exists
+              ? prev.dots.map((d) => (d.id === event.dot.id ? event.dot : d))
+              : [...prev.dots, event.dot];
             return { ...prev, dots };
           });
           break;
-        case 'dot-removed':
+        case "dot-removed":
           setBootstrap((prev) => {
             if (!prev) return prev;
-            return { ...prev, dots: prev.dots.filter((d) => d.id !== event.dotId) };
+            return {
+              ...prev,
+              dots: prev.dots.filter((d) => d.id !== event.dotId),
+            };
           });
-          setActiveDotId((current) => (current === event.dotId ? null : current));
+          setActiveDotId((current) =>
+            current === event.dotId ? null : current,
+          );
           break;
-        case 'run':
+        case "run":
+          if (event.run.dotId !== activeDotRef.current) break;
+          pushedRunsRef.current.set(event.run.id, {
+            run: event.run,
+            version: ++runUpdateVersionRef.current,
+          });
           setRuns((prev) => {
             const exists = prev.some((r) => r.id === event.run.id);
-            return exists ? prev.map((r) => (r.id === event.run.id ? event.run : r)) : [event.run, ...prev];
+            return exists
+              ? prev.map((r) => (r.id === event.run.id ? event.run : r))
+              : [event.run, ...prev];
           });
           // If active dot is this run's dot, select it if none selected or if it's currently selected
-          if (activeDotId === event.run.dotId) {
-            setSelectedRunId((cur) => (!cur ? event.run.id : cur === event.run.id ? cur : cur));
+          if (activeDotRef.current === event.run.dotId) {
+            setSelectedRunId((cur) =>
+              !cur ? event.run.id : cur === event.run.id ? cur : cur,
+            );
           }
           break;
-        case 'run-event':
-          if (event.event.type === 'draft') {
-            if (event.event.runId === selectedRunId) {
+        case "run-event":
+          if (event.event.type === "draft") {
+            if (event.event.runId === runRef.current) {
               setStreamingDraft(event.event.text);
             }
             break;
           }
-          if (event.event.runId === selectedRunId) {
-            setActiveRunEvents((prev) => [...prev, event.event]);
+          if (event.event.runId === runRef.current) {
+            setActiveRunEvents((prev) =>
+              prev.some((e) => e.seq === event.event.seq)
+                ? prev
+                : [...prev, event.event],
+            );
             setStreamingDraft(null);
           }
           break;
-        case 'auth':
+        case "auth":
           setAuth(event.auth);
           setBootstrap((prev) => (prev ? { ...prev, auth: event.auth } : prev));
           refreshProviders();
           break;
-        case 'login':
+        case "login":
           setLoginProgress(event.progress);
           break;
-        case 'settings':
+        case "settings":
           setSettings(event.settings);
-          setBootstrap((prev) => (prev ? { ...prev, settings: event.settings } : prev));
+          setBootstrap((prev) =>
+            prev ? { ...prev, settings: event.settings } : prev,
+          );
           break;
-        case 'providers':
+        case "providers":
           setProviders(event.providers);
-          setBootstrap((prev) => (prev ? { ...prev, providers: event.providers } : prev));
+          setBootstrap((prev) =>
+            prev ? { ...prev, providers: event.providers } : prev,
+          );
           refreshProviders();
           break;
-        case 'approval':
+        case "approval":
           setApprovals((prev) => [...prev, event.approval]);
           break;
-        case 'approval-resolved':
+        case "approval-resolved":
           setApprovals((prev) => prev.filter((a) => a.id !== event.id));
           break;
-        case 'toast':
+        case "toast":
           showToast(event.text, event.level);
           break;
-        case 'navigate':
+        case "navigate":
+          setView("dot");
+          setActiveTab("tasks");
           if (event.dotId) setActiveDotId(event.dotId);
           if (event.runId) setSelectedRunId(event.runId);
           break;
@@ -250,20 +360,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     return () => unsubscribe();
-  }, [activeDotId, selectedRunId, refreshProviders, showToast]);
+  }, [refreshProviders, showToast]);
 
   // Apply theme to document
   useEffect(() => {
     if (!settings) return;
     const theme = settings.theme;
-    if (theme === 'system') {
-      const preference = window.matchMedia('(prefers-color-scheme: dark)');
-      const applyTheme = () => document.documentElement.setAttribute('data-theme', preference.matches ? 'dark' : 'light');
+    if (theme === "system") {
+      const preference = window.matchMedia("(prefers-color-scheme: dark)");
+      const applyTheme = () =>
+        document.documentElement.setAttribute(
+          "data-theme",
+          preference.matches ? "dark" : "light",
+        );
       applyTheme();
-      preference.addEventListener('change', applyTheme);
-      return () => preference.removeEventListener('change', applyTheme);
+      preference.addEventListener("change", applyTheme);
+      return () => preference.removeEventListener("change", applyTheme);
     } else {
-      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute("data-theme", theme);
     }
     return undefined;
   }, [settings?.theme]);
@@ -275,6 +389,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const value: AppContextValue = {
     bootstrap,
     loading,
+    bootstrapError,
+    view,
+    setView,
+    openDot,
+    showCommandPalette,
+    setShowCommandPalette,
     activeDotId,
     setActiveDotId,
     activeDot,
@@ -302,7 +422,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setShowOnboardingModal,
     refreshRuns,
     refreshBootstrap,
-    refreshProviders
+    refreshProviders,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -310,6 +430,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (!context) throw new Error('useApp must be used within AppProvider');
+  if (!context) throw new Error("useApp must be used within AppProvider");
   return context;
 };

@@ -6,19 +6,28 @@ import type {
   DotInput,
   DotPatch,
   DotSummary,
+  DotTask,
+  DotTaskInput,
+  DotTaskPatch,
+  Followup,
+  FollowupInput,
   LoginProgress,
   ModelInfo,
+  MemoryNote,
+  MemoryNoteInput,
   ProviderOption,
   ProviderProfile,
   ProviderProfileInput,
   PushEvent,
   Run,
-  RunEvent
-} from './types';
+  RunEvent,
+} from "./types";
 
 export interface RunOptions {
   /** Start a fresh conversation instead of continuing the previous one. */
   newSession?: boolean;
+  /** Continue the selected conversation. Overrides the Dot's latest conversation. */
+  conversationId?: string;
 }
 
 /**
@@ -32,7 +41,7 @@ export interface DotsApi {
 
   // auth
   refreshAuth(): Promise<CodexAuthStatus>;
-  startCodexLogin(method: 'browser' | 'device'): Promise<void>;
+  startCodexLogin(method: "browser" | "device"): Promise<void>;
   cancelCodexLogin(): Promise<void>;
   loginCodexWithApiKey(apiKey: string): Promise<CodexAuthStatus>;
   logoutCodex(): Promise<CodexAuthStatus>;
@@ -55,22 +64,39 @@ export interface DotsApi {
 
   // runs
   startRun(dotId: string, prompt: string, options?: RunOptions): Promise<Run>;
+  continueRun(runId: string, prompt: string): Promise<Run>;
   cancelRun(runId: string): Promise<void>;
   listRuns(dotId: string, limit?: number): Promise<Run[]>;
+  listActivity(limit?: number): Promise<Run[]>;
   getRunEvents(runId: string): Promise<RunEvent[]>;
   deleteRun(runId: string): Promise<void>;
   resolveApproval(id: string, approve: boolean): Promise<void>;
   listApprovals(): Promise<ApprovalRequest[]>;
 
+  // responsibilities and durable wakeups
+  listTasks(dotId: string): Promise<DotTask[]>;
+  createTask(dotId: string, input: DotTaskInput): Promise<DotTask>;
+  updateTask(id: string, patch: DotTaskPatch): Promise<DotTask>;
+  deleteTask(id: string): Promise<void>;
+  runTask(id: string): Promise<Run>;
+  listFollowups(dotId: string): Promise<Followup[]>;
+  createFollowup(dotId: string, input: FollowupInput): Promise<Followup>;
+  cancelFollowup(id: string): Promise<void>;
+
   // memory
   getMemory(dotId: string): Promise<string>;
   saveMemory(dotId: string, text: string): Promise<void>;
+  listMemoryNotes(dotId: string): Promise<MemoryNote[]>;
+  saveMemoryNote(dotId: string, input: MemoryNoteInput): Promise<MemoryNote>;
+  deleteMemoryNote(dotId: string, id: string): Promise<void>;
 
   // system
   pickFolder(initial?: string): Promise<string | null>;
   openPath(path: string): Promise<void>;
   openExternal(url: string): Promise<void>;
-  listWorkspaceFiles(dotId: string): Promise<{ path: string; size: number; isDir: boolean; mtime: number }[]>;
+  listWorkspaceFiles(
+    dotId: string,
+  ): Promise<{ path: string; size: number; isDir: boolean; mtime: number }[]>;
   quitApp(): Promise<void>;
 }
 
@@ -82,7 +108,7 @@ export interface WindowState {
   fullscreen: boolean;
 }
 
-export type WindowAction = 'minimize' | 'toggle-maximize' | 'close';
+export type WindowAction = "minimize" | "toggle-maximize" | "close";
 
 /** What the preload script exposes on `window.dots`. */
 export interface DotsBridge {
@@ -96,45 +122,58 @@ export interface DotsBridge {
   };
 }
 
-export const API_CHANNEL_PREFIX = 'api:';
-export const PUSH_CHANNEL = 'push';
-export const WINDOW_STATE_CHANNEL = 'window:state';
-export const WINDOW_CONTROL_CHANNEL = 'window:control';
-export const WINDOW_GET_STATE_CHANNEL = 'window:get-state';
+export const API_CHANNEL_PREFIX = "api:";
+export const PUSH_CHANNEL = "push";
+export const WINDOW_STATE_CHANNEL = "window:state";
+export const WINDOW_CONTROL_CHANNEL = "window:control";
+export const WINDOW_GET_STATE_CHANNEL = "window:get-state";
 
 /** Names of every API method, used to build the bridge without reflection on an interface. */
 export const API_METHODS: DotsApiMethod[] = [
-  'getBootstrap',
-  'updateSettings',
-  'refreshAuth',
-  'startCodexLogin',
-  'cancelCodexLogin',
-  'loginCodexWithApiKey',
-  'logoutCodex',
-  'getLoginProgress',
-  'listProviderOptions',
-  'saveProviderProfile',
-  'deleteProviderProfile',
-  'testProvider',
-  'listModels',
-  'createDot',
-  'updateDot',
-  'deleteDot',
-  'setDotPaused',
-  'resetDotSession',
-  'defaultWorkspaceFor',
-  'startRun',
-  'cancelRun',
-  'listRuns',
-  'getRunEvents',
-  'deleteRun',
-  'resolveApproval',
-  'listApprovals',
-  'getMemory',
-  'saveMemory',
-  'pickFolder',
-  'openPath',
-  'openExternal',
-  'listWorkspaceFiles',
-  'quitApp'
+  "getBootstrap",
+  "updateSettings",
+  "refreshAuth",
+  "startCodexLogin",
+  "cancelCodexLogin",
+  "loginCodexWithApiKey",
+  "logoutCodex",
+  "getLoginProgress",
+  "listProviderOptions",
+  "saveProviderProfile",
+  "deleteProviderProfile",
+  "testProvider",
+  "listModels",
+  "createDot",
+  "updateDot",
+  "deleteDot",
+  "setDotPaused",
+  "resetDotSession",
+  "defaultWorkspaceFor",
+  "startRun",
+  "continueRun",
+  "cancelRun",
+  "listRuns",
+  "listActivity",
+  "getRunEvents",
+  "deleteRun",
+  "resolveApproval",
+  "listApprovals",
+  "listTasks",
+  "createTask",
+  "updateTask",
+  "deleteTask",
+  "runTask",
+  "listFollowups",
+  "createFollowup",
+  "cancelFollowup",
+  "getMemory",
+  "saveMemory",
+  "listMemoryNotes",
+  "saveMemoryNote",
+  "deleteMemoryNote",
+  "pickFolder",
+  "openPath",
+  "openExternal",
+  "listWorkspaceFiles",
+  "quitApp",
 ];

@@ -1,5 +1,4 @@
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
 import {
   DEFAULT_BUDGET,
   DEFAULT_PERMISSIONS,
@@ -7,11 +6,13 @@ import {
   type Dot,
   type DotInput,
   type DotPatch,
+  type MemoryNote,
+  type MemoryNoteInput,
   type Permissions
 } from '@shared/types';
 import { readJson, writeJson } from '../util/jsonStore';
 import type { Paths } from '../util/paths';
-import { uid } from '../util/misc';
+import { Emitter, uid } from '../util/misc';
 import { validateSpec } from '@shared/schedule';
 import { createLogger } from '../util/logger';
 
@@ -21,10 +22,15 @@ const log = createLogger('dots');
 export interface StoredThread {
   messages: unknown[];
   updatedAt: number;
+  threadId?: string | null;
+  providerId?: string;
+  workspacePath?: string;
 }
 
 export class DotStore {
   private dots = new Map<string, Dot>();
+  private notes = new Map<string, MemoryNote[]>();
+  readonly memoryChanged = new Emitter<string>();
 
   constructor(private paths: Paths) {}
 
@@ -38,6 +44,14 @@ export class DotStore {
         if (dot?.id) {
           const normalized = this.normalize(dot);
           this.dots.set(dot.id, normalized);
+          const savedNotes = await readJson<MemoryNote[] | null>(this.paths.memoryNotesFile(dot.id), null);
+          if (savedNotes) this.notes.set(dot.id, savedNotes);
+          else {
+            let legacy = '';
+            try { legacy = await fs.readFile(this.paths.memoryFile(dot.id), 'utf8'); } catch { /* no legacy memory */ }
+            this.notes.set(dot.id, this.importMemory(dot.id, legacy));
+            await writeJson(this.paths.memoryNotesFile(dot.id), this.notes.get(dot.id));
+          }
           if (dot.model !== normalized.model) {
             await this.save(normalized);
           }
@@ -70,6 +84,7 @@ export class DotStore {
       description: input.description,
       color: input.color,
       emoji: input.emoji,
+      avatar: input.avatar,
       instructions: input.instructions,
       providerId: input.providerId,
       model: input.model,
@@ -95,6 +110,7 @@ export class DotStore {
     if (next.workspacePath !== cur.workspacePath) {
       await fs.mkdir(next.workspacePath, { recursive: true });
       next.threadId = null; // a different workspace is a different conversation context
+      next.sessionResetAt = Date.now();
       await this.writeThread(id, { messages: [], updatedAt: Date.now() });
     }
     await this.save(next);
@@ -113,6 +129,7 @@ export class DotStore {
   async delete(id: string): Promise<Dot> {
     const dot = this.require(id);
     this.dots.delete(id);
+    this.notes.delete(id);
     await fs.rm(this.paths.dotDir(id), { recursive: true, force: true });
     return dot;
   }
@@ -124,6 +141,13 @@ export class DotStore {
 
   private normalize(d: Dot): Dot {
     const perms: Permissions = { ...DEFAULT_PERMISSIONS, ...d.permissions };
+    if (perms.rules) {
+      if (!Array.isArray(perms.rules) || perms.rules.length > 50) throw new Error('Use up to 50 custom permission rules.');
+      perms.rules = perms.rules.map((rule) => {
+        if (!rule.action?.trim() || !['allow', 'ask', 'deny'].includes(rule.effect)) throw new Error('Invalid custom permission rule.');
+        return { id: rule.id || uid(), action: rule.action.trim(), effect: rule.effect, pattern: rule.pattern?.trim() || undefined };
+      });
+    }
     const budget: Budget = {
       maxMinutes: clampInt(d.budget?.maxMinutes, 1, 24 * 60, DEFAULT_BUDGET.maxMinutes),
       maxSteps: clampInt(d.budget?.maxSteps, 1, 500, DEFAULT_BUDGET.maxSteps)
@@ -154,28 +178,64 @@ export class DotStore {
 
   // ── memory ──
   async readMemory(id: string): Promise<string> {
-    try {
-      return await fs.readFile(this.paths.memoryFile(id), 'utf8');
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return '';
-      throw err;
-    }
+    return this.listMemoryNotes(id).map((note) => `- [${note.category}] ${note.text}`).join('\n');
   }
 
   async writeMemory(id: string, text: string): Promise<void> {
     this.require(id);
-    await fs.mkdir(this.paths.dotDir(id), { recursive: true });
-    const file = this.paths.memoryFile(id);
-    const tmp = join(this.paths.dotDir(id), 'memory.md.tmp');
-    await fs.writeFile(tmp, text, 'utf8');
-    await fs.rename(tmp, file);
+    this.notes.set(id, this.importMemory(id, text));
+    await this.persistMemory(id);
   }
 
   async appendMemory(id: string, note: string): Promise<void> {
-    const cur = (await this.readMemory(id)).trimEnd();
-    const stamp = new Date().toISOString().slice(0, 10);
-    const entry = note.trim().split('\n').map((l) => (l.startsWith('- ') ? l : `- ${l}`)).join('\n');
-    await this.writeMemory(id, `${cur}${cur ? '\n' : ''}${entry} _(${stamp})_\n`);
+    const text = note.trim();
+    if (!text) return;
+    const existing = this.listMemoryNotes(id).find((n) => n.text.toLowerCase() === text.toLowerCase());
+    if (existing) return;
+    await this.saveMemoryNote(id, { text, category: 'fact' }, 'agent');
+  }
+
+  listMemoryNotes(id: string): MemoryNote[] {
+    this.require(id);
+    return [...(this.notes.get(id) ?? [])].sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async saveMemoryNote(id: string, input: MemoryNoteInput, source: MemoryNote['source'] = 'manual'): Promise<MemoryNote> {
+    this.require(id);
+    const text = input.text?.trim();
+    if (!text) throw new Error('Write something to remember.');
+    if (text.length > 4000) throw new Error('Keep each memory under 4,000 characters.');
+    if (!['preference', 'fact', 'decision', 'project'].includes(input.category)) throw new Error('Invalid memory category.');
+    const notes = this.notes.get(id) ?? [];
+    const current = input.id ? notes.find((n) => n.id === input.id) : undefined;
+    if (input.id && !current) throw new Error('That memory no longer exists.');
+    if (!current && notes.length >= 500) throw new Error('A Dot can remember up to 500 notes. Remove an older note first.');
+    const now = Date.now();
+    const note: MemoryNote = { id: current?.id ?? uid(), dotId: id, text, category: input.category, source, createdAt: current?.createdAt ?? now, updatedAt: now };
+    this.notes.set(id, current ? notes.map((n) => n.id === note.id ? note : n) : [...notes, note]);
+    await this.persistMemory(id);
+    return note;
+  }
+
+  async deleteMemoryNote(id: string, noteId: string): Promise<void> {
+    this.require(id);
+    this.notes.set(id, (this.notes.get(id) ?? []).filter((n) => n.id !== noteId));
+    await this.persistMemory(id);
+  }
+
+  private importMemory(id: string, text: string): MemoryNote[] {
+    const now = Date.now();
+    return text.split('\n').map((line) => line.replace(/^\s*[-*•]\s*/, '').replace(/\s*_\(\d{4}-\d{2}-\d{2}\)_\s*$/, '').trim())
+      .filter((line) => line && !line.startsWith('#')).slice(0, 500)
+      .map((line) => {
+        const tagged = /^\[(preference|fact|decision|project)\]\s*(.*)$/.exec(line);
+        return { id: uid(), dotId: id, text: tagged?.[2] ?? line, category: (tagged?.[1] ?? 'fact') as MemoryNote['category'], source: 'manual' as const, createdAt: now, updatedAt: now };
+      });
+  }
+
+  private async persistMemory(id: string): Promise<void> {
+    await writeJson(this.paths.memoryNotesFile(id), this.notes.get(id) ?? []);
+    this.memoryChanged.emit(id);
   }
 
   // ── thread (for providers that keep history locally) ──
@@ -186,6 +246,27 @@ export class DotStore {
   async writeThread(id: string, thread: StoredThread): Promise<void> {
     if (!this.dots.has(id)) return;
     await writeJson(this.paths.threadFile(id), thread);
+  }
+
+  async readConversation(id: string, conversationId: string): Promise<StoredThread> {
+    this.require(id);
+    this.validateConversationId(conversationId);
+    const stored = await readJson<StoredThread | null>(this.paths.conversationFile(id, conversationId), null);
+    if (stored) return stored;
+    if (conversationId === `legacy-${id}`) {
+      return { ...await this.readThread(id), threadId: this.require(id).threadId, providerId: this.require(id).providerId };
+    }
+    return { messages: [], updatedAt: 0 };
+  }
+
+  async writeConversation(id: string, conversationId: string, thread: StoredThread): Promise<void> {
+    this.require(id);
+    this.validateConversationId(conversationId);
+    await writeJson(this.paths.conversationFile(id, conversationId), thread);
+  }
+
+  private validateConversationId(id: string): void {
+    if (!/^[\w-]{1,100}$/.test(id)) throw new Error('Invalid conversation id.');
   }
 }
 

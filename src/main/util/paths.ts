@@ -14,6 +14,10 @@ export class Paths {
   dotFile(id: string) { return join(this.dotDir(id), 'dot.json'); }
   memoryFile(id: string) { return join(this.dotDir(id), 'memory.md'); }
   threadFile(id: string) { return join(this.dotDir(id), 'thread.json'); }
+  conversationsDir(id: string) { return join(this.dotDir(id), 'conversations'); }
+  conversationFile(id: string, conversationId: string) { return join(this.conversationsDir(id), `${conversationId}.json`); }
+  workFile(id: string) { return join(this.dotDir(id), 'responsibilities.json'); }
+  memoryNotesFile(id: string) { return join(this.dotDir(id), 'memory-notes.json'); }
   runsDir(id: string) { return join(this.dotDir(id), 'runs'); }
   runFile(dotId: string, runId: string) { return join(this.runsDir(dotId), `${runId}.json`); }
   runEventsFile(dotId: string, runId: string) { return join(this.runsDir(dotId), `${runId}.jsonl`); }

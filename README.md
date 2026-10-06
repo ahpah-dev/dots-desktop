@@ -1,126 +1,103 @@
-# Dots Desktop
+# Dots Desktop 2.0
 
-<div align="center">
-  <img src="assets/icon.png" width="96" height="96" alt="Dots Logo" />
-  <h3>Persistent, Autonomous AI Agents with Workspaces, Memory & Background Execution</h3>
-  <p>Inspired by OpenAI Dots — Built for Desktop</p>
-  <p>
-    <a href="https://dotsdesktop.vercel.app"><strong>🌐 Visit Live Website</strong></a> &nbsp;|&nbsp;
-    <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/download/v1.0.6/Dots-Setup-1.0.6.exe"><strong>💾 Download Windows Installer (v1.0.6)</strong></a> &nbsp;|&nbsp;
-    <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/tag/v1.0.6"><strong>📦 Releases</strong></a>
-  </p>
-  <br />
-  <img src="assets/desktop-screenshot.png" alt="Dots Desktop Screenshot" width="850" style="border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
-</div>
+**Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
----
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.0/Dots-Setup-2.0.0.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.0/Dots-2.0.0-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.0)
 
-## Overview
+![Dots Desktop](assets/desktop-screenshot.png)
 
-**Dots Desktop** is an easy-to-use desktop application for creating, managing, and collaborating with persistent AI agents ("Dots"). Each Dot operates as an autonomous teammate with its own isolated workspace, long-term memory, customizable instructions, tool permissions, and scheduled background routines.
+Dots Desktop is independent, open-source software inspired by [OpenAI Dots](https://learn.chatgpt.com/docs/dots). It runs locally and connects to your Codex installation or an OpenAI-compatible provider. It is not affiliated with OpenAI and does not include OpenAI's hosted Dots service. See the [capability comparison](docs/DOTS_PARITY.md) for the scope and remaining gaps.
 
-Dots features first-class integration with **OpenAI Codex** through local CLI authentication, eliminating the need to manually copy API keys when already logged into a ChatGPT account. It also supports any OpenAI-compatible API endpoint (direct OpenAI API, Ollama, Groq, OpenRouter, vLLM) with credentials securely encrypted using OS keystore APIs.
+## What changed in 2.0
 
----
+- **A complete new home:** Overview, an attention inbox, global activity, and connections bring your teammates and their work together. Search and a command palette keep navigation quick.
+- **A character of their own:** Personalize each dot's appearance and purpose, with a calm sage and cream interface, refined dark mode, and responsive layouts.
+- **Conversations that stay organized:** Keep separate conversations with the same dot. Messages sent while it works queue up instead of interrupting an active task.
+- **Ongoing responsibilities:** Give a dot multiple recurring jobs. Manage timing, instructions, and run history independently from its conversations.
+- **Follow-ups with a purpose:** Save durable wakeups so a dot can return to work later while the app is running.
+- **Memory you can inspect:** Keep structured notes about preferences, decisions, and ongoing work alongside each dot's existing memory.
+- **Clearer control:** Review approvals and apply custom rules to supported tools, with explicit boundaries for Codex-backed work.
 
-## ✨ Key Capabilities
+## Getting started
 
-* **Persistent AI Agents ("Dots")**: Create multiple specialized agents (e.g. Software Engineer, Web Researcher, Automated Watchdog, Documentation Specialist). Each Dot maintains its own identity, color, emoji, and instructions.
-* **Dedicated Workspaces**: Every Dot has its own folder on disk for reading, editing, and creating project files without interfering with other agents.
-* **Durable Long-Term Memory**: Dots automatically summarize important project conventions, decisions, and build instructions at the end of runs, recalling them in future tasks.
-* **Multi-Tool Autonomous Execution**:
-  * **Shell Commands**: Execute PowerShell and shell tasks inside the Dot's workspace.
-  * **File Tools**: Atomic reads, writes, edits, and fuzzy searches with strict workspace escape protection.
-  * **Live Web Search & Browsing**: Keyless DuckDuckGo search, lightweight HTML extraction, and full JavaScript headless browser rendering.
-  * **Memory Storage**: Direct recall and update of durable facts.
-* **OpenAI Codex & Custom Providers**:
-  * Automatic zero-friction connection to local **OpenAI Codex** (detects ChatGPT Plus, Pro, Team accounts).
-  * 1-click official browser and device-code OAuth sign-in.
-  * Custom OpenAI-compatible endpoints with local OS-level encryption for keys.
-* **Background & Scheduled Execution**:
-  * Run tasks on fixed intervals (e.g. every 30 minutes), daily times (e.g. weekdays at 09:00), or standard cron expressions.
-  * Keeps running seamlessly when minimized to the system tray.
-  * Sleep-drift resilient scheduling: overdue tasks fire cleanly after system wake.
-* **Security & Guardrails**:
-  * Workspace sandboxing with path traversal and symlink escape prevention.
-  * SSRF & private IP blocker preventing access to local network hosts (127.0.0.1, 10.x, 192.168.x, link-local).
-  * Human approval gate for sensitive shell or file modifications.
-  * Never extracts or exposes credentials in plaintext.
+1. Install [Dots-Setup-2.0.0.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.0/Dots-Setup-2.0.0.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
+2. Connect a model provider in Settings.
+3. Create a dot, give it a purpose, and choose a local workspace.
+4. Start a conversation or add an ongoing responsibility. Review activity and approvals as work progresses.
 
----
+Windows 10 or 11 (x64) is required for the published installer. The application is free; provider charges and account usage limits still apply.
 
-## 🛠️ Architecture
+### Connect a provider
 
-```
-dots-desktop/
-├── src/
-│   ├── shared/                # Pure types, IPC contracts, and schedule engine
-│   │   ├── types.ts           # Domain models: Dots, Runs, Providers, Approvals
-│   │   ├── api.ts             # Typed IPC interface between main & renderer
-│   │   └── schedule.ts        # Cron, interval, and daily schedule calculations
-│   ├── main/                  # Electron main process & backend services
-│   │   ├── engine/            # Run manager, scheduler, context builder, approval gate
-│   │   ├── providers/         # Codex CLI driver & OpenAI Chat Completions engine
-│   │   ├── storage/           # Encrypted credential store, dots, runs, settings
-│   │   ├── tools/             # File, shell, web search, web fetch, browser, memory
-│   │   └── services.ts        # Unified service composition layer
-│   ├── preload/               # Context bridge exposing window.dots
-│   └── renderer/              # Modern React 19 UI
-│       ├── components/        # Sidebar, DotView, RunTimeline, Memory, Files, Schedule, Settings
-│       ├── context/           # AppContext with reactive push events
-│       └── index.css          # Design system & responsive layout
-└── tests/                     # Vitest test suite for scheduler, engine, and network safety
-```
+**OpenAI Codex:** Install and authenticate the [official Codex CLI](https://developers.openai.com/codex/cli/). Dots discovers the local executable, uses its app-server for authentication and model discovery, and runs tasks through `codex exec --json`. Sign-in stays with Codex; Dots does not extract OAuth tokens. Available models depend on your account and configuration.
 
----
+**OpenAI-compatible API:** Add the endpoint, model, and optional API key in Settings. Keys are encrypted with Electron's operating-system credential storage. Compatible providers can include hosted APIs or local model servers; tool support depends on the model and endpoint.
 
-## 🚀 Getting Started
+## How work runs
 
-### Prerequisites
+Each dot has its own instructions, workspace, model, budget, and memory. Dots provides local file and shell tools, web search and fetch, background schedules, persistent run history, and human approval controls. Different dots can work concurrently within the configured limit; jobs for the same dot run one at a time so they do not mutate its workspace together. Finished results can be read aloud when system speech synthesis is available.
 
-* Node.js v20+ or v22+
-* (Optional) [OpenAI Codex CLI](https://developers.openai.com/codex/) installed and authenticated (`codex login`)
+Closing the window keeps Dots in the system tray when background mode is enabled. **Your computer must be on and the app must be running** for tasks, routines, and wakeups to execute. Dots Desktop does not provide a cloud computer, mobile sync, official ChatGPT memory access, Slack/Teams messaging, or full voice calls.
 
-### Development
+Custom tool rules and interactive approvals are enforced directly for OpenAI-compatible providers. The headless Codex runner rejects a dot configured with approval mode `ask` or any custom `ask`/`deny` rule before execution, because it cannot enforce those decisions on each Codex tool call. Use a compatible provider for those controls. Supported Codex execution uses its configured sandbox; enabling outside-workspace access bypasses Codex's sandbox and approvals.
 
-```bash
-# Clone the repository
-git clone https://github.com/davidegeric-cloud/dots-desktop.git
-cd dots-desktop
+Built-in file tools validate workspace boundaries. The compatible provider's native shell tool runs commands with your computer's privileges and is **not an operating-system sandbox**; a command can access files beyond its working folder. Disable shell access or require approvals when that access is unsuitable.
 
-# Install dependencies
+## Local data and permissions
+
+Dots stores profiles, conversations, run events, settings, and memory locally. Workspaces are ordinary folders that you can inspect and keep using outside the app. Model requests send the context needed for a task to the selected provider.
+
+- Separate file, shell, web, and outside-workspace permissions per dot.
+- Run budgets, cancellation, approvals, and reviewable activity.
+- Encrypted API credentials using Electron `safeStorage`.
+- Workspace checks and private-network filtering for built-in tools.
+- Optional loading of your Codex configuration for your own tools and integrations.
+
+## Development
+
+Use Node.js 22.12+ or another version supported by the installed Vite and Electron tooling.
+
+```powershell
 npm install
-
-# Run unit tests
-npm test
-
-# Start the app in development mode (Vite + Electron)
 npm run dev
 ```
 
-### Production Build & Installer
-
-```bash
-# Typecheck and compile main + renderer bundles
+```powershell
+npm test
 npm run build
+```
 
-# Package into a standalone Windows NSIS installer
+Run the Electron smoke workflow after building:
+
+```powershell
+npm run test:smoke
+node scripts/panel-smoke.mjs
+```
+
+The smoke workflow uses Playwright with the real Electron renderer, preload bridge, IPC services, and a local deterministic OpenAI-compatible fixture. It checks conversations, tool output, memory, wakeups, responsibilities, approvals, cancellation, navigation, and themes without external provider credentials or paid model calls. The panel script additionally checks avatar and rule persistence, memory editing/deletion, scheduling, dot creation, and settings keyboard controls. Demo data is isolated from your normal dots. Screenshots and results are written to `artifacts/qa/`.
+
+Release 2.0.0 validation: 32 unit tests passed, with one Windows symlink test skipped. Both Playwright suites also passed against the **packaged Windows executable**: 26 end-to-end checks using seven actual local-provider requests, plus avatar/rule persistence, memory create/edit/delete, schedule persistence, dot creation, live themes, and Escape controls. Both suites reported zero renderer errors. The published installer and portable build come from that tested package, with SHA-256 checksums included in the release.
+
+Package a Windows installer and portable executable:
+
+```powershell
 npm run dist
 ```
 
-The resulting standalone installer will be located in `release/Dots Setup 1.0.0.exe`.
+Artifacts are generated under `release/`: `Dots-Setup-2.0.0.exe` and `Dots-2.0.0-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
----
+## Project structure
 
-## 🔒 Security & Privacy
-
-1. **Zero Credential Extraction**: When using OpenAI Codex, Dots communicates with the local CLI process via official JSON-RPC without reading or extracting stored OAuth tokens.
-2. **Encrypted Storage**: External provider API keys are encrypted at rest using Electron `safeStorage` (Windows DPAPI, macOS Keychain, Linux libsecret).
-3. **SSRF Guard**: Web browsing and fetch tools validate domain resolutions against private and link-local IP ranges before connecting.
-4. **Sandboxed Workspaces**: Agents are restricted to their assigned workspace directories unless explicitly granted outside-workspace permissions by the user.
-
----
+| Folder | Responsibility |
+| --- | --- |
+| `src/shared` | Domain models, IPC contracts, scheduling helpers |
+| `src/main` | Persistence, provider drivers, execution, tools, scheduling |
+| `src/preload` | Isolated bridge between Electron and the renderer |
+| `src/renderer` | React interface and design system |
+| `tests` | Scheduling, engine, and safety checks |
+| `website` | Static product site deployed to the existing Vercel project |
+| `docs` | Capability comparison and product boundaries |
 
 ## License
 
-MIT © Dots
+[MIT](LICENSE). OpenAI, ChatGPT, and Codex are trademarks of their respective owners.

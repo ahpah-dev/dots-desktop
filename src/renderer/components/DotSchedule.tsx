@@ -1,303 +1,460 @@
-import React, { useState } from 'react';
-import { Clock, Calendar, Check, Play, AlertCircle, Save } from 'lucide-react';
-import { useApp } from '../context/AppContext';
-import type { Schedule, ScheduleSpec } from '@shared/types';
-import { describeSpec, validateSpec } from '@shared/schedule';
+import { useEffect, useState } from "react";
+import {
+  Clock,
+  CalendarDays,
+  Repeat2,
+  Code2,
+  Save,
+  Play,
+  Info,
+  Loader2,
+  ArrowUpRight,
+} from "lucide-react";
+import { useApp } from "../context/AppContext";
+import type { Schedule, ScheduleSpec } from "@shared/types";
+import { describeSpec, nextRun, validateSpec } from "@shared/schedule";
+import {
+  Field,
+  PanelHeader,
+  PanelSection,
+  SettingRow,
+  Toggle,
+  errorMessage,
+} from "./PanelPrimitives";
 
-interface DotScheduleProps {
-  dotId: string;
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function scheduleDraft(schedule?: Schedule | null) {
+  return {
+    enabled: schedule?.enabled ?? false,
+    kind: schedule?.spec.kind || "daily",
+    everyMinutes:
+      schedule?.spec.kind === "interval" ? schedule.spec.everyMinutes : 60,
+    time: schedule?.spec.kind === "daily" ? schedule.spec.time : "09:00",
+    days:
+      schedule?.spec.kind === "daily" ? schedule.spec.days : [1, 2, 3, 4, 5],
+    cron: schedule?.spec.kind === "cron" ? schedule.spec.expr : "0 9 * * 1-5",
+    prompt: schedule?.prompt || "",
+    continueSession: schedule?.continueSession ?? false,
+  };
 }
 
-export const DotSchedule: React.FC<DotScheduleProps> = ({ dotId }) => {
-  const { activeDot, showToast } = useApp();
-
-  const currentSchedule = activeDot?.schedule;
-
-  const [enabled, setEnabled] = useState(currentSchedule?.enabled ?? false);
-  const [kind, setKind] = useState<'interval' | 'daily' | 'cron'>(currentSchedule?.spec.kind ?? 'interval');
-  const [everyMinutes, setEveryMinutes] = useState(
-    currentSchedule?.spec.kind === 'interval' ? currentSchedule.spec.everyMinutes : 60
-  );
-  const [dailyTime, setDailyTime] = useState(
-    currentSchedule?.spec.kind === 'daily' ? currentSchedule.spec.time : '09:00'
-  );
-  const [dailyDays, setDailyDays] = useState<number[]>(
-    currentSchedule?.spec.kind === 'daily' ? currentSchedule.spec.days : [1, 2, 3, 4, 5]
-  );
-  const [cronExpr, setCronExpr] = useState(
-    currentSchedule?.spec.kind === 'cron' ? currentSchedule.spec.expr : '0 9 * * 1-5'
-  );
-  const [prompt, setPrompt] = useState(
-    currentSchedule?.prompt || 'Check project status, inspect any recent changes or errors, and write a summary.'
-  );
-  const [continueSession, setContinueSession] = useState(currentSchedule?.continueSession ?? false);
+export function DotSchedule({ dotId }: { dotId: string }) {
+  const {
+    activeDot,
+    showToast,
+    refreshBootstrap,
+    setActiveTab,
+    setSelectedRunId,
+    refreshRuns,
+  } = useApp();
+  const [draft, setDraft] = useState(() => scheduleDraft(activeDot?.schedule));
   const [saving, setSaving] = useState(false);
-
-  const toggleDay = (d: number) => {
-    setDailyDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()));
-  };
-
-  const buildSpec = (): ScheduleSpec => {
-    switch (kind) {
-      case 'interval':
-        return { kind: 'interval', everyMinutes: Math.max(1, Number(everyMinutes) || 60) };
-      case 'daily':
-        return { kind: 'daily', time: dailyTime, days: dailyDays.length ? dailyDays : [1, 2, 3, 4, 5] };
-      case 'cron':
-        return { kind: 'cron', expr: cronExpr.trim() };
+  const [running, setRunning] = useState(false);
+  useEffect(() => {
+    setDraft(scheduleDraft(activeDot?.schedule));
+  }, [dotId]);
+  const update = <K extends keyof typeof draft>(
+    key: K,
+    value: (typeof draft)[K],
+  ) => setDraft((previous) => ({ ...previous, [key]: value }));
+  const spec: ScheduleSpec =
+    draft.kind === "interval"
+      ? { kind: "interval", everyMinutes: draft.everyMinutes }
+      : draft.kind === "daily"
+        ? { kind: "daily", time: draft.time, days: draft.days }
+        : { kind: "cron", expr: draft.cron.trim() };
+  let error = "",
+    description = "",
+    next: number | null = null;
+  try {
+    validateSpec(spec);
+    description = describeSpec(spec);
+    next = nextRun(spec, Date.now());
+  } catch (failure) {
+    error = errorMessage(failure, "Review the schedule timing.");
+  }
+  const dirty =
+    JSON.stringify(draft) !==
+    JSON.stringify(scheduleDraft(activeDot?.schedule));
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const save = async () => {
+    if (error) {
+      showToast(error, "error");
+      return;
     }
-  };
-
-  const handleSave = async () => {
+    if (draft.enabled && !draft.prompt.trim()) {
+      showToast("Add instructions before enabling a schedule.", "error");
+      return;
+    }
     try {
       setSaving(true);
-      const spec = buildSpec();
-      validateSpec(spec);
-
       const schedule: Schedule = {
-        enabled,
+        enabled: draft.enabled,
         spec,
-        prompt: prompt.trim(),
-        continueSession
+        prompt: draft.prompt.trim(),
+        continueSession: draft.continueSession,
       };
-
-      await window.dots.api.updateDot(dotId, { schedule });
-      showToast(enabled ? 'Schedule saved and activated' : 'Schedule saved', 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Invalid schedule configuration', 'error');
+      const saved = await window.dots.api.updateDot(dotId, { schedule });
+      setDraft(scheduleDraft(saved.schedule));
+      await refreshBootstrap();
+      showToast(
+        draft.enabled ? "Schedule saved and enabled." : "Schedule saved.",
+        "success",
+      );
+    } catch (failure) {
+      showToast(errorMessage(failure, "Could not save the schedule."), "error");
     } finally {
       setSaving(false);
     }
   };
-
-  let specDescription = '';
-  try {
-    specDescription = describeSpec(buildSpec());
-  } catch {
-    specDescription = 'Invalid configuration';
-  }
-
-  const daysLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
+  const runOnce = async () => {
+    if (!draft.prompt.trim()) return;
+    try {
+      setRunning(true);
+      const run = await window.dots.api.startRun(dotId, draft.prompt.trim(), {
+        newSession: !draft.continueSession,
+      });
+      await refreshRuns();
+      setSelectedRunId(run.id);
+      setActiveTab("tasks");
+      showToast("Task started. Your schedule is unchanged.", "success");
+    } catch (failure) {
+      showToast(errorMessage(failure, "Could not start the task."), "error");
+    } finally {
+      setRunning(false);
+    }
+  };
   return (
-    <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', maxWidth: '840px', margin: '0 auto', width: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+    <div className="profile-panel">
+      <PanelHeader
+        eyebrow="Keep the work moving"
+        title="Scheduled work"
+        description="A regular check-in for the things you want your dot to keep track of."
+        actions={
+          <button
+            className="btn-primary"
+            onClick={save}
+            disabled={
+              saving ||
+              !dirty ||
+              !!error ||
+              (draft.enabled && !draft.prompt.trim())
+            }
+          >
+            {saving ? (
+              <Loader2 size={14} className="spin" />
+            ) : (
+              <Save size={14} />
+            )}{" "}
+            Save schedule
+          </button>
+        }
+      />
+      <div className="schedule-summary">
+        <div className="schedule-summary-icon">
+          <Clock size={21} />
+        </div>
         <div>
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Clock size={18} style={{ color: 'var(--accent-warning)' }} /> Automated Schedules
-          </h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-            Run tasks automatically on a background cadence even when minimized or working on other things.
+          <strong>
+            {activeDot?.schedule?.enabled
+              ? describeSpec(activeDot.schedule.spec)
+              : "No active recurring check-in"}
+          </strong>
+          <p>
+            {activeDot?.paused
+              ? "Your dot is paused. Scheduled runs wait until you resume it."
+              : activeDot?.schedule?.enabled && activeDot.nextRunAt
+                ? `Next run ${new Date(activeDot.nextRunAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+                : "Set a time and give your dot something to watch over."}{" "}
+            · {timeZone}
           </p>
         </div>
-
-        <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ fontSize: '0.825rem' }}>
-          <Save size={14} /> Save Schedule
-        </button>
       </div>
-
-      <div
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-medium)',
-          borderRadius: 'var(--radius-md)',
-          padding: '1.25rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.25rem'
-        }}
-      >
-        {/* Enable Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-          <div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>Enable Background Schedule</div>
-            <div style={{ fontSize: '0.785rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-              When enabled, {activeDot?.name} will run autonomously according to the frequency below.
-            </div>
-          </div>
-
-          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
-              style={{ width: '18px', height: '18px' }}
-            />
-          </label>
-        </div>
-
-        {/* Schedule Type Selection */}
-        <div>
-          <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-            Cadence Type
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-            {[
-              { id: 'interval', label: 'Fixed Interval', desc: 'Every X minutes or hours' },
-              { id: 'daily', label: 'Daily Time', desc: 'Specific time on chosen days' },
-              { id: 'cron', label: 'Cron Expression', desc: 'Custom cron definition' }
-            ].map((t) => (
-              <div
-                key={t.id}
-                onClick={() => setKind(t.id as any)}
-                style={{
-                  padding: '0.75rem',
-                  borderRadius: 'var(--radius-sm)',
-                  border: `1.5px solid ${kind === t.id ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
-                  background: kind === t.id ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-input)',
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)'
-                }}
-              >
-                <div style={{ fontSize: '0.825rem', fontWeight: 600, color: kind === t.id ? 'var(--accent-primary)' : 'var(--text-main)' }}>
-                  {t.label}
-                </div>
-                <div style={{ fontSize: '0.725rem', color: 'var(--text-dim)', marginTop: '0.15rem' }}>
-                  {t.desc}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Type Specific Fields */}
-        {kind === 'interval' && (
-          <div>
-            <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-              Run Every:
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <input
-                type="number"
-                min="1"
-                max="10080"
-                value={everyMinutes}
-                onChange={(e) => setEveryMinutes(Math.max(1, Number(e.target.value)))}
-                style={{ width: '120px' }}
-              />
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>minutes</span>
-
-              <div style={{ display: 'flex', gap: '0.35rem', marginLeft: '1rem' }}>
-                {[15, 30, 60, 120, 1440].map((m) => (
-                  <button
-                    key={m}
-                    className="btn-ghost"
-                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', background: everyMinutes === m ? 'var(--bg-card-hover)' : 'transparent' }}
-                    onClick={() => setEveryMinutes(m)}
-                  >
-                    {m === 60 ? '1 hour' : m === 120 ? '2 hours' : m === 1440 ? '1 day' : `${m}m`}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {kind === 'daily' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-                At Time (24h format):
-              </label>
-              <input
-                type="text"
-                value={dailyTime}
-                onChange={(e) => setDailyTime(e.target.value)}
-                placeholder="09:00"
-                style={{ width: '120px', fontFamily: 'var(--font-mono)' }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-                On Days:
-              </label>
-              <div style={{ display: 'flex', gap: '0.35rem' }}>
-                {daysLabels.map((name, idx) => {
-                  const isChecked = dailyDays.includes(idx);
-                  return (
-                    <button
-                      key={idx}
-                      className={isChecked ? 'btn-primary' : 'btn-secondary'}
-                      style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem' }}
-                      onClick={() => toggleDay(idx)}
-                    >
-                      {name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {kind === 'cron' && (
-          <div>
-            <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-              Cron Expression (5 fields: min hour day month dow):
-            </label>
-            <input
-              type="text"
-              value={cronExpr}
-              onChange={(e) => setCronExpr(e.target.value)}
-              placeholder="0 9 * * 1-5"
-              style={{ width: '100%', fontFamily: 'var(--font-mono)' }}
-            />
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.35rem' }}>
-              Examples: <code>*/20 * * * *</code> (every 20 min), <code>0 9 * * 1-5</code> (weekdays at 9am)
-            </div>
-          </div>
-        )}
-
-        {/* Schedule Summary Preview */}
-        <div
-          style={{
-            background: 'var(--bg-input)',
-            borderRadius: 'var(--radius-sm)',
-            padding: '0.65rem 0.85rem',
-            fontSize: '0.8rem',
-            color: 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
+      <PanelSection title="A regular check-in">
+        <SettingRow
+          title="Enable this schedule"
+          description="Run these instructions automatically at the times you choose."
         >
-          <div>
-            <strong>Summary:</strong> {specDescription}
-          </div>
-          {activeDot?.nextRunAt && (
-            <div style={{ color: 'var(--accent-warning)', fontSize: '0.75rem' }}>
-              Next run: {new Date(activeDot.nextRunAt).toLocaleString()}
-            </div>
-          )}
-        </div>
-
-        {/* Scheduled Task Prompt */}
-        <div>
-          <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-            Task Instructions to Execute on Cadence:
-          </label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={3}
-            style={{ width: '100%', fontSize: '0.85rem', lineHeight: 1.4 }}
-            placeholder="What should this Dot do every time the schedule fires?"
+          <Toggle
+            label="Enable schedule"
+            checked={draft.enabled}
+            onChange={(value) => update("enabled", value)}
+          />
+        </SettingRow>
+        <div style={{ marginTop: 24 }}>
+          <ScheduleTiming
+            spec={spec}
+            onChange={(value) => {
+              update("kind", value.kind);
+              if (value.kind === "interval")
+                update("everyMinutes", value.everyMinutes);
+              else if (value.kind === "daily") {
+                update("time", value.time);
+                update("days", value.days);
+              } else update("cron", value.expr);
+            }}
           />
         </div>
-
-        {/* Options */}
-        <div>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.825rem', color: 'var(--text-main)', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={continueSession}
-              onChange={(e) => setContinueSession(e.target.checked)}
+        {error ? (
+          <p className="schedule-inline-error" role="alert">
+            {error}
+          </p>
+        ) : (
+          <div className="profile-note">
+            <CalendarDays size={15} />
+            <div>
+              <strong>{description}</strong>
+              {next && (
+                <>
+                  <br />
+                  {draft.enabled ? "Upcoming" : "Preview"}:{" "}
+                  {new Date(next).toLocaleString(undefined, {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}{" "}
+                  · {timeZone}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </PanelSection>
+      <PanelSection
+        title="What should your dot do?"
+        description="Give it a clear responsibility, the sources to check, and when you want an update."
+      >
+        <div className="profile-stack">
+          <Field label="Task instructions">
+            <textarea
+              rows={5}
+              value={draft.prompt}
+              onChange={(event) => update("prompt", event.target.value)}
+              placeholder="Each weekday morning, check the project for changes. Summarize anything that needs my attention and suggest the next step."
             />
-            Continue existing conversation thread instead of fresh session
-          </label>
+          </Field>
+          <SettingRow
+            title="Keep the conversation going"
+            description="Continue the previous conversation so your dot keeps relevant task context."
+          >
+            <Toggle
+              label="Continue conversation"
+              checked={draft.continueSession}
+              onChange={(value) => update("continueSession", value)}
+            />
+          </SettingRow>
+          <div
+            className="profile-actions"
+            style={{ justifyContent: "flex-end" }}
+          >
+            <button
+              className="btn-secondary"
+              onClick={runOnce}
+              disabled={
+                running ||
+                !draft.prompt.trim() ||
+                !!activeDot?.activeRunId ||
+                !!activeDot?.paused
+              }
+            >
+              {running ? (
+                <Loader2 size={13} className="spin" />
+              ) : (
+                <Play size={13} />
+              )}{" "}
+              Run once now
+            </button>
+          </div>
+        </div>
+      </PanelSection>
+      <div className="profile-note">
+        <Info size={15} />
+        <div>
+          Schedules use this computer’s time zone and run while Dots is open,
+          including in the system tray. For multiple ongoing responsibilities,{" "}
+          <button
+            className="profile-text-button"
+            onClick={() => setActiveTab("responsibilities")}
+          >
+            open responsibilities{" "}
+            <ArrowUpRight size={11} style={{ verticalAlign: "middle" }} />
+          </button>
+          .
         </div>
       </div>
     </div>
   );
-};
+}
+
+export function ScheduleTiming({
+  spec,
+  onChange,
+}: {
+  spec: ScheduleSpec;
+  onChange: (spec: ScheduleSpec) => void;
+}) {
+  return (
+    <>
+      <div className="schedule-cadence" role="group" aria-label="Schedule type">
+        {(
+          [
+            {
+              kind: "daily",
+              icon: CalendarDays,
+              label: "At a set time",
+              detail: "Your days, your routine",
+            },
+            {
+              kind: "interval",
+              icon: Repeat2,
+              label: "Every so often",
+              detail: "Minutes, hours, or days",
+            },
+            {
+              kind: "cron",
+              icon: Code2,
+              label: "Custom timing",
+              detail: "An advanced cron schedule",
+            },
+          ] as const
+        ).map(({ kind, icon: Icon, label, detail }) => (
+          <button
+            type="button"
+            key={kind}
+            className={spec.kind === kind ? "is-selected" : ""}
+            aria-pressed={spec.kind === kind}
+            onClick={() =>
+              onChange(
+                kind === "daily"
+                  ? { kind, time: "09:00", days: [1, 2, 3, 4, 5] }
+                  : kind === "interval"
+                    ? { kind, everyMinutes: 60 }
+                    : { kind, expr: "0 9 * * 1-5" },
+              )
+            }
+          >
+            <Icon size={17} />
+            <strong>{label}</strong>
+            <span>{detail}</span>
+          </button>
+        ))}
+      </div>
+      {spec.kind === "daily" && (
+        <div className="profile-stack" style={{ marginBottom: 21 }}>
+          <div className="profile-form-grid">
+            <Field label="Time of day">
+              <input
+                type="time"
+                value={spec.time}
+                onChange={(event) =>
+                  onChange({ ...spec, time: event.target.value })
+                }
+              />
+            </Field>
+            <Field label="Quick pick">
+              <div className="profile-choice-group">
+                <button
+                  type="button"
+                  className={
+                    spec.days.join(",") === "1,2,3,4,5" ? "is-selected" : ""
+                  }
+                  onClick={() => onChange({ ...spec, days: [1, 2, 3, 4, 5] })}
+                >
+                  Weekdays
+                </button>
+                <button
+                  type="button"
+                  className={spec.days.length === 7 ? "is-selected" : ""}
+                  onClick={() =>
+                    onChange({ ...spec, days: [0, 1, 2, 3, 4, 5, 6] })
+                  }
+                >
+                  Every day
+                </button>
+              </div>
+            </Field>
+          </div>
+          <Field label="Days of the week">
+            <div
+              className="schedule-weekdays"
+              role="group"
+              aria-label="Days of the week"
+            >
+              {DAY_LABELS.map((label, index) => (
+                <button
+                  type="button"
+                  key={label}
+                  className={spec.days.includes(index) ? "is-selected" : ""}
+                  aria-pressed={spec.days.includes(index)}
+                  onClick={() =>
+                    onChange({
+                      ...spec,
+                      days: spec.days.includes(index)
+                        ? spec.days.filter((day) => day !== index)
+                        : [...spec.days, index].sort(),
+                    })
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      {spec.kind === "interval" && (
+        <div className="profile-stack" style={{ marginBottom: 21 }}>
+          <Field label="Repeat every (minutes)">
+            <input
+              type="number"
+              min={1}
+              max={10080}
+              value={spec.everyMinutes}
+              onChange={(event) =>
+                onChange({ ...spec, everyMinutes: Number(event.target.value) })
+              }
+            />
+          </Field>
+          <div className="profile-choice-group" aria-label="Interval presets">
+            {[
+              [15, "15 minutes"],
+              [30, "30 minutes"],
+              [60, "1 hour"],
+              [240, "4 hours"],
+              [1440, "1 day"],
+            ].map(([minutes, label]) => (
+              <button
+                type="button"
+                key={minutes}
+                className={spec.everyMinutes === minutes ? "is-selected" : ""}
+                onClick={() =>
+                  onChange({ ...spec, everyMinutes: Number(minutes) })
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {spec.kind === "cron" && (
+        <Field
+          label="Cron expression"
+          hint="Five fields: minute, hour, day, month, weekday. For example, 0 9 * * 1-5 means weekdays at 9:00."
+          className="profile-stack"
+        >
+          <input
+            value={spec.expr}
+            onChange={(event) =>
+              onChange({ ...spec, expr: event.target.value })
+            }
+            placeholder="0 9 * * 1-5"
+            style={{ fontFamily: "var(--font-mono)", marginBottom: 12 }}
+          />
+        </Field>
+      )}
+    </>
+  );
+}

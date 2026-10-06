@@ -1,12 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from "react";
 import {
-  X,
-  Key,
-  Shield,
-  Sliders,
-  CheckCircle2,
-  XCircle,
-  ExternalLink,
+  KeyRound,
+  SlidersHorizontal,
+  Cpu,
   Plus,
   Trash2,
   RefreshCw,
@@ -14,14 +10,36 @@ import {
   Sun,
   Moon,
   Monitor,
-  Power
-} from 'lucide-react';
-import { useApp } from '../context/AppContext';
-import type { ProviderProfileInput } from '@shared/types';
+  Power,
+  ArrowUpRight,
+  Pencil,
+  CheckCircle2,
+  Info,
+  Loader2,
+  X,
+} from "lucide-react";
+import { useApp } from "../context/AppContext";
+import type {
+  AppSettings,
+  ProviderProfile,
+  ProviderProfileInput,
+} from "@shared/types";
+import {
+  ModalShell,
+  Field,
+  PanelSection,
+  SettingRow,
+  Toggle,
+  errorMessage,
+} from "./PanelPrimitives";
 
-export const SettingsModal: React.FC = () => {
+export function SettingsModal() {
+  const { showSettingsModal } = useApp();
+  return showSettingsModal ? <SettingsContent /> : null;
+}
+
+function SettingsContent() {
   const {
-    showSettingsModal,
     setShowSettingsModal,
     settings,
     auth,
@@ -29,622 +47,736 @@ export const SettingsModal: React.FC = () => {
     providers,
     showToast,
     refreshBootstrap,
-    refreshProviders
+    refreshProviders,
   } = useApp();
-
-  const [tab, setTab] = useState<'accounts' | 'general'>('accounts');
-
-  // Accounts state
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [loggingIn, setLoggingIn] = useState(false);
-  const [codexOverride, setCodexOverride] = useState(settings?.codexPathOverride ?? '');
-
-  // Add Provider Profile state
-  const [newLabel, setNewLabel] = useState('');
-  const [newBaseUrl, setNewBaseUrl] = useState('https://api.openai.com/v1');
-  const [newModel, setNewModel] = useState('gpt-6.1-sol');
-  const [newKey, setNewKey] = useState('');
-  const [addingProvider, setAddingProvider] = useState(false);
-  const [testingId, setTestingId] = useState<string | null>(null);
-
-  if (!showSettingsModal) return null;
-
-  // Codex login handlers
-  const handleStartBrowserLogin = async () => {
+  const [tab, setTab] = useState<"account" | "providers" | "desktop">(
+    "account",
+  );
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState("");
+  const [path, setPath] = useState(settings?.codexPathOverride || "");
+  const [concurrency, setConcurrency] = useState(
+    String(settings?.maxConcurrentRuns || 3),
+  );
+  const [providerEditor, setProviderEditor] =
+    useState<ProviderProfileInput | null>(null);
+  const [providerTest, setProviderTest] = useState<
+    Record<string, { ok: boolean; message: string }>
+  >({});
+  const [deleteProvider, setDeleteProvider] = useState<string | null>(null);
+  const perform = async (
+    action: string,
+    work: () => Promise<unknown>,
+    success?: string,
+  ) => {
     try {
-      setLoggingIn(true);
-      await window.dots.api.startCodexLogin('browser');
-      showToast('Opened browser sign-in...', 'info');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to start browser login', 'error');
+      setBusy(action);
+      await work();
+      if (success) showToast(success, "success");
+    } catch (error) {
+      showToast(
+        errorMessage(error, "This setting could not be updated."),
+        "error",
+      );
     } finally {
-      setLoggingIn(false);
+      setBusy("");
     }
   };
-
-  const handleStartDeviceLogin = async () => {
-    try {
-      setLoggingIn(true);
-      await window.dots.api.startCodexLogin('device');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to start device login', 'error');
-    } finally {
-      setLoggingIn(false);
-    }
-  };
-
-  const handleApiKeyLogin = async () => {
-    if (!apiKeyInput.trim()) return;
-    try {
-      setLoggingIn(true);
-      await window.dots.api.loginCodexWithApiKey(apiKeyInput.trim());
-      setApiKeyInput('');
-      showToast('Signed in via API Key', 'success');
-      await refreshBootstrap();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to sign in with API key', 'error');
-    } finally {
-      setLoggingIn(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    if (!confirm('Log out from Codex?')) return;
-    try {
-      await window.dots.api.logoutCodex();
-      showToast('Logged out of Codex', 'info');
-      await refreshBootstrap();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to log out', 'error');
-    }
-  };
-
-  const handleSaveCodexPath = async () => {
-    try {
-      await window.dots.api.updateSettings({ codexPathOverride: codexOverride.trim() });
-      showToast('Codex path updated', 'success');
-      await refreshBootstrap();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to update path', 'error');
-    }
-  };
-
-  // Add Provider Profile handler
-  const handleSaveProvider = async () => {
-    if (!newLabel.trim() || !newBaseUrl.trim() || !newModel.trim()) {
-      showToast('Fill in all provider fields', 'error');
-      return;
-    }
-    try {
-      setAddingProvider(true);
-      const input: ProviderProfileInput = {
-        label: newLabel.trim(),
-        baseUrl: newBaseUrl.trim(),
-        defaultModel: newModel.trim(),
-        apiKey: newKey.trim() || undefined
-      };
-      await window.dots.api.saveProviderProfile(input);
-      setNewLabel('');
-      setNewKey('');
-      showToast('Saved model provider profile', 'success');
-      await refreshBootstrap();
-      await refreshProviders();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to save provider', 'error');
-    } finally {
-      setAddingProvider(false);
-    }
-  };
-
-  const handleTestProvider = async (id: string) => {
-    try {
-      setTestingId(id);
-      const res = await window.dots.api.testProvider(id);
-      showToast(res.message, res.ok ? 'success' : 'error');
-    } catch (err: any) {
-      showToast(err.message || 'Test failed', 'error');
-    } finally {
-      setTestingId(null);
-    }
-  };
-
-  const handleDeleteProvider = async (id: string) => {
-    if (!confirm('Delete this provider profile?')) return;
-    try {
-      await window.dots.api.deleteProviderProfile(id);
-      showToast('Provider profile removed', 'info');
-      await refreshBootstrap();
-      await refreshProviders();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to delete provider', 'error');
-    }
-  };
-
-  // General Settings update helpers
-  const handleUpdateGeneral = async (patch: any) => {
-    try {
+  const general = (patch: Partial<AppSettings>) =>
+    perform("general", async () => {
       await window.dots.api.updateSettings(patch);
       await refreshBootstrap();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to update settings', 'error');
-    }
+    });
+  const startLogin = (method: "browser" | "device") =>
+    perform("login", () => window.dots.api.startCodexLogin(method));
+  const keyLogin = () =>
+    perform(
+      "login",
+      async () => {
+        await window.dots.api.loginCodexWithApiKey(key.trim());
+        setKey("");
+        await refreshBootstrap();
+      },
+      "Account connected.",
+    );
+  const signOut = () => {
+    if (confirm("Sign out of the Codex account used by Dots?"))
+      void perform(
+        "logout",
+        async () => {
+          await window.dots.api.logoutCodex();
+          await refreshBootstrap();
+        },
+        "Signed out.",
+      );
   };
-
-  const handlePickDefaultWorkspace = async () => {
-    try {
-      const chosen = await window.dots.api.pickFolder(settings?.defaultWorkspaceRoot);
-      if (chosen) handleUpdateGeneral({ defaultWorkspaceRoot: chosen });
-    } catch (err: any) {
-      showToast(err.message || 'Failed to pick folder', 'error');
-    }
+  const pickWorkspace = () =>
+    perform("folder", async () => {
+      const selected = await window.dots.api.pickFolder(
+        settings?.defaultWorkspaceRoot,
+      );
+      if (selected) {
+        await window.dots.api.updateSettings({
+          defaultWorkspaceRoot: selected,
+        });
+        await refreshBootstrap();
+      }
+    });
+  const editProvider = (profile: ProviderProfile) =>
+    setProviderEditor({
+      id: profile.id,
+      label: profile.label,
+      baseUrl: profile.baseUrl,
+      defaultModel: profile.defaultModel,
+      apiKey: "",
+    });
+  const saveProvider = () => {
+    if (!providerEditor) return;
+    void perform(
+      "provider",
+      async () => {
+        await window.dots.api.saveProviderProfile({
+          ...providerEditor,
+          label: providerEditor.label.trim(),
+          baseUrl: providerEditor.baseUrl.trim(),
+          defaultModel: providerEditor.defaultModel.trim(),
+          apiKey: providerEditor.apiKey?.trim() || undefined,
+        });
+        setProviderEditor(null);
+        await refreshBootstrap();
+        await refreshProviders();
+      },
+      "Provider profile saved.",
+    );
   };
-
+  const testProvider = (id: string) =>
+    perform(`test:${id}`, async () => {
+      const result = await window.dots.api.testProvider(id);
+      setProviderTest((previous) => ({ ...previous, [id]: result }));
+      showToast(result.message, result.ok ? "success" : "error");
+    });
+  const removeProvider = (id: string) =>
+    perform(
+      `delete:${id}`,
+      async () => {
+        await window.dots.api.deleteProviderProfile(id);
+        setDeleteProvider(null);
+        if (providerEditor?.id === id) setProviderEditor(null);
+        await refreshBootstrap();
+        await refreshProviders();
+      },
+      "Provider removed.",
+    );
+  const connected = auth?.installed && auth.loggedIn;
+  const loginActive = !!loginProgress?.active;
+  const close = () => {
+    if (!busy) setShowSettingsModal(false);
+  };
   return (
-    <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '680px' }}>
-        {/* Modal Header */}
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            borderBottom: '1px solid var(--border-subtle)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              className="btn-ghost"
-              style={{
-                fontWeight: tab === 'accounts' ? 600 : 500,
-                color: tab === 'accounts' ? 'var(--text-main)' : 'var(--text-muted)',
-                borderBottom: `2px solid ${tab === 'accounts' ? 'var(--accent-primary)' : 'transparent'}`,
-                borderRadius: 'var(--radius-sm)'
-              }}
-              onClick={() => setTab('accounts')}
-            >
-              <Key size={15} /> Accounts & Models
-            </button>
-            <button
-              className="btn-ghost"
-              style={{
-                fontWeight: tab === 'general' ? 600 : 500,
-                color: tab === 'general' ? 'var(--text-main)' : 'var(--text-muted)',
-                borderBottom: `2px solid ${tab === 'general' ? 'var(--accent-primary)' : 'transparent'}`,
-                borderRadius: 'var(--radius-sm)'
-              }}
-              onClick={() => setTab('general')}
-            >
-              <Sliders size={15} /> App Settings
-            </button>
-          </div>
-
-          <button className="btn-ghost" style={{ padding: '0.25rem' }} onClick={() => setShowSettingsModal(false)}>
-            <X size={16} />
+    <ModalShell
+      title="Settings"
+      subtitle="Your accounts, your computer, and the way Dots works for you."
+      onClose={close}
+      width={740}
+      className="settings-shell"
+      footer={
+        <button className="btn-primary" onClick={close} disabled={!!busy}>
+          Done
+        </button>
+      }
+    >
+      <nav className="profile-tabs" aria-label="App settings sections">
+        {(
+          [
+            { id: "account", label: "Account", icon: KeyRound },
+            { id: "providers", label: "Model providers", icon: Cpu },
+            { id: "desktop", label: "Desktop", icon: SlidersHorizontal },
+          ] as const
+        ).map(({ id, label, icon: Icon }) => (
+          <button
+            className={tab === id ? "is-active" : ""}
+            aria-current={tab === id ? "page" : undefined}
+            key={id}
+            onClick={() => setTab(id)}
+          >
+            <Icon size={14} />
+            {label}
           </button>
-        </div>
-
-        {/* Modal Body */}
-        <div style={{ padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '72vh' }}>
-          {tab === 'accounts' ? (
-            <>
-              {/* Codex Section */}
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-main)' }}>OpenAI Codex</div>
-                    <span
-                      className={`pill ${auth?.loggedIn ? 'pill-running' : 'pill-idle'}`}
-                      style={{ fontSize: '0.7rem' }}
-                    >
-                      {auth?.loggedIn ? 'Connected' : auth?.installed ? 'Not Signed In' : 'Not Installed'}
-                    </span>
-                  </div>
-
-                  <button className="btn-ghost" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => refreshBootstrap()}>
-                    <RefreshCw size={12} /> Refresh
-                  </button>
-                </div>
-
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.45 }}>
-                  Dots natively connects to your local Codex CLI session. If you are signed in with ChatGPT (Plus/Pro) or an API key, Dots automatically uses your account without requiring manual key copying.
+        ))}
+      </nav>
+      {tab === "account" && (
+        <>
+          <PanelSection
+            title="Your Codex account"
+            description="Dots uses the Codex CLI installed on this computer and its authenticated session."
+          >
+            <div className="profile-provider-status">
+              <div>
+                <strong>
+                  <span
+                    className={`profile-status-dot ${connected ? "is-connected" : ""}`}
+                  />
+                  {connected
+                    ? auth.mode === "chatgpt"
+                      ? `ChatGPT${auth.plan ? ` · ${auth.plan}` : ""}`
+                      : "Authenticated Codex account"
+                    : auth?.installed
+                      ? "Ready to connect"
+                      : "Codex CLI not found"}
+                </strong>
+                <p>
+                  {connected
+                    ? auth.email || "Using your authenticated local session"
+                    : auth?.installed
+                      ? "Sign in to give your dots an intelligence provider."
+                      : "Install Codex or specify its executable path below."}
+                  {auth?.codexVersion ? ` · ${auth.codexVersion}` : ""}
                 </p>
-
-                {auth?.loggedIn ? (
-                  <div
-                    style={{
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '0.75rem 1rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      fontSize: '0.825rem'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                        {auth.mode === 'chatgpt' ? `ChatGPT Account (${auth.plan || 'Plus'})` : 'OpenAI API Key'}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.15rem' }}>
-                        {auth.email || 'Authenticated via local Codex CLI'} • Codex {auth.codexVersion || 'v0.144+'}
-                      </div>
-                    </div>
-
-                    <button className="btn-secondary" onClick={handleLogout} style={{ fontSize: '0.775rem' }}>
-                      Sign Out
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button
-                        className="btn-primary"
-                        onClick={handleStartBrowserLogin}
-                        disabled={loggingIn || !auth?.installed}
-                        style={{ fontSize: '0.8rem', flex: 1 }}
-                      >
-                        Sign in with ChatGPT (Browser)
-                      </button>
-                      <button
-                        className="btn-secondary"
-                        onClick={handleStartDeviceLogin}
-                        disabled={loggingIn || !auth?.installed}
-                        style={{ fontSize: '0.8rem' }}
-                      >
-                        Device Code
-                      </button>
-                    </div>
-
-                    {loginProgress?.active && (
-                      <div
-                        style={{
-                          background: 'rgba(99, 102, 241, 0.08)',
-                          border: '1px solid rgba(99, 102, 241, 0.3)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '0.75rem',
-                          fontSize: '0.8rem',
-                          color: '#818cf8'
-                        }}
-                      >
-                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{loginProgress.message}</div>
-                        {loginProgress.code && (
-                          <div style={{ fontSize: '1rem', fontFamily: 'var(--font-mono)', fontWeight: 700, margin: '0.4rem 0' }}>
-                            Code: <span style={{ color: '#ffffff' }}>{loginProgress.code}</span>
-                          </div>
-                        )}
-                        {loginProgress.url && (
-                          <a
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              window.dots.api.openExternal(loginProgress.url!);
-                            }}
-                            style={{ color: '#818cf8', textDecoration: 'underline', fontSize: '0.75rem' }}
-                          >
-                            Open authorization link
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <input
-                        type="password"
-                        placeholder="Or enter OpenAI API key (sk-...)"
-                        value={apiKeyInput}
-                        onChange={(e) => setApiKeyInput(e.target.value)}
-                        style={{ flex: 1, fontSize: '0.8rem' }}
-                      />
-                      <button
-                        className="btn-secondary"
-                        onClick={handleApiKeyLogin}
-                        disabled={loggingIn || !apiKeyInput.trim()}
-                        style={{ fontSize: '0.8rem' }}
-                      >
-                        Save Key
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Codex Executable Path Override */}
-                <div style={{ marginTop: '1.25rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-subtle)' }}>
-                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '0.35rem' }}>
-                    Codex Executable Path Override (Optional):
-                  </label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input
-                      type="text"
-                      placeholder={auth?.codexPath || 'Auto-detected on PATH'}
-                      value={codexOverride}
-                      onChange={(e) => setCodexOverride(e.target.value)}
-                      style={{ flex: 1, fontSize: '0.785rem', fontFamily: 'var(--font-mono)' }}
-                    />
-                    <button className="btn-secondary" onClick={handleSaveCodexPath} style={{ fontSize: '0.785rem' }}>
-                      Apply
-                    </button>
-                  </div>
-                </div>
               </div>
-
-              {/* External OpenAI-Compatible Providers Section */}
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-main)', marginBottom: '0.35rem' }}>
-                  OpenAI-Compatible Custom Providers
-                </div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.45 }}>
-                  Add any OpenAI-compatible API endpoint (e.g. OpenAI direct API key, Groq, Ollama, OpenRouter, vLLM). API keys are encrypted locally using OS secure storage and never exposed.
-                </p>
-
-                {/* Existing Providers List */}
-                {providers.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                    {providers.map((p) => (
-                      <div
-                        key={p.id}
-                        style={{
-                          background: 'var(--bg-input)',
-                          border: '1px solid var(--border-subtle)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '0.65rem 0.85rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          fontSize: '0.825rem'
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{p.label}</div>
-                          <div style={{ fontSize: '0.725rem', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
-                            {p.baseUrl} • {p.defaultModel}
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <button
-                            className="btn-ghost"
-                            onClick={() => handleTestProvider(p.id)}
-                            disabled={testingId === p.id}
-                            style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                          >
-                            <RefreshCw size={12} className={testingId === p.id ? 'spin' : ''} /> Test
-                          </button>
-                          <button
-                            className="btn-danger"
-                            onClick={() => handleDeleteProvider(p.id)}
-                            style={{ fontSize: '0.75rem', padding: '0.25rem 0.45rem' }}
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Add Profile Form */}
-                <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '1rem' }}>
-                  <div style={{ fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-main)' }}>
-                    Add Custom Endpoint Profile
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.725rem', color: 'var(--text-dim)', marginBottom: '0.25rem' }}>
-                        Display Label
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Groq or Local Ollama"
-                        value={newLabel}
-                        onChange={(e) => setNewLabel(e.target.value)}
-                        style={{ width: '100%', fontSize: '0.8rem' }}
-                      />
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                        <label style={{ fontSize: '0.725rem', color: 'var(--text-dim)' }}>
-                          Default Model
-                        </label>
-                        <div style={{ display: 'flex', gap: '0.2rem' }}>
-                          {['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-4o'].map((m) => (
-                            <button
-                              key={m}
-                              type="button"
-                              className={newModel === m ? 'btn-primary' : 'btn-ghost'}
-                              style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', height: 'auto' }}
-                              onClick={() => setNewModel(m)}
-                            >
-                              {m}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="e.g. gpt-6.1-sol, gpt-6-astra, or llama-3"
-                        value={newModel}
-                        onChange={(e) => setNewModel(e.target.value)}
-                        style={{ width: '100%', fontSize: '0.8rem' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.725rem', color: 'var(--text-dim)', marginBottom: '0.25rem' }}>
-                      Base URL
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="https://api.openai.com/v1"
-                      value={newBaseUrl}
-                      onChange={(e) => setNewBaseUrl(e.target.value)}
-                      style={{ width: '100%', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '0.85rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.725rem', color: 'var(--text-dim)', marginBottom: '0.25rem' }}>
-                      API Key (Encrypted securely)
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="sk-..."
-                      value={newKey}
-                      onChange={(e) => setNewKey(e.target.value)}
-                      style={{ width: '100%', fontSize: '0.8rem' }}
-                    />
-                  </div>
-
+              <button
+                className="btn-ghost profile-icon-button"
+                aria-label="Refresh account status"
+                disabled={!!busy}
+                onClick={() => perform("refresh", refreshBootstrap)}
+              >
+                <RefreshCw
+                  size={14}
+                  className={busy === "refresh" ? "spin" : ""}
+                />
+              </button>
+            </div>
+            {auth?.error && <p className="settings-error">{auth.error}</p>}
+            {connected ? (
+              <div
+                className="profile-actions"
+                style={{ marginTop: 17, justifyContent: "flex-end" }}
+              >
+                <button
+                  className="btn-secondary"
+                  onClick={signOut}
+                  disabled={!!busy}
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <div className="profile-stack" style={{ marginTop: 20 }}>
+                <div className="profile-actions">
                   <button
                     className="btn-primary"
-                    onClick={handleSaveProvider}
-                    disabled={addingProvider || !newLabel.trim() || !newKey.trim()}
-                    style={{ fontSize: '0.8rem', width: '100%' }}
+                    onClick={() => startLogin("browser")}
+                    disabled={!!busy || loginActive || !auth?.installed}
                   >
-                    <Plus size={14} /> Save Endpoint Profile
+                    {busy === "login" ? (
+                      <Loader2 size={13} className="spin" />
+                    ) : (
+                      <KeyRound size={13} />
+                    )}{" "}
+                    Sign in with ChatGPT
                   </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            /* General Settings Tab */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-main)' }}>
-                  Background Execution & Desktop
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                        Run in Background (System Tray)
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Closing the window minimizes to tray so your Dots can continue executing tasks.
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings?.runInBackground ?? true}
-                      onChange={(e) => handleUpdateGeneral({ runInBackground: e.target.checked })}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                        Launch at System Login
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Start Dots automatically on login to service background scheduled tasks.
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings?.launchAtLogin ?? false}
-                      onChange={(e) => handleUpdateGeneral({ launchAtLogin: e.target.checked })}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                        Desktop Notifications
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Receive OS notifications when a Dot finishes a task or requires human approval.
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings?.desktopNotifications ?? true}
-                      onChange={(e) => handleUpdateGeneral({ desktopNotifications: e.target.checked })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Concurrency and Workspace */}
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-main)' }}>
-                  Workspace & Resource Limits
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                      Max Concurrent Running Tasks ({settings?.maxConcurrentRuns ?? 3})
-                    </label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="8"
-                      value={settings?.maxConcurrentRuns ?? 3}
-                      onChange={(e) => handleUpdateGeneral({ maxConcurrentRuns: Number(e.target.value) })}
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                      Default New Dot Workspace Folder
-                    </label>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <input
-                        type="text"
-                        value={settings?.defaultWorkspaceRoot ?? ''}
-                        readOnly
-                        style={{ flex: 1, fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
-                      />
-                      <button className="btn-secondary" onClick={handlePickDefaultWorkspace} style={{ fontSize: '0.8rem' }}>
-                        Browse...
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Theme & Quit */}
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-main)' }}>
-                  Appearance & Session
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                  {[
-                    { id: 'system', label: 'System', icon: <Monitor size={14} /> },
-                    { id: 'dark', label: 'Dark', icon: <Moon size={14} /> },
-                    { id: 'light', label: 'Light', icon: <Sun size={14} /> }
-                  ].map((t) => (
-                    <button
-                      key={t.id}
-                      className={settings?.theme === t.id ? 'btn-primary' : 'btn-secondary'}
-                      style={{ fontSize: '0.8rem', flex: 1 }}
-                      onClick={() => handleUpdateGeneral({ theme: t.id })}
-                    >
-                      {t.icon} {t.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem', display: 'flex', justifyContent: 'flex-end' }}>
                   <button
-                    className="btn-danger"
-                    onClick={() => window.dots.api.quitApp()}
-                    style={{ fontSize: '0.8rem' }}
+                    className="btn-secondary"
+                    onClick={() => startLogin("device")}
+                    disabled={!!busy || loginActive || !auth?.installed}
                   >
-                    <Power size={14} /> Quit Dots Completely
+                    Use a device code
+                  </button>
+                </div>
+                {!auth?.installed && (
+                  <button
+                    className="profile-text-button"
+                    style={{ alignSelf: "flex-start" }}
+                    onClick={() =>
+                      window.dots.api.openExternal(
+                        "https://developers.openai.com/codex/cli",
+                      )
+                    }
+                  >
+                    Codex installation guide{" "}
+                    <ArrowUpRight
+                      size={12}
+                      style={{ verticalAlign: "middle" }}
+                    />
+                  </button>
+                )}
+                <Field label="Or connect with an API key">
+                  <div className="profile-inline">
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      aria-label="Codex API key"
+                      value={key}
+                      onChange={(event) => setKey(event.target.value)}
+                      placeholder="OpenAI API key"
+                    />
+                    <button
+                      className="btn-secondary"
+                      onClick={keyLogin}
+                      disabled={
+                        !!busy || loginActive || !key.trim() || !auth?.installed
+                      }
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </Field>
+              </div>
+            )}
+            {(loginActive || loginProgress?.error) && (
+              <div className="profile-note settings-login-progress">
+                <Info size={15} />
+                <div>
+                  {loginProgress?.error ||
+                    loginProgress?.message ||
+                    "Complete the sign-in flow to connect your account."}
+                  {loginProgress?.code && (
+                    <span className="settings-login-code">
+                      {loginProgress.code}
+                    </span>
+                  )}
+                  <div className="profile-actions" style={{ marginTop: 9 }}>
+                    {loginProgress?.url && (
+                      <button
+                        className="profile-text-button"
+                        onClick={() =>
+                          window.dots.api.openExternal(loginProgress.url!)
+                        }
+                      >
+                        Open sign-in page{" "}
+                        <ArrowUpRight
+                          size={11}
+                          style={{ verticalAlign: "middle" }}
+                        />
+                      </button>
+                    )}
+                    {loginActive && (
+                      <button
+                        className="btn-ghost"
+                        disabled={!!busy}
+                        onClick={() =>
+                          perform("cancel-login", () =>
+                            window.dots.api.cancelCodexLogin(),
+                          )
+                        }
+                      >
+                        Cancel sign-in
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </PanelSection>
+          <PanelSection title="Codex configuration">
+            <div className="profile-stack">
+              <Field
+                label="Executable path"
+                hint="Leave this empty to detect Codex automatically."
+              >
+                <div className="profile-inline">
+                  <input
+                    value={path}
+                    onChange={(event) => setPath(event.target.value)}
+                    placeholder={auth?.codexPath || "Detect automatically"}
+                    style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}
+                  />
+                  <button
+                    className="btn-secondary"
+                    disabled={
+                      !!busy || path.trim() === settings?.codexPathOverride
+                    }
+                    onClick={() => general({ codexPathOverride: path.trim() })}
+                  >
+                    Apply
+                  </button>
+                </div>
+              </Field>
+              <SettingRow
+                title="Use my Codex configuration"
+                description="Load your existing Codex configuration, including enabled MCP servers, plugins, and hooks. Otherwise tasks use an isolated configuration."
+              >
+                <Toggle
+                  label="Use personal Codex configuration"
+                  checked={settings?.useCodexUserConfig ?? false}
+                  disabled={!!busy}
+                  onChange={(value) => general({ useCodexUserConfig: value })}
+                />
+              </SettingRow>
+            </div>
+          </PanelSection>
+        </>
+      )}
+      {tab === "providers" && (
+        <>
+          <PanelSection
+            title="Compatible API providers"
+            description="Connect an endpoint that implements the OpenAI chat API. Saved keys use your operating system’s encrypted storage."
+          >
+            {providers.length ? (
+              providers.map((profile) => (
+                <div className="settings-provider-row" key={profile.id}>
+                  <div>
+                    <strong>{profile.label}</strong>
+                    <p>
+                      {profile.baseUrl}
+                      <br />
+                      {profile.defaultModel}
+                    </p>
+                    <span className="settings-provider-key">
+                      {profile.hasKey ? "API key saved" : "No API key saved"}
+                      {providerTest[profile.id]
+                        ? ` · ${providerTest[profile.id].ok ? "Last test passed" : "Last test failed"}`
+                        : ""}
+                    </span>
+                  </div>
+                  <div className="profile-actions">
+                    {deleteProvider === profile.id ? (
+                      <>
+                        <button
+                          className="btn-ghost"
+                          onClick={() => setDeleteProvider(null)}
+                          disabled={!!busy}
+                        >
+                          Keep
+                        </button>
+                        <button
+                          className="btn-danger"
+                          onClick={() => removeProvider(profile.id)}
+                          disabled={!!busy}
+                        >
+                          Remove
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className="btn-ghost"
+                          onClick={() => testProvider(profile.id)}
+                          disabled={!!busy}
+                          title="Test connection"
+                        >
+                          <RefreshCw
+                            size={13}
+                            className={
+                              busy === `test:${profile.id}` ? "spin" : ""
+                            }
+                          />{" "}
+                          Test
+                        </button>
+                        <button
+                          className="btn-ghost profile-icon-button"
+                          onClick={() => editProvider(profile)}
+                          disabled={!!busy}
+                          aria-label={`Edit ${profile.label}`}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          className="btn-ghost profile-icon-button"
+                          onClick={() => setDeleteProvider(profile.id)}
+                          disabled={!!busy}
+                          aria-label={`Remove ${profile.label}`}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div
+                className="profile-empty"
+                style={{ padding: "15px 15px 25px" }}
+              >
+                <div className="profile-empty-icon">
+                  <Cpu size={22} />
+                </div>
+                <h3>Choose the intelligence behind your dots</h3>
+                <p>
+                  Add an API provider to use your preferred hosted or local
+                  model.
+                </p>
+              </div>
+            )}
+            <button
+              className="btn-secondary"
+              style={{ marginTop: 17 }}
+              disabled={!!busy}
+              onClick={() =>
+                setProviderEditor({
+                  label: "",
+                  baseUrl: "https://api.openai.com/v1",
+                  defaultModel: "",
+                  apiKey: "",
+                })
+              }
+            >
+              <Plus size={13} /> Add provider
+            </button>
+          </PanelSection>
+          {providerEditor && (
+            <PanelSection
+              title={providerEditor.id ? "Edit provider" : "Connect a provider"}
+            >
+              <div className="profile-stack">
+                <div className="profile-form-grid">
+                  <Field label="Provider name">
+                    <input
+                      value={providerEditor.label}
+                      onChange={(event) =>
+                        setProviderEditor({
+                          ...providerEditor,
+                          label: event.target.value,
+                        })
+                      }
+                      placeholder="OpenAI, Ollama, or your provider"
+                    />
+                  </Field>
+                  <Field label="Default model">
+                    <input
+                      value={providerEditor.defaultModel}
+                      onChange={(event) =>
+                        setProviderEditor({
+                          ...providerEditor,
+                          defaultModel: event.target.value,
+                        })
+                      }
+                      placeholder="Model ID from your provider"
+                    />
+                  </Field>
+                </div>
+                <Field label="API base URL">
+                  <input
+                    value={providerEditor.baseUrl}
+                    onChange={(event) =>
+                      setProviderEditor({
+                        ...providerEditor,
+                        baseUrl: event.target.value,
+                      })
+                    }
+                    placeholder="https://api.openai.com/v1"
+                  />
+                </Field>
+                <Field
+                  label={
+                    providerEditor.id ? "Replace API key (optional)" : "API key"
+                  }
+                  hint={
+                    providerEditor.id
+                      ? "Leave empty to keep the saved key."
+                      : "Enter the credential accepted by your endpoint."
+                  }
+                >
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    value={providerEditor.apiKey || ""}
+                    onChange={(event) =>
+                      setProviderEditor({
+                        ...providerEditor,
+                        apiKey: event.target.value,
+                      })
+                    }
+                    placeholder={
+                      providerEditor.id ? "Keep existing key" : "API key"
+                    }
+                  />
+                </Field>
+                <div
+                  className="profile-actions"
+                  style={{ justifyContent: "flex-end" }}
+                >
+                  <button
+                    className="btn-ghost"
+                    disabled={!!busy}
+                    onClick={() => setProviderEditor(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={saveProvider}
+                    disabled={
+                      !!busy ||
+                      !providerEditor.label.trim() ||
+                      !providerEditor.baseUrl.trim() ||
+                      !providerEditor.defaultModel.trim() ||
+                      (!providerEditor.id && !providerEditor.apiKey?.trim())
+                    }
+                  >
+                    {busy === "provider" ? (
+                      <Loader2 size={13} className="spin" />
+                    ) : (
+                      <CheckCircle2 size={13} />
+                    )}{" "}
+                    Save provider
                   </button>
                 </div>
               </div>
-            </div>
+            </PanelSection>
           )}
-        </div>
-      </div>
-    </div>
+          <div className="profile-note">
+            <Info size={15} />
+            <div>
+              Choose a provider separately in each dot’s profile. Adding a model
+              provider does not connect Slack, Teams, or other external
+              accounts.
+            </div>
+          </div>
+        </>
+      )}
+      {tab === "desktop" && (
+        <>
+          <PanelSection title="At home on your desktop">
+            <Field label="Appearance">
+              <div
+                className="profile-choice-group"
+                role="group"
+                aria-label="App appearance"
+              >
+                {(
+                  [
+                    { id: "system", label: "System", icon: Monitor },
+                    { id: "light", label: "Light", icon: Sun },
+                    { id: "dark", label: "Dark", icon: Moon },
+                  ] as const
+                ).map(({ id, label, icon: Icon }) => (
+                  <button
+                    className={settings?.theme === id ? "is-selected" : ""}
+                    aria-pressed={settings?.theme === id}
+                    key={id}
+                    disabled={!!busy}
+                    onClick={() => general({ theme: id })}
+                  >
+                    <Icon size={13} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <div style={{ marginTop: 23 }}>
+              <SettingRow
+                title="Keep Dots in the background"
+                description="Closing the window keeps tasks and schedules running in the system tray."
+              >
+                <Toggle
+                  label="Run in background"
+                  checked={settings?.runInBackground ?? true}
+                  disabled={!!busy}
+                  onChange={(value) => general({ runInBackground: value })}
+                />
+              </SettingRow>
+              <SettingRow
+                title="Launch when I sign in"
+                description="Start Dots automatically when you log in to this computer."
+              >
+                <Toggle
+                  label="Launch at system login"
+                  checked={settings?.launchAtLogin ?? false}
+                  disabled={!!busy}
+                  onChange={(value) => general({ launchAtLogin: value })}
+                />
+              </SettingRow>
+              <SettingRow
+                title="Start in the system tray"
+                description="Keep the window tucked away when Dots starts."
+              >
+                <Toggle
+                  label="Start minimized"
+                  checked={settings?.startMinimized ?? false}
+                  disabled={!!busy}
+                  onChange={(value) => general({ startMinimized: value })}
+                />
+              </SettingRow>
+              <SettingRow
+                title="Desktop notifications"
+                description="Hear when work is complete or a task needs your input."
+              >
+                <Toggle
+                  label="Desktop notifications"
+                  checked={settings?.desktopNotifications ?? true}
+                  disabled={!!busy}
+                  onChange={(value) => general({ desktopNotifications: value })}
+                />
+              </SettingRow>
+            </div>
+          </PanelSection>
+          <PanelSection title="Workspaces and capacity">
+            <div className="profile-stack">
+              <Field
+                label="Default workspace folder"
+                hint="New dots get their own folder within this location."
+              >
+                <div className="profile-inline">
+                  <input
+                    value={settings?.defaultWorkspaceRoot || ""}
+                    readOnly
+                    style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}
+                  />
+                  <button
+                    className="btn-secondary"
+                    disabled={!!busy}
+                    onClick={pickWorkspace}
+                  >
+                    <Folder size={13} /> Browse
+                  </button>
+                </div>
+              </Field>
+              <Field
+                label="Concurrent tasks"
+                hint="Allow between 1 and 10 tasks to run at the same time."
+              >
+                <div className="profile-inline">
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={concurrency}
+                    onChange={(event) => setConcurrency(event.target.value)}
+                  />
+                  <button
+                    className="btn-secondary"
+                    disabled={
+                      !!busy ||
+                      !Number(concurrency) ||
+                      Number(concurrency) === settings?.maxConcurrentRuns
+                    }
+                    onClick={() => {
+                      const count = Math.min(
+                        10,
+                        Math.max(1, Math.round(Number(concurrency) || 3)),
+                      );
+                      setConcurrency(String(count));
+                      void general({ maxConcurrentRuns: count });
+                    }}
+                  >
+                    Apply
+                  </button>
+                </div>
+              </Field>
+            </div>
+          </PanelSection>
+          <PanelSection
+            title="End this session"
+            description="Quitting stops background scheduling until you open Dots again."
+          >
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                if (
+                  confirm(
+                    "Quit Dots? Background work and schedules will stop until you reopen the app.",
+                  )
+                )
+                  void window.dots.api.quitApp();
+              }}
+            >
+              <Power size={13} /> Quit Dots
+            </button>
+          </PanelSection>
+        </>
+      )}
+    </ModalShell>
   );
-};
+}

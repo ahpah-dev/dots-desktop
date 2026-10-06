@@ -7,6 +7,8 @@ export interface ToolContext {
   signal: AbortSignal;
   requestApproval(prompt: ApprovalPrompt): Promise<boolean>;
   remember(note: string): Promise<void>;
+  scheduleFollowup?(prompt: string, dueAt: number): Promise<string>;
+  actionApproved?: boolean;
 }
 
 export interface JsonSchema {

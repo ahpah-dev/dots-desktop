@@ -11,7 +11,15 @@ export default defineConfig({
     outDir: resolve(__dirname, 'dist/renderer'),
     emptyOutDir: true,
     target: 'chrome130',
-    sourcemap: false
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'markdown': ['react-markdown', 'remark-gfm']
+        }
+      }
+    }
   },
   server: { port: 5173, strictPort: true }
 });

@@ -1,583 +1,817 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 import {
   Save,
   Trash2,
   RotateCcw,
   Folder,
   Shield,
-  Clock,
   Cpu,
-  Sliders,
-  AlertTriangle
-} from 'lucide-react';
-import { useApp } from '../context/AppContext';
-import type { DotPatch, FileAccess, ModelInfo, ProviderOption } from '@shared/types';
-import { CODEX_PROVIDER_ID } from '@shared/types';
-import { groupModels } from '@shared/models';
+  Palette,
+  Monitor,
+  Globe,
+  MessageSquare,
+  Plus,
+  Info,
+  Loader2,
+} from "lucide-react";
+import { useApp } from "../context/AppContext";
+import type {
+  DotPatch,
+  DotSummary,
+  ModelInfo,
+  PermissionRule,
+} from "@shared/types";
+import { CODEX_PROVIDER_ID } from "@shared/types";
+import { groupModels } from "@shared/models";
+import { AvatarEditor, DotAvatar, normalizeAvatar } from "./DotAvatar";
+import {
+  Field,
+  PanelHeader,
+  PanelSection,
+  SettingRow,
+  Toggle,
+  errorMessage,
+} from "./PanelPrimitives";
 
-interface DotSettingsProps {
-  dotId: string;
+const RULE_TOOLS = [
+  ["*", "All tools"],
+  ["run_command", "Commands"],
+  ["list_files", "List files"],
+  ["read_file", "Read files"],
+  ["search_files", "Search files"],
+  ["write_file", "Write files"],
+  ["edit_file", "Edit files"],
+  ["web_search", "Web search"],
+  ["web_fetch", "Fetch websites"],
+  ["browse_page", "Browse websites"],
+  ["remember", "Memory"],
+  ["schedule_followup", "Schedule follow-up"],
+];
+
+function draftFor(dot: DotSummary | null) {
+  return {
+    name: dot?.name || "",
+    description: dot?.description || "",
+    color: dot?.color || "#78b7a0",
+    avatar: normalizeAvatar(dot?.avatar),
+    instructions: dot?.instructions || "",
+    workspacePath: dot?.workspacePath || "",
+    providerId: dot?.providerId || CODEX_PROVIDER_ID,
+    model: dot?.model || "auto",
+    reasoningEffort: dot?.reasoningEffort || "low",
+    notify: dot?.notify ?? true,
+    permissions: dot?.permissions
+      ? { ...dot.permissions, rules: [...(dot.permissions.rules || [])] }
+      : {
+          files: "write" as const,
+          shell: true,
+          web: true,
+          outsideWorkspace: false,
+          approval: "ask" as const,
+          rules: [] as PermissionRule[],
+        },
+    budget: dot?.budget ? { ...dot.budget } : { maxMinutes: 30, maxSteps: 60 },
+  };
 }
 
-export const DotSettings: React.FC<DotSettingsProps> = ({ dotId }) => {
-  const { activeDot, providerOptions, showToast, refreshBootstrap } = useApp();
-
-  const [name, setName] = useState(activeDot?.name ?? '');
-  const [description, setDescription] = useState(activeDot?.description ?? '');
-  const [emoji, setEmoji] = useState(activeDot?.emoji ?? '🤖');
-  const [color, setColor] = useState(activeDot?.color ?? '#6366f1');
-  const [instructions, setInstructions] = useState(activeDot?.instructions ?? '');
-  const [workspacePath, setWorkspacePath] = useState(activeDot?.workspacePath ?? '');
-  const [providerId, setProviderId] = useState(activeDot?.providerId ?? CODEX_PROVIDER_ID);
-  const [model, setModel] = useState(activeDot?.model ?? 'auto');
-  const [reasoningEffort, setReasoningEffort] = useState(activeDot?.reasoningEffort ?? 'low');
-
-  const [files, setFiles] = useState<FileAccess>(activeDot?.permissions.files ?? 'write');
-  const [shell, setShell] = useState(activeDot?.permissions.shell ?? true);
-  const [web, setWeb] = useState(activeDot?.permissions.web ?? true);
-  const [outsideWorkspace, setOutsideWorkspace] = useState(activeDot?.permissions.outsideWorkspace ?? false);
-  const [approval, setApproval] = useState<'never' | 'ask'>(activeDot?.permissions.approval ?? 'never');
-
-  const [maxMinutes, setMaxMinutes] = useState(activeDot?.budget.maxMinutes ?? 30);
-  const [maxSteps, setMaxSteps] = useState(activeDot?.budget.maxSteps ?? 60);
-
+export function DotSettings({ dotId }: { dotId: string }) {
+  const {
+    activeDot,
+    providerOptions,
+    showToast,
+    refreshBootstrap,
+    setShowSettingsModal,
+  } = useApp();
+  const [draft, setDraft] = useState(() => draftFor(activeDot));
+  const [tab, setTab] = useState<"profile" | "permissions" | "runtime">(
+    "profile",
+  );
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState("");
   const [saving, setSaving] = useState(false);
-
-  // Sync state if activeDot changes
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteWorkspace, setDeleteWorkspace] = useState(false);
+  const [deleteName, setDeleteName] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [resetting, setResetting] = useState(false);
   useEffect(() => {
-    if (!activeDot) return;
-    setName(activeDot.name);
-    setDescription(activeDot.description);
-    setEmoji(activeDot.emoji);
-    setColor(activeDot.color);
-    setInstructions(activeDot.instructions);
-    setWorkspacePath(activeDot.workspacePath);
-    setProviderId(activeDot.providerId);
-    setModel(activeDot.model);
-    setReasoningEffort(activeDot.reasoningEffort ?? 'low');
-    setFiles(activeDot.permissions.files);
-    setShell(activeDot.permissions.shell);
-    setWeb(activeDot.permissions.web);
-    setOutsideWorkspace(activeDot.permissions.outsideWorkspace);
-    setApproval(activeDot.permissions.approval);
-    setMaxMinutes(activeDot.budget.maxMinutes);
-    setMaxSteps(activeDot.budget.maxSteps);
-  }, [activeDot]);
-
-  // Load models for current provider
+    setDraft(draftFor(activeDot));
+    setDeleteOpen(false);
+    setDeleteName("");
+    setDeleteWorkspace(false);
+  }, [dotId, activeDot?.id]);
   useEffect(() => {
-    let active = true;
+    let current = true;
     setLoadingModels(true);
+    setModels([]);
+    setModelError("");
     window.dots.api
-      .listModels(providerId)
-      .then((res) => {
-        if (active) setModels(res);
+      .listModels(draft.providerId)
+      .then((result) => {
+        if (current) setModels(result);
       })
-      .catch((err) => {
-        console.error('Failed to list models', err);
+      .catch((error: unknown) => {
+        if (current)
+          setModelError(
+            errorMessage(
+              error,
+              "Could not load models. You can enter a model ID.",
+            ),
+          );
       })
       .finally(() => {
-        if (active) setLoadingModels(false);
+        if (current) setLoadingModels(false);
       });
     return () => {
-      active = false;
+      current = false;
     };
-  }, [providerId]);
-
-  const handlePickFolder = async () => {
-    try {
-      const chosen = await window.dots.api.pickFolder(workspacePath);
-      if (chosen) setWorkspacePath(chosen);
-    } catch (err: any) {
-      showToast(err.message || 'Failed to select folder', 'error');
-    }
-  };
-
+  }, [draft.providerId]);
+  const update = <K extends keyof typeof draft>(
+    key: K,
+    value: (typeof draft)[K],
+  ) => setDraft((previous) => ({ ...previous, [key]: value }));
+  const permission = <K extends keyof typeof draft.permissions>(
+    key: K,
+    value: (typeof draft.permissions)[K],
+  ) =>
+    setDraft((previous) => ({
+      ...previous,
+      permissions: { ...previous.permissions, [key]: value },
+    }));
+  const dirty = JSON.stringify(draft) !== JSON.stringify(draftFor(activeDot));
+  const provider = providerOptions.find((item) => item.id === draft.providerId);
+  const selectedModel = models.find((item) => item.id === draft.model);
+  const efforts = selectedModel?.reasoningEfforts?.length
+    ? selectedModel.reasoningEfforts
+    : ["low", "medium", "high", "max"];
   const handleSave = async () => {
+    if (!draft.name.trim()) {
+      showToast("Give your dot a name.", "error");
+      return;
+    }
     try {
       setSaving(true);
       const patch: DotPatch = {
-        name: name.trim(),
-        description: description.trim(),
-        emoji,
-        color,
-        instructions,
-        workspacePath: workspacePath.trim(),
-        providerId,
-        model,
-        reasoningEffort,
+        ...draft,
+        name: draft.name.trim(),
+        description: draft.description.trim(),
+        workspacePath: draft.workspacePath.trim(),
+        model: draft.model.trim() || "auto",
         permissions: {
-          files,
-          shell,
-          web,
-          outsideWorkspace,
-          approval
+          ...draft.permissions,
+          rules: draft.permissions.rules.map((rule) => ({
+            ...rule,
+            pattern: rule.pattern?.trim() || undefined,
+          })),
         },
         budget: {
-          maxMinutes: Math.max(1, Number(maxMinutes) || 30),
-          maxSteps: Math.max(1, Number(maxSteps) || 60)
-        }
+          maxMinutes: Math.min(
+            720,
+            Math.max(1, Number(draft.budget.maxMinutes) || 30),
+          ),
+          maxSteps: Math.min(
+            500,
+            Math.max(1, Number(draft.budget.maxSteps) || 60),
+          ),
+        },
       };
-
-      await window.dots.api.updateDot(dotId, patch);
-      showToast('Settings saved successfully', 'success');
+      if (draft.workspacePath.trim() === activeDot?.workspacePath) {
+        delete patch.workspacePath;
+      }
+      const saved = await window.dots.api.updateDot(dotId, patch);
+      setDraft(draftFor(saved));
       await refreshBootstrap();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to save settings', 'error');
+      showToast("Your dot’s profile is saved.", "success");
+    } catch (error) {
+      showToast(errorMessage(error, "Could not save this profile."), "error");
     } finally {
       setSaving(false);
     }
   };
-
-  const handleResetSession = async () => {
-    if (!confirm(`Reset the conversation thread for "${activeDot?.name}"? Memory and workspace files will not be touched.`)) return;
+  const pickFolder = async () => {
     try {
+      const chosen = await window.dots.api.pickFolder(draft.workspacePath);
+      if (chosen) update("workspacePath", chosen);
+    } catch (error) {
+      showToast(errorMessage(error, "Could not choose a folder."), "error");
+    }
+  };
+  const reset = async () => {
+    if (
+      !confirm(
+        `Start a fresh provider session for ${activeDot?.name}? Saved activity, memory, and workspace files remain available.`,
+      )
+    )
+      return;
+    try {
+      setResetting(true);
       await window.dots.api.resetDotSession(dotId);
-      showToast('Conversation session reset', 'info');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to reset session', 'error');
-    }
-  };
-
-  const handleDeleteDot = async () => {
-    const deleteFolder = confirm(`Also delete the workspace folder on disk? (${workspacePath})`);
-    if (!confirm(`Are you sure you want to permanently delete "${activeDot?.name}"?`)) return;
-    try {
-      await window.dots.api.deleteDot(dotId, deleteFolder);
-      showToast('Dot deleted', 'info');
       await refreshBootstrap();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to delete Dot', 'error');
+      showToast("The next task will start a fresh session.", "success");
+    } catch (error) {
+      showToast(errorMessage(error, "Could not reset the session."), "error");
+    } finally {
+      setResetting(false);
     }
   };
-
-  const PRESET_EMOJIS = ['🤖', '💻', '🔍', '⚙️', '📝', '⚡', '🧪', '🛡️', '📊', '🎨', '🚀', '🧠'];
-  const PRESET_COLORS = ['#6366f1', '#10b981', '#3b82f6', '#ec4899', '#f59e0b', '#8b5cf6', '#14b8a6', '#ef4444'];
-
+  const remove = async () => {
+    if (deleteName !== activeDot?.name) return;
+    try {
+      setDeleting(true);
+      await window.dots.api.deleteDot(dotId, deleteWorkspace);
+      await refreshBootstrap();
+      showToast("Dot deleted.", "info");
+    } catch (error) {
+      showToast(errorMessage(error, "Could not delete this dot."), "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+  const patchRule = (id: string, patch: Partial<PermissionRule>) =>
+    permission(
+      "rules",
+      draft.permissions.rules.map((rule) =>
+        rule.id === id ? { ...rule, ...patch } : rule,
+      ),
+    );
   return (
-    <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', maxWidth: '840px', margin: '0 auto', width: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Sliders size={18} style={{ color: 'var(--accent-primary)' }} /> Dot Configuration
-          </h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-            Manage identity, model provider, workspace, permissions and runtime budgets.
-          </p>
-        </div>
-
-        <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ fontSize: '0.825rem' }}>
-          <Save size={14} /> Save Changes
-        </button>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        {/* Section 1: Identity */}
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-main)' }}>
-            Agent Identity
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Icon & Color
-              </label>
-              <div
-                style={{
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: 'var(--radius-full)',
-                  background: `${color}22`,
-                  border: `2px solid ${color}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.6rem'
-                }}
-              >
-                {emoji}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Dot Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{ width: '100%', fontSize: '0.95rem', fontWeight: 600 }}
-              />
-            </div>
-          </div>
-
-          {/* Quick Emoji & Color Pickers */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-              {PRESET_EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  className="btn-ghost"
-                  style={{
-                    fontSize: '1.1rem',
-                    padding: '0.2rem 0.4rem',
-                    background: emoji === e ? 'var(--bg-card-hover)' : 'transparent',
-                    border: `1px solid ${emoji === e ? 'var(--border-focus)' : 'transparent'}`
-                  }}
-                  onClick={() => setEmoji(e)}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
-              {PRESET_COLORS.map((c) => (
-                <div
-                  key={c}
-                  onClick={() => setColor(c)}
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    borderRadius: 'var(--radius-full)',
-                    background: c,
-                    cursor: 'pointer',
-                    border: `2px solid ${color === c ? '#ffffff' : 'transparent'}`,
-                    boxShadow: color === c ? '0 0 6px rgba(255,255,255,0.6)' : 'none'
-                  }}
+    <div className="profile-panel">
+      <PanelHeader
+        eyebrow="Make it your own"
+        title="Your dot’s profile"
+        description="A familiar face, clear instructions, and the right tools for the work you share."
+        actions={
+          <button
+            className="btn-primary"
+            onClick={handleSave}
+            disabled={saving || !dirty || !draft.name.trim()}
+          >
+            {saving ? (
+              <Loader2 size={14} className="spin" />
+            ) : (
+              <Save size={14} />
+            )}{" "}
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        }
+      />
+      <nav className="profile-tabs" aria-label="Profile sections">
+        {(
+          [
+            { id: "profile", label: "Personalization", icon: Palette },
+            { id: "permissions", label: "Permissions", icon: Shield },
+            { id: "runtime", label: "Model & computer", icon: Cpu },
+          ] as const
+        ).map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            className={tab === id ? "is-active" : ""}
+            aria-current={tab === id ? "page" : undefined}
+            onClick={() => setTab(id)}
+          >
+            <Icon size={14} />
+            {label}
+          </button>
+        ))}
+      </nav>
+      {tab === "profile" && (
+        <>
+          <PanelSection
+            title="A little personality"
+            description="Choose a look that feels like your dot. You can change it anytime."
+          >
+            <AvatarEditor
+              value={draft.avatar}
+              color={draft.color}
+              onChange={(value) => update("avatar", value)}
+              onColorChange={(value) => update("color", value)}
+            />
+          </PanelSection>
+          <PanelSection title="Getting to know each other">
+            <div className="profile-stack">
+              <div className="profile-identity">
+                <DotAvatar
+                  avatar={draft.avatar}
+                  color={draft.color}
+                  name={draft.name}
+                  size={64}
                 />
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-              Short Description / Role
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Senior Full-Stack Engineer working on our API"
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-              Standing Instructions (System Prompt)
-            </label>
-            <textarea
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder="Instructions that always guide this Dot (e.g. 'Use modern TypeScript, write unit tests, verify changes before answering')."
-              rows={4}
-              style={{ width: '100%', fontSize: '0.825rem', lineHeight: 1.45 }}
-            />
-          </div>
-        </div>
-
-        {/* Section 2: Model & Provider */}
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-            <Cpu size={16} /> Model & Intelligence
-          </div>
-
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-              Provider
-            </label>
-            <select
-              value={providerId}
-              onChange={(e) => setProviderId(e.target.value)}
-              style={{ width: '100%' }}
-            >
-              {providerOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label} {!opt.available ? `(${opt.reason})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.35rem' }}>
-              <label style={{ fontSize: '0.785rem', color: 'var(--text-muted)' }}>
-                Model {loadingModels ? '(Loading catalogue...)' : ''}
-              </label>
-              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', alignSelf: 'center', marginRight: '0.15rem' }}>Picks:</span>
-                {[
-                  { id: 'auto', label: 'Auto' },
-                  { id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol' },
-                  { id: 'gpt-6-astra', label: 'GPT-6 Astra' },
-                  { id: 'gpt-6-sol', label: 'GPT-6 Sol' },
-                  { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
-                  { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' }
-                ].map((chip) => (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    className={model === chip.id ? 'btn-primary' : 'btn-ghost'}
-                    style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem', height: 'auto' }}
-                    onClick={() => setModel(chip.id)}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
+                <Field label="Name">
+                  <input
+                    value={draft.name}
+                    onChange={(event) => update("name", event.target.value)}
+                    maxLength={80}
+                    placeholder="Give your dot a name"
+                  />
+                  <span className="profile-handle">
+                    @
+                    {draft.name
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, "-")
+                      .replace(/^-|-$/g, "") || "your"}
+                    -dot
+                  </span>
+                </Field>
               </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <select
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                style={{ flex: 1 }}
+              <Field label="About your dot">
+                <input
+                  value={draft.description}
+                  onChange={(event) =>
+                    update("description", event.target.value)
+                  }
+                  placeholder="A thoughtful partner for your projects"
+                  maxLength={300}
+                />
+              </Field>
+              <Field
+                label="How you’d like to work together"
+                hint="Share your priorities, preferences, and what should always get your attention."
               >
-                <option value="auto">✨ Automatic (Provider Recommended)</option>
-                {groupModels(models).map((grp) => (
-                  <optgroup key={grp.label} label={grp.label}>
-                    {grp.models.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.label} {m.isDefault ? '(Default)' : ''}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-                {model !== 'auto' && !models.some((m) => m.id.toLowerCase() === model.toLowerCase()) && (
-                  <optgroup label="Custom Specified Model">
-                    <option value={model}>{model} (Custom)</option>
-                  </optgroup>
-                )}
-              </select>
-
-              <input
-                type="text"
-                placeholder="Or custom model ID..."
-                value={model === 'auto' ? '' : model}
-                onChange={(e) => setModel(e.target.value.trim() || 'auto')}
-                style={{ width: '220px', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
-                title="Type any custom model name (e.g. gpt-6.1-sol, gpt-6-astra, fine-tunes)"
-              />
+                <textarea
+                  value={draft.instructions}
+                  onChange={(event) =>
+                    update("instructions", event.target.value)
+                  }
+                  rows={5}
+                  placeholder="Keep me informed when something needs a decision. Be concise, verify your work, and remember what we learn."
+                />
+              </Field>
             </div>
-
-            {/* Model description & capabilities callout */}
-            {(() => {
-              const found = models.find((m) => m.id.toLowerCase() === model.toLowerCase());
-              if (found?.description) {
-                return (
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.4rem', lineHeight: 1.4 }}>
-                    💡 <strong style={{ color: 'var(--text-muted)' }}>{found.label}:</strong> {found.description}
-                  </p>
-                );
-              }
-              if (model === 'gpt-6.1-sol') {
-                return (
-                  <p style={{ fontSize: '0.75rem', color: '#818cf8', marginTop: '0.4rem', lineHeight: 1.4 }}>
-                    🚀 <strong>GPT-6.1 Sol:</strong> Latest OpenAI model optimized for agentic coding and autonomous computer workflows.
-                  </p>
-                );
-              }
-              if (model === 'gpt-6-astra') {
-                return (
-                  <p style={{ fontSize: '0.75rem', color: '#818cf8', marginTop: '0.4rem', lineHeight: 1.4 }}>
-                    ⭐ <strong>GPT-6 Astra:</strong> Flagship OpenAI frontier model powering Dots with deep reasoning and engineering capabilities.
-                  </p>
-                );
-              }
-              if (model === 'gpt-6-luna') {
-                return (
-                  <p style={{ fontSize: '0.75rem', color: '#818cf8', marginTop: '0.4rem', lineHeight: 1.4 }}>
-                    ⚡ <strong>GPT-6 Luna:</strong> High-efficiency, low-latency GPT-6 model for rapid iteration.
-                  </p>
-                );
-              }
-              return null;
-            })()}
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-              Reasoning Depth
-            </label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {['low', 'medium', 'high', 'max'].map((r) => (
-                <button
-                  key={r}
-                  className={reasoningEffort === r ? 'btn-primary' : 'btn-secondary'}
-                  style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem', textTransform: 'capitalize' }}
-                  onClick={() => setReasoningEffort(r)}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Section 3: Workspace */}
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-            <Folder size={16} /> Workspace Directory
-          </div>
-          <p style={{ fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
-            The dedicated folder on this computer where {activeDot?.name} writes code, reads files, and runs tools.
-          </p>
-
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="text"
-              value={workspacePath}
-              onChange={(e) => setWorkspacePath(e.target.value)}
-              style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '0.825rem' }}
-            />
-            <button className="btn-secondary" onClick={handlePickFolder}>
-              Browse...
-            </button>
-          </div>
-        </div>
-
-        {/* Section 4: Permissions */}
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-            <Shield size={16} /> Permissions & Guardrails
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)' }}>Workspace File Access</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Allow Dot to modify files or keep it strictly read-only.</div>
-              </div>
-              <select
-                value={files}
-                onChange={(e) => setFiles(e.target.value as FileAccess)}
-                style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}
+            <div style={{ marginTop: 22 }}>
+              <SettingRow
+                title="Let me know when work needs me"
+                description="Send a desktop notification when a task finishes or needs approval. App notifications also need to be enabled."
               >
-                <option value="write">Read & Write</option>
-                <option value="read">Read-Only</option>
-              </select>
+                <Toggle
+                  checked={draft.notify}
+                  label="Dot notifications"
+                  onChange={(value) => update("notify", value)}
+                />
+              </SettingRow>
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)' }}>Shell Command Execution</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Allow running commands (compilers, git, npm, python).</div>
-              </div>
-              <input type="checkbox" checked={shell} onChange={(e) => setShell(e.target.checked)} />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)' }}>Web Search & Browsing</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Allow querying DuckDuckGo, fetching docs, and web access.</div>
-              </div>
-              <input type="checkbox" checked={web} onChange={(e) => setWeb(e.target.checked)} />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)' }}>Human Approval Policy</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ask for your confirmation before running shell or write actions.</div>
-              </div>
-              <select
-                value={approval}
-                onChange={(e) => setApproval(e.target.value as 'never' | 'ask')}
-                style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}
-              >
-                <option value="never">Autonomous (Never Ask)</option>
-                <option value="ask">Ask Confirmation</option>
-              </select>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: '0.5rem',
-                borderTop: '1px solid var(--border-subtle)'
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '0.825rem', fontWeight: 600, color: '#f87171', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <AlertTriangle size={13} /> Allow Access Outside Workspace
+          </PanelSection>
+          <PanelSection
+            title="Connections"
+            description="Your dot works through the access available in this desktop app."
+          >
+            <div className="profile-connections">
+              <div className="profile-connection">
+                <Monitor size={18} />
+                <div>
+                  <strong>
+                    This computer{" "}
+                    <span className="profile-tag is-green">Local</span>
+                  </strong>
+                  <p>
+                    Your workspace and enabled tools are available while Dots is
+                    running.
+                  </p>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Disables workspace sandboxing. Only enable for trusted tasks.</div>
               </div>
-              <input type="checkbox" checked={outsideWorkspace} onChange={(e) => setOutsideWorkspace(e.target.checked)} />
+              <div className="profile-connection">
+                <Cpu size={18} />
+                <div>
+                  <strong>{provider?.label || "Model provider"}</strong>
+                  <p>
+                    {provider?.available
+                      ? "Connected and available for tasks."
+                      : provider?.reason ||
+                        "Connect a provider in app settings."}
+                  </p>
+                  {!provider?.available && (
+                    <button
+                      className="profile-text-button"
+                      onClick={() => setShowSettingsModal(true)}
+                    >
+                      Open account settings
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="profile-connection">
+                <Globe size={18} />
+                <div>
+                  <strong>Web research</strong>
+                  <p>
+                    {draft.permissions.web
+                      ? "Search and browse tools enabled."
+                      : "Web tools are disabled in permissions."}
+                  </p>
+                </div>
+              </div>
+              <div className="profile-connection">
+                <MessageSquare size={18} />
+                <div>
+                  <strong>Slack, Teams & calls</strong>
+                  <p>
+                    Not connected. This local app does not provide hosted
+                    messaging or voice channels.
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Section 5: Budget */}
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-            <Clock size={16} /> Execution Budgets
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.85rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Max Run Duration (Minutes)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="720"
-                value={maxMinutes}
-                onChange={(e) => setMaxMinutes(Number(e.target.value))}
-                style={{ width: '100%' }}
+          </PanelSection>
+        </>
+      )}
+      {tab === "permissions" && (
+        <>
+          <PanelSection
+            title="Tools and access"
+            description="Give your dot the access it needs for its responsibilities."
+          >
+            <SettingRow
+              title="Workspace files"
+              description="Read existing files, or allow creating and editing files in the workspace."
+            >
+              <select
+                aria-label="Workspace file access"
+                value={draft.permissions.files}
+                onChange={(event) =>
+                  permission("files", event.target.value as "read" | "write")
+                }
+              >
+                <option value="write">Read & write</option>
+                <option value="read">Read only</option>
+              </select>
+            </SettingRow>
+            <SettingRow
+              title="Run commands"
+              description={draft.providerId === CODEX_PROVIDER_ID ? "Use tools such as Git, project builds, tests, and scripts within Codex’s sandbox." : "Run commands on this computer. Compatible-provider commands are not isolated by an operating-system sandbox and can access files beyond the workspace."}
+            >
+              <Toggle
+                label="Run shell commands"
+                checked={draft.permissions.shell}
+                onChange={(value) => permission("shell", value)}
               />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.785rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Max Tool Steps per Task
-              </label>
-              <input
-                type="number"
-                min="5"
-                max="500"
-                value={maxSteps}
-                onChange={(e) => setMaxSteps(Number(e.target.value))}
-                style={{ width: '100%' }}
+            </SettingRow>
+            <SettingRow
+              title="Search and browse the web"
+              description="Research live information and read websites."
+            >
+              <Toggle
+                label="Web access"
+                checked={draft.permissions.web}
+                onChange={(value) => permission("web", value)}
               />
+            </SettingRow>
+            <SettingRow
+              title="File access outside the workspace"
+              description="Allow file tools beyond this dot’s dedicated folder. For Codex, this also expands its sandbox access."
+            >
+              <Toggle
+                label="Access outside workspace"
+                checked={draft.permissions.outsideWorkspace}
+                onChange={(value) => permission("outsideWorkspace", value)}
+              />
+            </SettingRow>
+            <SettingRow
+              title="Action review"
+              description="For compatible API providers, ask before commands and file changes."
+            >
+              <select
+                aria-label="Action review policy"
+                value={draft.permissions.approval}
+                onChange={(event) =>
+                  permission("approval", event.target.value as "ask" | "never")
+                }
+              >
+                <option value="ask">Ask before taking action</option>
+                <option value="never">Proceed within permissions</option>
+              </select>
+            </SettingRow>
+          </PanelSection>
+          <PanelSection
+            title="Custom rules"
+            description="Apply a rule to a tool, optionally matching a phrase in its arguments."
+          >
+            <div className="profile-rule profile-rule-header">
+              <span>Tool</span>
+              <span>Behavior</span>
+              <span>Match text (optional)</span>
             </div>
-          </div>
-        </div>
-
-        {/* Section 6: Maintenance & Danger Zone */}
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-dim)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
-            Danger Zone
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '0.85rem', borderBottom: '1px solid var(--border-subtle)' }}>
-            <div>
-              <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)' }}>Reset Session Thread</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Clears the chat conversation history without affecting memory or files.</div>
-            </div>
-            <button className="btn-secondary" onClick={handleResetSession} style={{ fontSize: '0.8rem' }}>
-              <RotateCcw size={13} /> Reset Thread
+            {draft.permissions.rules.map((rule) => (
+              <div className="profile-rule" key={rule.id}>
+                <select
+                  aria-label="Rule tool"
+                  value={rule.action}
+                  onChange={(event) =>
+                    patchRule(rule.id, { action: event.target.value })
+                  }
+                >
+                  {RULE_TOOLS.map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  ))}
+                  {!RULE_TOOLS.some(([id]) => id === rule.action) && <option value={rule.action}>{rule.action}</option>}
+                </select>
+                <select
+                  aria-label="Rule behavior"
+                  value={rule.effect}
+                  onChange={(event) =>
+                    patchRule(rule.id, {
+                      effect: event.target.value as PermissionRule["effect"],
+                    })
+                  }
+                >
+                  <option value="ask">Ask first</option>
+                  <option value="allow">Allow</option>
+                  <option value="deny">Prevent</option>
+                </select>
+                <input
+                  aria-label="Match text"
+                  value={rule.pattern || ""}
+                  placeholder="e.g. delete or production"
+                  onChange={(event) =>
+                    patchRule(rule.id, { pattern: event.target.value })
+                  }
+                />
+                <button
+                  className="btn-ghost profile-icon-button"
+                  aria-label="Remove rule"
+                  onClick={() =>
+                    permission(
+                      "rules",
+                      draft.permissions.rules.filter(
+                        (item) => item.id !== rule.id,
+                      ),
+                    )
+                  }
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+            <button
+              className="btn-secondary"
+              disabled={draft.permissions.rules.length >= 50}
+              style={{ marginTop: 7 }}
+              onClick={() =>
+                permission("rules", [
+                  ...draft.permissions.rules,
+                  { id: crypto.randomUUID(), action: "*", effect: "ask" },
+                ])
+              }
+            >
+              <Plus size={13} /> Add rule
             </button>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.85rem' }}>
+          </PanelSection>
+          <div className="profile-note">
+            <Info size={16} />
             <div>
-              <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--accent-danger)' }}>Delete Dot</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Permanently removes this Dot from the app.</div>
+              <strong>
+                {draft.providerId === CODEX_PROVIDER_ID
+                  ? "Codex permission behavior"
+                  : "Rules stay within enabled permissions"}
+              </strong>
+              <br />
+              {draft.providerId === CODEX_PROVIDER_ID
+                ? "Codex runs with its own sandbox and cannot enforce this app’s per-tool review. Codex tasks are blocked when Ask before taking action or a custom Ask/Prevent rule is selected. Choose Proceed within permissions and remove those rules, or switch to a compatible API provider to use them."
+                : "Custom rules cannot enable a disabled tool or expand folder access. Review requests appear with the task’s activity."}
             </div>
-            <button className="btn-danger" onClick={handleDeleteDot} style={{ fontSize: '0.8rem' }}>
-              <Trash2 size={13} /> Delete Dot
-            </button>
           </div>
-        </div>
-      </div>
+        </>
+      )}
+      {tab === "runtime" && (
+        <>
+          <PanelSection
+            title="Model and reasoning"
+            description="Use your connected account or a compatible API provider."
+          >
+            <div className="profile-stack">
+              <Field label="Provider">
+                <select
+                  value={draft.providerId}
+                  onChange={(event) => {
+                    update("providerId", event.target.value);
+                    update("model", "auto");
+                  }}
+                >
+                  {providerOptions.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                      {!item.available ? " · Unavailable" : ""}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {provider && !provider.available && (
+                <div className="profile-note is-warning">
+                  <Info size={15} />
+                  <div>
+                    {provider.reason || "This provider is not connected."}{" "}
+                    <button
+                      className="profile-text-button"
+                      onClick={() => setShowSettingsModal(true)}
+                    >
+                      Connect in settings
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="profile-form-grid">
+                <Field label={loadingModels ? "Model · Loading…" : "Model"}>
+                  <select
+                    value={draft.model}
+                    onChange={(event) => update("model", event.target.value)}
+                  >
+                    <option value="auto">
+                      Automatic · Provider recommended
+                    </option>
+                    {groupModels(models).map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.models.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.label}
+                            {item.isDefault ? " · Default" : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                    {draft.model !== "auto" &&
+                      !models.some((item) => item.id === draft.model) && (
+                        <option value={draft.model}>
+                          {draft.model} · Custom
+                        </option>
+                      )}
+                  </select>
+                </Field>
+                <Field
+                  label="Custom model ID"
+                  hint="Use an ID supported by the selected provider."
+                >
+                  <input
+                    value={draft.model === "auto" ? "" : draft.model}
+                    placeholder="Provider default"
+                    onChange={(event) =>
+                      update("model", event.target.value.trim() || "auto")
+                    }
+                  />
+                </Field>
+              </div>
+              {modelError && <p className="settings-error">{modelError}</p>}
+              {selectedModel?.description && (
+                <p className="profile-count" style={{ lineHeight: 1.7 }}>
+                  {selectedModel.description}
+                </p>
+              )}
+              <Field label="Reasoning effort">
+                <div
+                  className="profile-choice-group"
+                  role="group"
+                  aria-label="Reasoning effort"
+                >
+                  {[...new Set([...efforts, draft.reasoningEffort])].map(
+                    (effort) => (
+                      <button
+                        type="button"
+                        key={effort}
+                        aria-pressed={draft.reasoningEffort === effort}
+                        className={
+                          draft.reasoningEffort === effort ? "is-selected" : ""
+                        }
+                        onClick={() => update("reasoningEffort", effort)}
+                      >
+                        {effort.charAt(0).toUpperCase() + effort.slice(1)}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </Field>
+            </div>
+          </PanelSection>
+          <PanelSection
+            title="A place for your work"
+            description="Your dot keeps its project files in a dedicated folder on this computer."
+          >
+            <Field label="Workspace folder">
+              <div className="profile-inline">
+                <input
+                  value={draft.workspacePath}
+                  onChange={(event) =>
+                    update("workspacePath", event.target.value)
+                  }
+                />
+                <button className="btn-secondary" onClick={pickFolder}>
+                  <Folder size={14} /> Browse
+                </button>
+              </div>
+            </Field>
+            <div className="profile-note" style={{ marginTop: 16 }}>
+              <Monitor size={15} />
+              <div>
+                Keep this computer on and Dots running for scheduled work.
+                Closing to the system tray is supported when background mode is
+                enabled.
+              </div>
+            </div>
+          </PanelSection>
+          <PanelSection title="Limits per task">
+            <div className="profile-form-grid">
+              <Field label="Maximum duration (minutes)">
+                <input
+                  type="number"
+                  min={1}
+                  max={720}
+                  value={draft.budget.maxMinutes}
+                  onChange={(event) =>
+                    update("budget", {
+                      ...draft.budget,
+                      maxMinutes: Number(event.target.value),
+                    })
+                  }
+                />
+              </Field>
+              <Field
+                label="Maximum tool steps"
+                hint="Applies to compatible API providers."
+              >
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={draft.budget.maxSteps}
+                  onChange={(event) =>
+                    update("budget", {
+                      ...draft.budget,
+                      maxSteps: Number(event.target.value),
+                    })
+                  }
+                />
+              </Field>
+            </div>
+          </PanelSection>
+          <PanelSection title="Manage your dot" className="profile-danger">
+            <SettingRow
+              title="Start a fresh session"
+              description="Reset provider context for future tasks. Saved activity, memory, and files remain available."
+            >
+              <button
+                className="btn-secondary"
+                onClick={reset}
+                disabled={resetting}
+              >
+                <RotateCcw size={13} /> Reset session
+              </button>
+            </SettingRow>
+            <SettingRow
+              title="Delete this dot"
+              description="Remove this dot, its activity, memory, and schedules."
+            >
+              <button
+                className="btn-danger"
+                onClick={() => setDeleteOpen(!deleteOpen)}
+              >
+                <Trash2 size={13} /> Delete
+              </button>
+            </SettingRow>
+            {deleteOpen && (
+              <div className="profile-delete-confirm">
+                <p>
+                  This permanently removes {activeDot?.name} and its saved data.
+                  Type the dot’s name to confirm.
+                </p>
+                <Field label="Dot name">
+                  <input
+                    value={deleteName}
+                    onChange={(event) => setDeleteName(event.target.value)}
+                    placeholder={activeDot?.name}
+                  />
+                </Field>
+                <label
+                  className="profile-check-label"
+                  style={{ marginTop: 14 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={deleteWorkspace}
+                    onChange={(event) =>
+                      setDeleteWorkspace(event.target.checked)
+                    }
+                  />{" "}
+                  Also delete the workspace folder and its files
+                </label>
+                <div className="profile-actions">
+                  <button
+                    className="btn-ghost"
+                    onClick={() => setDeleteOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-danger"
+                    disabled={deleting || deleteName !== activeDot?.name}
+                    onClick={remove}
+                  >
+                    {deleting ? "Deleting…" : "Permanently delete dot"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </PanelSection>
+        </>
+      )}
     </div>
   );
-};
+}

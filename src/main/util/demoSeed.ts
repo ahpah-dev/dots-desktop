@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { DEFAULT_PERMISSIONS, type DotTask, type Followup } from '@shared/types';
 
 export function seedDemoEnvironment(dir: string): void {
   mkdirSync(dir, { recursive: true });
@@ -14,7 +15,7 @@ export function seedDemoEnvironment(dir: string): void {
     useCodexUserConfig: false,
     codexPathOverride: '',
     defaultWorkspaceRoot: join(dir, 'workspaces'),
-    theme: 'dark',
+    theme: 'light',
     onboardingComplete: true
   };
   writeFileSync(join(dir, 'settings.json'), JSON.stringify(settings, null, 2), 'utf-8');
@@ -29,26 +30,17 @@ export function seedDemoEnvironment(dir: string): void {
 
   const dot1 = {
     id: 'dot-demo-1',
-    name: 'Autonomous Engineer',
+    name: 'Atlas',
     description: 'Senior full-stack autonomous software engineer powered by GPT-6.1 Sol.',
-    color: '#6366f1',
+    color: '#557b66',
     emoji: '⚡',
+    avatar: { shape: 'squircle', eyes: 'happy', glasses: 'round', accessory: 'none' },
     instructions: 'Senior software engineer. Specializes in TypeScript, full-stack architecture, refactoring, and verifying unit test suites.',
     providerId: 'codex',
     model: 'gpt-6.1-sol',
     reasoningEffort: 'high',
     workspacePath: join(dir, 'workspaces', 'autonomous-engineer'),
-    permissions: {
-      allowedCommands: [],
-      blockedCommands: [],
-      maxFileSizeMb: 10,
-      autoApproveSafeEdits: true,
-      requireConfirmationForFileDelete: false,
-      requireConfirmationForShellCommands: false,
-      webBrowsingAllowed: true,
-      webDomainsAllowlist: [],
-      webDomainsBlocklist: []
-    },
+    permissions: DEFAULT_PERMISSIONS,
     budget: { maxMinutes: 30, maxSteps: 50 },
     schedule: null,
     paused: false,
@@ -58,6 +50,7 @@ export function seedDemoEnvironment(dir: string): void {
     lastRunAt: Date.now() - 300000
   };
   writeFileSync(join(dot1Dir, 'dot.json'), JSON.stringify(dot1, null, 2), 'utf-8');
+  mkdirSync(dot1.workspacePath, { recursive: true });
   writeFileSync(
     join(dot1Dir, 'memory.md'),
     `# Agent Memory\n\n- Project uses TypeScript 5.7 and Node.js 22 LTS.\n- OAuth2 PKCE challenge generation utilizes SHA-256 with 43-128 char code verifiers.\n- Refresh token rotation requires immediate family revocation upon duplicate reuse.\n`,
@@ -156,25 +149,16 @@ export function seedDemoEnvironment(dir: string): void {
   mkdirSync(dot2Dir, { recursive: true });
   const dot2 = {
     id: 'dot-demo-2',
-    name: 'Market Intelligence',
+    name: 'Scout',
     description: 'Gathers live competitive intelligence, benchmark trends, and monitors industry reports.',
-    color: '#10b981',
+    color: '#8eab7f',
     emoji: '🔍',
+    avatar: { shape: 'blob', eyes: 'happy', glasses: 'none', accessory: 'sprout' },
     instructions: 'Live market researcher. Uses headless web browsing and synthesis tools.',
     providerId: 'codex',
     model: 'gpt-6-astra',
     workspacePath: join(dir, 'workspaces', 'market-intelligence'),
-    permissions: {
-      allowedCommands: [],
-      blockedCommands: [],
-      maxFileSizeMb: 10,
-      autoApproveSafeEdits: true,
-      requireConfirmationForFileDelete: false,
-      requireConfirmationForShellCommands: false,
-      webBrowsingAllowed: true,
-      webDomainsAllowlist: [],
-      webDomainsBlocklist: []
-    },
+    permissions: { ...DEFAULT_PERMISSIONS, shell: false },
     budget: { maxMinutes: 20, maxSteps: 30 },
     schedule: null,
     paused: false,
@@ -184,36 +168,29 @@ export function seedDemoEnvironment(dir: string): void {
     lastRunAt: Date.now() - 1200000
   };
   writeFileSync(join(dot2Dir, 'dot.json'), JSON.stringify(dot2, null, 2), 'utf-8');
+  mkdirSync(dot2.workspacePath, { recursive: true });
 
   // 4. Dot 3: Release Watchdog
   const dot3Dir = join(dotsDir, 'dot-demo-3');
   mkdirSync(dot3Dir, { recursive: true });
   const dot3 = {
     id: 'dot-demo-3',
-    name: 'Release Watchdog',
+    name: 'Willow',
     description: 'Automated CI/CD health auditor running scheduled background smoke tests.',
-    color: '#f59e0b',
+    color: '#b5a56d',
     emoji: '⏱️',
+    avatar: { shape: 'circle', eyes: 'dot', glasses: 'square', accessory: 'headphones' },
     instructions: 'Autonomous release monitor. Checks commit statuses, runs smoke tests, and notifies on failure.',
     providerId: 'codex',
     model: 'gpt-5.6-sol',
     workspacePath: join(dir, 'workspaces', 'release-watchdog'),
-    permissions: {
-      allowedCommands: [],
-      blockedCommands: [],
-      maxFileSizeMb: 10,
-      autoApproveSafeEdits: true,
-      requireConfirmationForFileDelete: false,
-      requireConfirmationForShellCommands: false,
-      webBrowsingAllowed: true,
-      webDomainsAllowlist: [],
-      webDomainsBlocklist: []
-    },
+    permissions: DEFAULT_PERMISSIONS,
     budget: { maxMinutes: 15, maxSteps: 20 },
     schedule: {
-      kind: 'daily',
-      time: '09:00',
-      weekdaysOnly: true
+      enabled: false,
+      spec: { kind: 'daily', time: '09:00', days: [1, 2, 3, 4, 5] },
+      prompt: 'Review release health and report any failures.',
+      continueSession: true
     },
     paused: false,
     notify: true,
@@ -222,4 +199,18 @@ export function seedDemoEnvironment(dir: string): void {
     lastRunAt: Date.now() - 14400000
   };
   writeFileSync(join(dot3Dir, 'dot.json'), JSON.stringify(dot3, null, 2), 'utf-8');
+  mkdirSync(dot3.workspacePath, { recursive: true });
+
+  const now = Date.now();
+  const tasks: DotTask[] = [
+    { id: 'task-demo-project', dotId: dot1.id, title: 'Keep the project moving', prompt: 'Review project progress, identify the next useful improvement, and report what needs attention.', status: 'active', schedule: null, continueSession: true, conversationId: 'conversation-demo-project', nextRunAt: null, lastRunId: run1.id, lastRunAt: run1.endedAt, createdAt: now - 86400000, updatedAt: now },
+    { id: 'task-demo-quality', dotId: dot1.id, title: 'Weekly quality review', prompt: 'Review tests and technical debt, then prepare a concise quality report with specific next steps.', status: 'active', schedule: { kind: 'daily', time: '10:00', days: [1] }, continueSession: true, conversationId: 'conversation-demo-quality', nextRunAt: now + 6 * 86400000, createdAt: now - 3600000, updatedAt: now }
+  ];
+  const followups: Followup[] = [
+    { id: 'followup-demo-review', dotId: dot1.id, prompt: 'Check the authentication migration results and summarize any issues needing attention.', dueAt: now + 2 * 3600000, status: 'pending', conversationId: 'conversation-demo-project', taskId: 'task-demo-project', createdAt: now - 1800000, updatedAt: now }
+  ];
+  writeFileSync(join(dot1Dir, 'responsibilities.json'), JSON.stringify({ tasks, followups }, null, 2), 'utf-8');
+  writeFileSync(join(dot2Dir, 'responsibilities.json'), JSON.stringify({ tasks: [
+    { id: 'task-demo-market', dotId: dot2.id, title: 'Monday market briefing', prompt: 'Track competitor releases and industry changes. Summarize meaningful changes with primary sources.', status: 'active', schedule: { kind: 'daily', time: '09:00', days: [1] }, continueSession: true, conversationId: 'conversation-demo-market', nextRunAt: now + 6 * 86400000, createdAt: now - 7200000, updatedAt: now }
+  ], followups: [] }, null, 2), 'utf-8');
 }

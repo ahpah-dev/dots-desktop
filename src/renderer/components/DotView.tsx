@@ -1,180 +1,221 @@
-import React from 'react';
+import React from "react";
 import {
   MessageSquare,
   Brain,
   Folder,
   Clock,
-  Settings as SettingsIcon,
+  SlidersHorizontal,
   Play,
   Pause,
-  FolderOpen,
-  Cpu
-} from 'lucide-react';
-import { useApp, type TabType } from '../context/AppContext';
-import { RunTimeline } from './RunTimeline';
-import { RunHistory } from './RunHistory';
-import { DotMemory } from './DotMemory';
-import { DotFiles } from './DotFiles';
-import { DotSchedule } from './DotSchedule';
-import { DotSettings } from './DotSettings';
+  ArrowLeft,
+  ArrowUpRight,
+  Target,
+  Monitor,
+  ShieldCheck,
+  Plus,
+  Plug,
+} from "lucide-react";
+import { useApp, type TabType } from "../context/AppContext";
+import { RunTimeline } from "./RunTimeline";
+import { RunHistory } from "./RunHistory";
+import { DotMemory } from "./DotMemory";
+import { DotFiles } from "./DotFiles";
+import { DotSchedule } from "./DotSchedule";
+import { DotSettings } from "./DotSettings";
+import { DotAvatar } from "./DotAvatar";
+import { Responsibilities } from "./Responsibilities";
 
 export const DotView: React.FC = () => {
-  const { activeDot, activeTab, setActiveTab, showToast } = useApp();
-
-  if (!activeDot) {
+  const {
+    activeDot,
+    activeTab,
+    setActiveTab,
+    showToast,
+    setView,
+    settings,
+    setSelectedRunId,
+  } = useApp();
+  if (!activeDot)
     return (
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--text-dim)',
-          padding: '2rem'
-        }}
-      >
-        <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>✨</div>
-        <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.25rem' }}>
-          Select or Create a Dot
-        </div>
-        <div style={{ fontSize: '0.825rem' }}>
-          Select a Dot from the sidebar to view its tasks, memory, files, and schedules.
-        </div>
+      <div className="empty-state">
+        <Target size={32} />
+        <h2>Choose your teammate</h2>
+        <p>Open a dot to start a conversation and keep work moving.</p>
+        <button className="btn-primary" onClick={() => setView("home")}>
+          Back to overview
+        </button>
       </div>
     );
-  }
-
   const togglePause = async () => {
     try {
       await window.dots.api.setDotPaused(activeDot.id, !activeDot.paused);
-      showToast(activeDot.paused ? `Resumed "${activeDot.name}"` : `Paused "${activeDot.name}"`, 'info');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to toggle pause', 'error');
+    } catch (e) {
+      showToast(
+        e instanceof Error ? e.message : "Could not change status",
+        "error",
+      );
     }
   };
-
-  const handleOpenFolder = async () => {
-    try {
-      await window.dots.api.openPath(activeDot.workspacePath);
-    } catch (err: any) {
-      showToast(err.message || 'Failed to open workspace folder', 'error');
-    }
-  };
-
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
-    { id: 'tasks', label: 'Tasks & Activity', icon: <MessageSquare size={14} /> },
-    { id: 'memory', label: 'Memory', icon: <Brain size={14} /> },
-    { id: 'files', label: 'Files', icon: <Folder size={14} /> },
-    { id: 'schedule', label: 'Schedule', icon: <Clock size={14} /> },
-    { id: 'settings', label: 'Settings', icon: <SettingsIcon size={14} /> }
+    { id: "tasks", label: "Conversation", icon: <MessageSquare size={15} /> },
+    {
+      id: "responsibilities",
+      label: "Responsibilities",
+      icon: <Target size={15} />,
+    },
+    { id: "memory", label: "Memory", icon: <Brain size={15} /> },
+    { id: "files", label: "Files", icon: <Folder size={15} /> },
+    { id: "schedule", label: "Scheduled", icon: <Clock size={15} /> },
+    { id: "settings", label: "Profile", icon: <SlidersHorizontal size={15} /> },
   ];
-
   return (
-    <div className="dot-workspace" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Top Header Bar */}
-      <div
-        className="workspace-header"
-        style={{
-          padding: '1rem 1.25rem 0.5rem',
-          borderBottom: '1px solid var(--border-subtle)',
-          background: 'var(--bg-card)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem'
-        }}
-      >
-        {/* Main Title Row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-            <div
-              style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: 'var(--radius-full)',
-                background: `${activeDot.color}22`,
-                border: `2px solid ${activeDot.color}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.25rem',
-                flexShrink: 0
-              }}
+    <main className="dot-workspace studio-dot-workspace">
+      <header className="studio-workspace-header">
+        <div className="workspace-breadcrumb">
+          <button
+            className="icon-button"
+            aria-label="Back to overview"
+            onClick={() => setView("home")}
+          >
+            <ArrowLeft size={17} />
+          </button>
+          <span>Your dots</span>
+          <span>/</span>
+          <strong>{activeDot.name}</strong>
+          <div className="header-spacer" />
+          <button className="btn-ghost" onClick={togglePause}>
+            {activeDot.paused ? <Play size={14} /> : <Pause size={14} />}{" "}
+            {activeDot.paused ? "Resume dot" : "Pause dot"}
+          </button>
+        </div>
+        <div className="workspace-tabs" aria-label="Dot sections">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              className={`workspace-tab ${activeTab === t.id ? "is-active" : ""}`}
+              aria-pressed={activeTab === t.id}
+              onClick={() => setActiveTab(t.id)}
             >
-              {activeDot.emoji}
+              {t.icon}
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </header>
+      <div className="dot-body">
+        <div className="dot-primary" key={activeDot.id}>
+          {activeTab === "tasks" && (
+            <div className="conversation-layout">
+              <RunTimeline dotId={activeDot.id} />
+              <RunHistory />
             </div>
-
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <h1 style={{ fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {activeDot.name}
-                </h1>
-                <span className={`pill pill-${activeDot.status}`} style={{ fontSize: '0.7rem' }}>
-                  {activeDot.status === 'running' && <span className="spin">◓</span>}
-                  {activeDot.status}
-                </span>
-              </div>
-
-              <div style={{ fontSize: '0.775rem', color: 'var(--text-dim)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '600px' }}>
-                {activeDot.description || 'Autonomous Dot agent'}
-              </div>
+          )}
+          {activeTab === "responsibilities" && (
+            <Responsibilities dotId={activeDot.id} />
+          )}
+          {activeTab === "memory" && <DotMemory dotId={activeDot.id} />}
+          {activeTab === "files" && <DotFiles dotId={activeDot.id} />}
+          {activeTab === "schedule" && <DotSchedule dotId={activeDot.id} />}
+          {activeTab === "settings" && <DotSettings dotId={activeDot.id} />}
+        </div>
+        {activeTab === "tasks" && (
+          <aside className="dot-profile-rail">
+            <div className="profile-mascot">
+              <DotAvatar dot={activeDot} size={116} animated />
             </div>
-          </div>
-
-          {/* Action buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            <h2>{activeDot.name}</h2>
+            <span className="dot-handle">
+              @{activeDot.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-dot
+            </span>
+            <span
+              className={`profile-status ${activeDot.paused ? "paused" : ""}`}
+            >
+              <i className={`status-dot status-${activeDot.status}`} />
+              {activeDot.status === "running"
+                ? "Working on it"
+                : activeDot.status === "awaiting-approval"
+                  ? "Needs your input"
+                  : activeDot.paused
+                    ? "Taking a pause"
+                    : "Here to help"}
+            </span>
+            <p>
+              {activeDot.description ||
+                "Your persistent teammate for the things that matter."}
+            </p>
             <button
               className="btn-secondary"
-              style={{ fontSize: '0.785rem', padding: '0.35rem 0.65rem' }}
-              onClick={handleOpenFolder}
-              title="Open workspace directory in file explorer"
+              onClick={() => setActiveTab("settings")}
             >
-              <FolderOpen size={13} /> Open Folder
+              <SlidersHorizontal size={14} /> Personalize your dot
             </button>
-
-            <button
-              className={activeDot.paused ? 'btn-primary' : 'btn-secondary'}
-              style={{ fontSize: '0.785rem', padding: '0.35rem 0.65rem' }}
-              onClick={togglePause}
-            >
-              {activeDot.paused ? <Play size={13} /> : <Pause size={13} />}
-              {activeDot.paused ? 'Resume' : 'Pause'}
-            </button>
-          </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="workspace-tabs" aria-label="Dot sections">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`workspace-tab${isActive ? ' is-active' : ''}`}
-                aria-pressed={isActive}
-              >
-                {tab.icon}
-                {tab.label}
+            <div className="rail-section">
+              <span className="eyebrow">WORKS WITH</span>
+              <button onClick={() => setView("connections")}>
+                <Plug size={16} />
+                <span>
+                  {activeDot.providerId === "codex"
+                    ? "OpenAI Codex"
+                    : "Custom AI provider"}
+                  <small>
+                    {activeDot.model === "auto"
+                      ? "Recommended model"
+                      : activeDot.model}
+                  </small>
+                </span>
+                <ArrowUpRight size={13} />
               </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      <div className="workspace-content" key={activeTab}>
-        {activeTab === 'tasks' && (
-          <>
-            <RunTimeline dotId={activeDot.id} />
-            <RunHistory />
-          </>
+            </div>
+            <div className="rail-section">
+              <span className="eyebrow">COMPUTER</span>
+              <button
+                onClick={() =>
+                  window.dots.api
+                    .openPath(activeDot.workspacePath)
+                    .catch((e) => showToast(e.message, "error"))
+                }
+              >
+                <Monitor size={16} />
+                <span>
+                  This computer
+                  <small>
+                    {settings?.runInBackground
+                      ? "Runs in the system tray"
+                      : "Runs while Dots is open"}
+                  </small>
+                </span>
+                <ArrowUpRight size={13} />
+              </button>
+            </div>
+            <div className="rail-section">
+              <span className="eyebrow">YOUR CONTROL</span>
+              <button onClick={() => setActiveTab("settings")}>
+                <ShieldCheck size={16} />
+                <span>
+                  Permissions & boundaries
+                  <small>
+                    {activeDot.permissions.outsideWorkspace
+                      ? "Extended computer access"
+                      : "Workspace access"}
+                  </small>
+                </span>
+                <ArrowUpRight size={13} />
+              </button>
+            </div>
+            <button
+              className="rail-new-chat"
+              onClick={() => setSelectedRunId(null)}
+            >
+              <Plus size={14} /> New conversation
+            </button>
+            <div className="rail-footnote">
+              Remembers what matters.
+              <br />
+              Keeps you in the loop.
+            </div>
+          </aside>
         )}
-        {activeTab === 'memory' && <DotMemory dotId={activeDot.id} />}
-        {activeTab === 'files' && <DotFiles dotId={activeDot.id} />}
-        {activeTab === 'schedule' && <DotSchedule dotId={activeDot.id} />}
-        {activeTab === 'settings' && <DotSettings dotId={activeDot.id} />}
       </div>
-    </div>
+    </main>
   );
 };

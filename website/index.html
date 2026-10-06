@@ -1,537 +1,64 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dots Desktop — Persistent Autonomous AI Agents with OpenAI Codex</title>
-  <meta name="description" content="Standalone desktop application for persistent autonomous AI agents (Dots) with workspaces, long-term memory, background scheduling, and OpenAI Codex support.">
-  <link rel="icon" type="image/x-icon" href="assets/icon.ico">
-  <link rel="icon" type="image/png" href="assets/icon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f9f5">
+  <title>Dots Desktop — A little dot. A lot less on your plate.</title>
+  <meta name="description" content="Meet Dots Desktop 2.0: personal AI teammates with ongoing responsibilities, durable memory, local workspaces, and background routines. Download for Windows.">
+  <meta property="og:title" content="Dots Desktop 2.0 — Your work, moving forward.">
+  <meta property="og:description" content="A calmer home for personal AI teammates. Assign work, keep the context, and come back to progress.">
+  <meta property="og:image" content="https://dotsdesktop.vercel.app/assets/desktop-screenshot.png">
+  <link rel="icon" href="assets/icon.ico">
   <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
 </head>
 <body>
-  <!-- Ambient background glow -->
-  <div class="glow-bg"></div>
-
-  <!-- Navigation -->
-  <header class="navbar">
-    <div class="nav-container">
-      <a href="#" class="brand">
-        <img src="assets/icon.png" alt="Dots Logo" class="brand-icon">
-        <span class="brand-name">Dots</span>
-        <span class="version-tag">v1.0.6</span>
-      </a>
-
-      <nav class="nav-links">
-        <a href="#features">Features</a>
-        <a href="#models">Models</a>
-        <a href="#preview">Interface</a>
-        <a href="#download">Download</a>
-      </nav>
-
-      <div class="nav-actions">
-        <a href="https://github.com/davidegeric-cloud/dots-desktop" target="_blank" rel="noopener noreferrer" class="btn btn-ghost github-nav-btn" aria-label="GitHub">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-          </svg>
-          <span>GitHub</span>
-        </a>
-        <a href="#download" class="btn btn-primary nav-download-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>Download</span>
-        </a>
-      </div>
-    </div>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="Dots Desktop home"><span class="brand-mark" aria-hidden="true"><i></i><i></i></span>dots<span class="brand-version">2.0</span></a>
+    <nav aria-label="Main navigation"><a href="#possibilities">Possibilities</a><a href="#workspace">Your workspace</a><a href="#questions">Good to know</a></nav>
+    <a class="button button-dark button-small" href="#download">Get Dots <span aria-hidden="true">↗</span></a>
   </header>
-
-  <!-- Hero Section -->
-  <section class="hero-section">
-    <div class="hero-container">
-      <div class="announcement-badge">
-        <span class="pulse-dot"></span>
-        <span class="badge-text">Updated for October 2026</span>
-        <span class="badge-sep">•</span>
-        <span class="badge-highlight">New: Theme-matched window controls &amp; smooth animations</span>
+  <main id="main">
+    <section class="hero">
+      <div class="hero-copy">
+        <a class="release-pill" href="https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.0"><span></span>Meet the all-new Dots Desktop 2.0 <b aria-hidden="true">↗</b></a>
+        <h1>A little dot.<br>A lot less on<br><em>your plate.</em></h1>
+        <p>Your own AI teammates for the things that need doing. Give them a responsibility, keep the conversation going, and come back to work that has moved forward.</p>
+        <div class="hero-actions"><a class="button button-dark" href="https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.0/Dots-Setup-2.0.0.exe"><span aria-hidden="true">↓</span>Download for Windows</a><a class="text-link" href="#workspace">Take a look around <span aria-hidden="true">→</span></a></div>
+        <div class="hero-footnote">Windows 10 &amp; 11 · Open source · Bring your Codex account or API</div>
       </div>
-
-      <h1 class="hero-title">
-        Autonomous AI agents that live on your desktop.
-      </h1>
-
-      <p class="hero-subtitle">
-        Create persistent AI workers (“Dots”) that write code, browse the web, remember context, and execute background tasks — powered natively by your local OpenAI Codex account.
-      </p>
-
-      <div class="hero-actions">
-        <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/download/v1.0.6/Dots-Setup-1.0.6.exe" class="btn btn-hero-primary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <div class="btn-text-group">
-            <span class="btn-main-text">Download for Windows</span>
-            <span class="btn-sub-text">Installer v1.0.6 (89.8 MB)</span>
-          </div>
-        </a>
-
-        <a href="https://github.com/davidegeric-cloud/dots-desktop" target="_blank" rel="noopener noreferrer" class="btn btn-hero-secondary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-          </svg>
-          <div class="btn-text-group">
-            <span class="btn-main-text">Explore Codebase</span>
-            <span class="btn-sub-text">GitHub Repository</span>
-          </div>
-        </a>
+      <div class="hero-world" aria-label="Illustration of your Dots teammates">
+        <div class="world-grid"></div>
+        <div class="orbit-label orbit-label-top"><span class="tiny-check">✓</span> Keeping the details in mind</div>
+        <div class="dot-character character-main"><div class="character-eyes"><i></i><i></i></div><div class="character-smile"></div><span class="character-blush blush-left"></span><span class="character-blush blush-right"></span></div>
+        <div class="dot-character character-small"><div class="character-eyes"><i></i><i></i></div></div>
+        <div class="dot-character character-peach"><div class="character-eyes"><i></i><i></i></div></div>
+        <div class="floating-note"><span class="note-kicker">YOUR DOT, ON IT</span><strong>Morning brief is ready.</strong><p>Three updates. One decision.<br>Everything else is taken care of.</p><div class="note-line"><span class="tiny-check">✓</span> Ready for your review</div></div>
+        <span class="world-caption">Small presence. Real progress.</span>
       </div>
-
-      <div class="system-req-pills">
-        <span class="req-item">✓ Windows 10 & 11 (64-bit)</span>
-        <span class="req-dot">•</span>
-        <span class="req-item">✓ Zero API Key Setup (Auto-Connects to Codex)</span>
-        <span class="req-dot">•</span>
-        <span class="req-item">✓ Free & MIT Licensed</span>
+    </section>
+    <div class="trust-strip"><span>Thoughtful by design.</span><p>Workspaces on your computer <i>·</i> Your context carries forward <i>·</i> You stay in control</p></div>
+    <section class="section possibilities" id="possibilities">
+      <div class="section-heading"><span class="eyebrow">A TEAM THAT GETS YOUR WORLD</span><h2>Some things are better<br>with a dot.</h2><p>A researcher. A builder. A keeper of the details. Create the teammates you need and give each one a clear purpose.</p></div>
+      <div class="possibility-grid">
+        <article class="possibility-card card-sage"><span class="mini-character sage"><i></i><i></i></span><span class="card-type">THE RESEARCHER</span><h3>Stay curious.<br> Get the clear picture.</h3><p>Research a question, compare options, and turn scattered information into something you can use.</p><div class="prompt-example">“Compare these three tools and tell me what fits our team.”</div></article>
+        <article class="possibility-card card-peach"><span class="mini-character peach"><i></i><i></i></span><span class="card-type">THE BUILDER</span><h3>From a good idea<br> to something real.</h3><p>Give your dot a project folder. Let it investigate code, make changes, run commands, and report back.</p><div class="prompt-example">“Build the new onboarding flow and check that it works.”</div></article>
+        <article class="possibility-card card-lilac"><span class="mini-character lilac"><i></i><i></i></span><span class="card-type">THE KEEPER</span><h3>Make the recurring<br> feel effortless.</h3><p>Set up a routine with a clear brief. Your dot remembers the context and handles the next check while Dots is running.</p><div class="prompt-example">“Check our project each weekday and flag anything that needs me.”</div></article>
       </div>
-    </div>
-
-    <!-- App Interactive Preview Window -->
-    <div class="preview-container" id="preview">
-      <div class="window-frame">
-        <div class="window-titlebar">
-          <div class="window-title">
-            <img src="assets/icon.png" width="14" height="14" alt="icon">
-            <span id="windowTitleText">Dots Desktop — Autonomous Agent Studio (Dark Mode)</span>
-          </div>
-          <div class="window-status">
-            <span class="status-indicator"></span>
-            <span>Codex Connected (GPT-6.1 Sol)</span>
-          </div>
-          <div class="window-controls" aria-hidden="true">
-            <span class="preview-caption-control"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M3 8h10"/></svg></span>
-            <span class="preview-caption-control"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor"><rect x="3" y="3" width="10" height="10" rx="1"/></svg></span>
-            <span class="preview-caption-control"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="m4 4 8 8m0-8-8 8"/></svg></span>
-          </div>
-        </div>
-
-        <!-- Window View & Agent Navigation -->
-        <div class="window-subbar">
-          <div class="view-switcher">
-            <button class="view-btn active" id="viewDemoBtn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              <span>Interactive Agent Studio</span>
-            </button>
-            <button class="view-btn" id="viewScreenshotBtn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-              <span>Real App Screenshot</span>
-            </button>
-          </div>
-
-          <div class="agent-switcher" id="agentSwitcher">
-            <button class="agent-chip active" data-agent="engineer">
-              <span class="chip-emoji">⚡</span>
-              <span class="chip-name">Autonomous Engineer</span>
-            </button>
-            <button class="agent-chip" data-agent="market">
-              <span class="chip-emoji">🔍</span>
-              <span class="chip-name">Market Intelligence</span>
-            </button>
-            <button class="agent-chip" data-agent="watchdog">
-              <span class="chip-emoji">⏱️</span>
-              <span class="chip-name">Release Watchdog</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- 1. Interactive Agent Workspace (Comes First) -->
-        <div class="interactive-workspace" id="interactiveWorkspace">
-          <!-- Sidebar -->
-          <div class="mock-sidebar">
-            <div class="mock-sidebar-header">
-              <div class="mock-logo">
-                <span class="mock-dot-badge"></span>
-                <span>Dots</span>
-                <span class="mock-ver">v1.0.6</span>
-              </div>
-              <button class="mock-new-btn">+ New Dot</button>
-            </div>
-
-            <div class="mock-dots-list">
-              <div class="mock-section-label">YOUR DOTS (3)</div>
-              <div class="mock-dot-row active" data-agent="engineer">
-                <span class="mock-dot-avatar bg-indigo">⚡</span>
-                <div class="mock-dot-info">
-                  <div class="mock-dot-name">Autonomous Engineer</div>
-                  <div class="mock-dot-meta">idle • GPT-6.1 Sol</div>
-                </div>
-              </div>
-              <div class="mock-dot-row" data-agent="market">
-                <span class="mock-dot-avatar bg-emerald">🔍</span>
-                <div class="mock-dot-info">
-                  <div class="mock-dot-name">Market Intelligence</div>
-                  <div class="mock-dot-meta">idle • GPT-6 Astra</div>
-                </div>
-              </div>
-              <div class="mock-dot-row" data-agent="watchdog">
-                <span class="mock-dot-avatar bg-amber">⏱️</span>
-                <div class="mock-dot-info">
-                  <div class="mock-dot-name">Release Watchdog</div>
-                  <div class="mock-dot-meta">scheduled • GPT-5.6 Sol</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="mock-sidebar-footer">
-              <div class="mock-account">
-                <span class="mock-online-dot"></span>
-                <div>
-                  <div class="mock-account-title">Codex (Pro)</div>
-                  <div class="mock-account-sub">Connected • ChatGPT Pro</div>
-                </div>
-              </div>
-              <button class="mock-gear-btn" title="Settings">⚙</button>
-            </div>
-          </div>
-
-          <!-- Main Stage -->
-          <div class="mock-main">
-            <!-- Header -->
-            <div class="mock-main-header">
-              <div class="mock-header-left">
-                <span class="mock-header-emoji" id="agentHeaderEmoji">⚡</span>
-                <div>
-                  <div class="mock-header-title-row">
-                    <h3 class="mock-agent-name" id="agentHeaderName">Autonomous Engineer</h3>
-                    <span class="mock-badge" id="agentHeaderBadge">idle</span>
-                    <span class="mock-model-pill" id="agentHeaderModel">GPT-6.1 Sol Preview</span>
-                  </div>
-                  <p class="mock-agent-desc" id="agentHeaderDesc">Senior full-stack autonomous engineer. Refactors architecture, executes terminal tasks, and verifies tests.</p>
-                </div>
-              </div>
-              <div class="mock-header-actions">
-                <button class="mock-btn-outline">Open Folder</button>
-                <button class="mock-btn-outline">Pause</button>
-              </div>
-            </div>
-
-            <!-- Tabs -->
-            <div class="mock-nav-tabs">
-              <button class="mock-tab active" data-tab="tasks">Tasks & Activity</button>
-              <button class="mock-tab" data-tab="memory">Durable Memory</button>
-              <button class="mock-tab" data-tab="schedule">Background Schedule</button>
-              <button class="mock-tab" data-tab="files">Workspace Files</button>
-            </div>
-
-            <!-- Tab Content -->
-            <div class="mock-tab-body" id="tabBody">
-              <!-- Content rendered dynamically by script.js -->
-            </div>
-
-            <!-- Bottom Prompt Input -->
-            <div class="mock-prompt-bar">
-              <div class="mock-input-field">
-                <span class="mock-input-placeholder" id="mockInputPlaceholder">Assign a task to Autonomous Engineer... (Press Ctrl+Enter to run)</span>
-              </div>
-              <div class="mock-prompt-actions">
-                <label class="mock-checkbox-label">
-                  <input type="checkbox" checked disabled>
-                  <span>Persistent Session</span>
-                </label>
-                <button class="mock-run-btn" id="simulateRunBtn">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                  <span>Simulate Run</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Real App Screenshot View (Secondary Tab) -->
-        <div class="screenshot-wrapper" id="screenshotWrapper" style="display: none;">
-          <img src="assets/desktop-screenshot.png?v=1.0.6" alt="Dots Desktop v1.0.6 with a theme-matched Windows title bar" class="app-screenshot" id="mainScreenshot">
-          <div class="screenshot-overlay">
-            <button class="expand-btn" id="expandBtn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-              </svg>
-              <span>Click to view full size</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Feature Highlights -->
-  <section class="features-section" id="features">
-    <div class="section-container">
-      <div class="section-header">
-        <h2 class="section-title">Built for authentic autonomous workflows</h2>
-        <p class="section-subtitle">
-          Dots gives every agent its own persistent workspace, long-term memory scratchpad, and sandboxed system tools.
-        </p>
-      </div>
-
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon-wrapper" style="--accent: #6366f1;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-          </div>
-          <h3 class="feature-card-title">Persistent Agent Workspaces</h3>
-          <p class="feature-card-desc">
-            Each Dot owns an isolated directory on disk, a dedicated <code>scratchpad.md</code> memory journal, and scoped permissions that persist across reboots.
-          </p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon-wrapper" style="--accent: #10b981;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
-          </div>
-          <h3 class="feature-card-title">Zero API Key Auto-Auth</h3>
-          <p class="feature-card-desc">
-            Automatically connects to your local authenticated OpenAI Codex session via official JSON-RPC. Never copy or expose API tokens manually.
-          </p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon-wrapper" style="--accent: #f59e0b;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="4 17 10 11 4 5"></polyline>
-              <line x1="12" y1="19" x2="20" y2="19"></line>
-            </svg>
-          </div>
-          <h3 class="feature-card-title">Elevated PowerShell Sandboxing</h3>
-          <p class="feature-card-desc">
-            Windows container policy configured with elevated sandbox execution. Your coding agents can run tests, inspect Git repositories, and build projects without policy blocks.
-          </p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon-wrapper" style="--accent: #ec4899;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-          </div>
-          <h3 class="feature-card-title">Background Schedules & Tray</h3>
-          <p class="feature-card-desc">
-            Runs scheduled autonomous cadences (cron / interval) when minimized or closed to the Windows system tray, protected with power suspension blocker.
-          </p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon-wrapper" style="--accent: #3b82f6;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </div>
-          <h3 class="feature-card-title">Live Web Research & Chromium</h3>
-          <p class="feature-card-desc">
-            DuckDuckGo search and sandboxed headless Chromium page extraction allow agents to browse the web, verify pricing, read documentation, and compile intelligence.
-          </p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon-wrapper" style="--accent: #8b5cf6;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-          </div>
-          <h3 class="feature-card-title">OS-Level Secure Storage</h3>
-          <p class="feature-card-desc">
-            Support for direct OpenAI-compatible endpoints (Groq, Ollama, OpenRouter). Secrets are encrypted locally using Windows DPAPI via Electron <code>safeStorage</code>.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Models Section -->
-  <section class="models-section" id="models">
-    <div class="section-container">
-      <div class="section-header">
-        <h2 class="section-title">Latest OpenAI Models Supported</h2>
-        <p class="section-subtitle">
-          Dots natively integrates with OpenAI's official October 2026 model lineup, including full control over reasoning effort.
-        </p>
-      </div>
-
-      <div class="models-table-card">
-        <table class="models-table">
-          <thead>
-            <tr>
-              <th>Model Name</th>
-              <th>API Identifier</th>
-              <th>Primary Architecture & Capabilities</th>
-              <th>Default Reasoning</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="highlight-row">
-              <td>
-                <div class="model-badge-group">
-                  <strong>GPT-6.1 Sol</strong>
-                  <span class="tag tag-default">Default</span>
-                </div>
-              </td>
-              <td><code>gpt-6.1-sol</code></td>
-              <td>Balanced flagship model optimized for agentic coding, computer workflows, and professional multi-step tasks.</td>
-              <td><span class="reasoning-pill medium">Medium (Low - Max)</span></td>
-            </tr>
-            <tr>
-              <td>
-                <div class="model-badge-group">
-                  <strong>GPT-6 Astra</strong>
-                  <span class="tag tag-flagship">Flagship</span>
-                </div>
-              </td>
-              <td><code>gpt-6-astra</code></td>
-              <td>OpenAI’s most capable model. Designed for deep multi-step reasoning, complex refactoring, and security auditing. Powers OpenAI Dots.</td>
-              <td><span class="reasoning-pill high">High (Low - Max)</span></td>
-            </tr>
-            <tr>
-              <td>
-                <div class="model-badge-group">
-                  <strong>GPT-6 Sol</strong>
-                </div>
-              </td>
-              <td><code>gpt-6-sol</code></td>
-              <td>Balanced GPT-6 foundation model tuned for developer workflows, codebase maintenance, and execution speed.</td>
-              <td><span class="reasoning-pill medium">Medium</span></td>
-            </tr>
-            <tr>
-              <td>
-                <div class="model-badge-group">
-                  <strong>GPT-6 Luna</strong>
-                  <span class="tag tag-speed">Fast</span>
-                </div>
-              </td>
-              <td><code>gpt-6-luna</code></td>
-              <td>High-throughput, low-latency agent model designed for rapid iteration, web scraping, and background monitoring.</td>
-              <td><span class="reasoning-pill low">Low - High</span></td>
-            </tr>
-            <tr>
-              <td>
-                <div class="model-badge-group">
-                  <strong>GPT-5.6 Sol / Terra</strong>
-                </div>
-              </td>
-              <td><code>gpt-5.6-sol</code></td>
-              <td>High-capacity coding and reasoning models included in the local Codex CLI suite.</td>
-              <td><span class="reasoning-pill medium">Medium</span></td>
-            </tr>
-            <tr>
-              <td>
-                <div class="model-badge-group">
-                  <strong>OpenAI o3 & o3-mini</strong>
-                </div>
-              </td>
-              <td><code>o3</code> / <code>o3-mini</code></td>
-              <td>Frontier STEM and mathematical reasoning models with configurable reasoning tokens.</td>
-              <td><span class="reasoning-pill high">High</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <!-- Download Section -->
-  <section class="download-section" id="download">
-    <div class="section-container">
-      <div class="download-box">
-        <div class="download-icon-circle">
-          <img src="assets/icon.png" alt="Dots App Icon" width="64" height="64">
-        </div>
-
-        <h2 class="download-title">Get Dots Desktop for Windows</h2>
-        <p class="download-desc">
-          Get the latest release with a polished interface, theme-matched Windows controls, and subtle animations. Install it for Windows, or clone and build from source.
-        </p>
-
-        <div class="download-button-row">
-          <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/download/v1.0.6/Dots-Setup-1.0.6.exe" class="btn btn-download-primary">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            <div class="btn-text-group">
-              <span class="btn-main-text">Download Dots Setup 1.0.6.exe</span>
-              <span class="btn-sub-text">Windows Installer • 89.8 MB</span>
-            </div>
-          </a>
-
-          <a href="https://github.com/davidegeric-cloud/dots-desktop/releases/tag/v1.0.6" target="_blank" rel="noopener noreferrer" class="btn btn-download-secondary">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            <span>Release Notes</span>
-          </a>
-        </div>
-
-        <div class="quick-terminal">
-          <div class="terminal-header">
-            <span>Or build from source</span>
-            <button class="copy-btn" id="copyCloneBtn">Copy</button>
-          </div>
-          <pre><code>git clone https://github.com/davidegeric-cloud/dots-desktop.git
-cd dots-desktop
-npm install
-npm run dist</code></pre>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Image Lightbox Modal -->
-  <div class="lightbox-modal" id="lightboxModal">
-    <div class="lightbox-backdrop" id="lightboxBackdrop"></div>
-    <div class="lightbox-content">
-      <button class="lightbox-close" id="lightboxClose">&times;</button>
-      <img src="assets/desktop-screenshot.png?v=1.0.6" alt="Enlarged Dots Desktop v1.0.6 screenshot" class="lightbox-image">
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="footer-container">
-      <div class="footer-brand">
-        <div class="footer-logo">
-          <img src="assets/icon.png" width="20" height="20" alt="logo">
-          <span>Dots Desktop</span>
-        </div>
-        <p class="footer-tagline">
-          Persistent, autonomous AI agents inspired by OpenAI Dots.
-        </p>
-      </div>
-
-      <div class="footer-links">
-        <a href="https://github.com/davidegeric-cloud/dots-desktop" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
-        <a href="https://github.com/davidegeric-cloud/dots-desktop/releases" target="_blank" rel="noopener noreferrer">All Releases</a>
-        <a href="https://github.com/davidegeric-cloud/dots-desktop/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>
-        <a href="https://github.com/davidegeric-cloud/dots-desktop/issues" target="_blank" rel="noopener noreferrer">Report Issue</a>
-      </div>
-    </div>
-  </footer>
-
-  <script src="script.js"></script>
+    </section>
+    <section class="section workspace-section" id="workspace">
+      <div class="section-heading centered"><span class="eyebrow">A CALMER PLACE TO GET THINGS DONE</span><h2>All the moving parts.<br>One thoughtful home.</h2><p>Keep your dots, work, decisions, and routines together.<br>Less searching. More knowing where things stand.</p></div>
+      <div class="tour-tabs" role="tablist" aria-label="Explore Dots features"><button id="tab-overview" role="tab" aria-selected="true" aria-controls="tour-panel" data-tour="overview">Your home</button><button id="tab-context" role="tab" aria-selected="false" aria-controls="tour-panel" data-tour="context" tabindex="-1">Shared context</button><button id="tab-routines" role="tab" aria-selected="false" aria-controls="tour-panel" data-tour="routines" tabindex="-1">Routines</button><button id="tab-control" role="tab" aria-selected="false" aria-controls="tour-panel" data-tour="control" tabindex="-1">Your control</button></div>
+      <div class="tour-content" id="tour-panel" role="tabpanel" aria-labelledby="tab-overview"><div class="tour-copy"><span class="tour-number" id="tour-number">01 / YOUR HOME</span><h3 id="tour-title">A little clarity<br>for your day.</h3><p id="tour-description">See what your dots are working on, open a recent task, and pick up the conversation from one place.</p><ul id="tour-points"><li>All your teammates in one workspace</li><li>Progress and results you can inspect</li><li>Quick access to the next thing to do</li></ul></div><button class="screenshot-button" id="open-screenshot" aria-label="Enlarge the Dots Desktop screenshot"><div class="screenshot-chrome"><span class="chrome-dot"></span><span>Dots Desktop</span><span class="chrome-right">Your work, moving forward</span></div><img src="assets/desktop-screenshot.png?v=2.0.0" alt="Dots Desktop workspace with agents, ongoing work, and activity" width="1240" height="800" loading="lazy"><span class="screenshot-expand">View the app <span aria-hidden="true">↗</span></span></button></div>
+    </section>
+    <section class="section details-section"><div class="detail-intro"><span class="eyebrow">GOOD TEAMMATES REMEMBER</span><h2>Pick up where<br>you left off.</h2><p>Your dot has a workspace, a conversation, and notes of its own. The context stays close, so the next task starts with what already matters.</p><a class="text-link" href="https://github.com/ahpah-dev/dots-desktop/blob/main/docs/DOTS_PARITY.md">Explore the capabilities <span aria-hidden="true">↗</span></a></div><div class="detail-grid"><article><span class="detail-icon" aria-hidden="true">↺</span><h3>Context that carries forward</h3><p>Persistent conversations and editable memory keep useful decisions and preferences available between tasks.</p></article><article><span class="detail-icon" aria-hidden="true">◷</span><h3>Work with a rhythm</h3><p>Set interval, daily, or cron routines. Dots can keep working from the system tray while your computer is on.</p></article><article><span class="detail-icon" aria-hidden="true">⌘</span><h3>A space of their own</h3><p>Give each dot its own local project folder, instructions, model, and tools for the responsibility it owns.</p></article><article><span class="detail-icon" aria-hidden="true">✓</span><h3>Boundaries you decide</h3><p>Manage file, shell, web, and approval permissions. Inspect activity and stop work when you need to.</p></article></div></section>
+    <section class="section connection-section"><div><span class="eyebrow">YOUR INTELLIGENCE. YOUR CHOICE.</span><h2>Bring the brain.<br>We’ll make it feel at home.</h2><p>Connect to your authenticated local Codex installation, or use an OpenAI-compatible provider. Choose the models your account makes available.</p><div class="provider-tags"><span>OpenAI Codex</span><span>OpenAI-compatible APIs</span><span>Local models</span></div></div><div class="connection-card"><span class="connection-symbol" aria-hidden="true">✳</span><span class="card-type">A FAMILIAR START</span><h3>Already use Codex?</h3><p>Dots detects your local installation and sign-in. No copying tokens. Your account stays with the official Codex client.</p><a class="text-link" href="https://github.com/ahpah-dev/dots-desktop#connect-a-provider">See how to connect <span aria-hidden="true">↗</span></a></div></section>
+    <section class="section questions-section" id="questions"><div class="section-heading"><span class="eyebrow">A FEW GOOD QUESTIONS</span><h2>Before you meet<br>your first dot.</h2></div><div class="faq-list"><details><summary>Is this OpenAI’s official Dots app?<span aria-hidden="true">+</span></summary><p>Dots Desktop is an independent, open-source application inspired by <a href="https://learn.chatgpt.com/docs/dots">OpenAI’s Dots</a>. It brings a similar way of working to a local desktop app. It is not affiliated with OpenAI, and it does not include OpenAI’s hosted Dots service.</p></details><details><summary>Will my dots work when my computer is off?<span aria-hidden="true">+</span></summary><p>Dots Desktop runs on your computer. Background work continues when the window is closed to the system tray, but your computer must be powered on and the app must be running. Cloud computers and cross-device messaging require additional infrastructure and are not included.</p></details><details><summary>What do I need to start?<span aria-hidden="true">+</span></summary><p>Windows 10 or 11, and either an authenticated <a href="https://developers.openai.com/codex/cli/">Codex CLI</a> installation or an OpenAI-compatible provider. The app is free to download. Your provider’s usage charges and account limits still apply.</p></details><details><summary>Where are my work and memory stored?<span aria-hidden="true">+</span></summary><p>Your dots, settings, run history, and memory are stored locally. Each dot works in a folder you choose. Model requests send the context needed for the task to your selected provider. API credentials are encrypted using your operating system’s credential storage.</p></details><details><summary>How are permissions enforced?<span aria-hidden="true">+</span></summary><p>Compatible-provider tools enforce custom rules and interactive approvals. Headless Codex execution rejects dots configured with approval mode Ask or custom Ask/Deny rules. Built-in file tools check workspace boundaries; native shell commands use local computer privileges and are not confined by an operating-system sandbox. Review shell access before enabling it.</p></details><details><summary>Can I connect Slack, Teams, or voice calls?<span aria-hidden="true">+</span></summary><p>This release focuses on the desktop experience. Official ChatGPT messaging channels, mobile sync, full voice calls, and cloud browser takeover are not bundled. See the <a href="https://github.com/ahpah-dev/dots-desktop/blob/main/docs/DOTS_PARITY.md">capability comparison</a> for what is available and what needs additional services.</p></details><details><summary>How do I update from an older version?<span aria-hidden="true">+</span></summary><p>Download and run the 2.0 installer. Existing local settings, dots, and workspaces are retained. A portable build is also available, and the release includes checksums for both downloads.</p></details></div></section>
+    <section class="download-section" id="download"><div class="download-dot" aria-hidden="true"><i></i><i></i></div><span class="eyebrow">LET’S MAKE ROOM FOR WHAT MATTERS</span><h2>Your next teammate<br>is a little dot away.</h2><p>Meet Dots Desktop 2.0. Give your work a thoughtful new home.</p><a class="button button-dark" href="https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.0/Dots-Setup-2.0.0.exe"><span aria-hidden="true">↓</span>Download for Windows</a><div class="download-links"><a href="https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.0/Dots-2.0.0-portable.exe">Portable version</a><span>·</span><a href="https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.0">Release notes &amp; checksums</a></div><span class="download-meta">Version 2.0.0 · Windows x64 · MIT licensed</span></section>
+  </main>
+  <footer class="site-footer"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><i></i><i></i></span>dots</a><p>Independent software. Inspired by possibility.</p><div><a href="https://github.com/ahpah-dev/dots-desktop">GitHub</a><a href="https://github.com/ahpah-dev/dots-desktop/blob/main/LICENSE">License</a><a href="https://learn.chatgpt.com/docs/dots">About OpenAI Dots</a></div></footer>
+  <dialog id="screenshot-dialog" class="screenshot-dialog"><button id="close-screenshot" class="dialog-close" aria-label="Close screenshot">×</button><img src="assets/desktop-screenshot.png?v=2.0.0" alt="Full-size Dots Desktop workspace"><p>Dots Desktop 2.0</p></dialog>
 </body>
 </html>

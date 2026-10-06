@@ -4,6 +4,7 @@ import { CancelledError, ProviderError, type AgentProvider, type ProviderResult,
 import { chatCompletion, listModelIds, type ChatMessage } from './chat';
 import { toolsFor } from '../../tools/registry';
 import type { ToolContext } from '../../tools/types';
+import { authorizeTool } from '../../tools/permissions';
 import { clip, errorMessage } from '../../util/misc';
 
 const HISTORY_USER_TURNS = 8;
@@ -67,7 +68,8 @@ export class OpenAICompatibleProvider implements AgentProvider {
       permissions: ctx.dot.permissions,
       signal: ctx.signal,
       requestApproval: ctx.requestApproval,
-      remember: ctx.remember
+      remember: ctx.remember,
+      scheduleFollowup: ctx.scheduleFollowup
     };
 
     const total: Usage = { inputTokens: 0, outputTokens: 0 };
@@ -155,7 +157,8 @@ export class OpenAICompatibleProvider implements AgentProvider {
     const input = tool.describe(args);
     ctx.emit({ type: 'tool', id: call.id, category: tool.category, name: tool.name, input, status: 'running' });
     try {
-      const out = await tool.run(args, toolCtx);
+      const authorized = await authorizeTool(tool, args, toolCtx);
+      const out = await tool.run(args, authorized);
       ctx.emit({ type: 'tool', id: call.id, category: tool.category, name: tool.name, input, output: clip(out, 6000), status: 'ok' });
       if (tool.name === 'write_file' || tool.name === 'edit_file') {
         ctx.emit({ type: 'file', path: String(args.path), change: tool.name === 'write_file' ? 'add' : 'update' });

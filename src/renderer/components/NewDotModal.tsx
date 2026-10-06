@@ -1,453 +1,521 @@
-import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Folder, Cpu, Plus, Code, Search, Clock, FileText } from 'lucide-react';
-import { useApp } from '../context/AppContext';
-import type { DotInput, FileAccess, ModelInfo } from '@shared/types';
-import { CODEX_PROVIDER_ID } from '@shared/types';
-import { groupModels } from '@shared/models';
+import { useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Plus,
+  Folder,
+  Heart,
+  Code2,
+  Search,
+  Clock,
+  FileText,
+  Sparkles,
+  Info,
+  Loader2,
+} from "lucide-react";
+import { useApp } from "../context/AppContext";
+import type {
+  DotInput,
+  DotAvatarConfig,
+  FileAccess,
+  ModelInfo,
+} from "@shared/types";
+import { CODEX_PROVIDER_ID } from "@shared/types";
+import { groupModels } from "@shared/models";
+import { AvatarEditor, DotAvatar, DEFAULT_AVATAR } from "./DotAvatar";
+import {
+  Field,
+  ModalShell,
+  PanelSection,
+  SettingRow,
+  Toggle,
+  errorMessage,
+} from "./PanelPrimitives";
 
-interface Template {
-  id: string;
-  name: string;
-  description: string;
-  emoji: string;
-  color: string;
-  instructions: string;
-  files: FileAccess;
-  shell: boolean;
-  web: boolean;
-}
-
-const TEMPLATES: Template[] = [
+const TEMPLATES = [
   {
-    id: 'developer',
-    name: 'Software Engineer',
-    description: 'Autonomous coding agent that builds features, fixes bugs, and tests code.',
-    emoji: '💻',
-    color: '#6366f1',
+    id: "partner",
+    title: "Everyday partner",
+    name: "Milo",
+    description: "Keep your priorities, projects, and loose ends moving.",
+    emoji: "✦",
+    color: "#78b7a0",
+    icon: Heart,
     instructions:
-      'You are a senior software engineer. When given a task:\n1. Inspect existing files before changing them.\n2. Write clean, modular, typed code with clear comments.\n3. Run tests or build checks when appropriate.\n4. Summarize changes clearly.',
-    files: 'write',
+      "Be a thoughtful partner for my work. Help clarify priorities, research questions, and create useful deliverables. Remember durable preferences and decisions. Keep updates concise and bring decisions that need my input to my attention.",
+    files: "write" as FileAccess,
     shell: true,
-    web: true
+    web: true,
+    accessory: "sprout" as const,
   },
   {
-    id: 'researcher',
-    name: 'Web Researcher',
-    description: 'Gathers live intelligence, monitors developments, and compiles clear reports.',
-    emoji: '🔍',
-    color: '#10b981',
+    id: "developer",
+    title: "Build & improve",
+    name: "Builder",
+    description: "Build features, solve bugs, and care for your code.",
+    emoji: "💻",
+    color: "#93b5d5",
+    icon: Code2,
     instructions:
-      'You are a precise research analyst. Search the web, verify sources, fetch relevant articles, and compile structured briefings with sources cited.',
-    files: 'write',
+      "You are a thoughtful software engineer. Inspect existing code before changing it. Build clean, maintainable solutions, verify changes with appropriate checks, and explain the result clearly. Remember project conventions and useful build commands.",
+    files: "write" as FileAccess,
+    shell: true,
+    web: true,
+    accessory: "headphones" as const,
+  },
+  {
+    id: "researcher",
+    title: "Research & discover",
+    name: "Scout",
+    description: "Find reliable sources and turn them into useful insight.",
+    emoji: "🔍",
+    color: "#b7a3d6",
+    icon: Search,
+    instructions:
+      "Research questions carefully using current primary sources. Verify claims, compare useful options, and cite sources. Separate evidence from inference. Remember the themes and sources relevant to my ongoing work.",
+    files: "write" as FileAccess,
     shell: false,
-    web: true
+    web: true,
+    accessory: "none" as const,
   },
   {
-    id: 'watchdog',
-    name: 'Scheduled Watchdog',
-    description: 'Runs on background cadence to inspect project health, test status, and alert on issues.',
-    emoji: '⏱️',
-    color: '#f59e0b',
+    id: "watchdog",
+    title: "Watch & follow up",
+    name: "Watcher",
+    description: "Check project health and flag meaningful changes.",
+    emoji: "⏱️",
+    color: "#e5c77d",
+    icon: Clock,
     instructions:
-      'You are an automated project watchdog. Run diagnostic checks, inspect git status or logs, and notify of any regressions or pending tasks.',
-    files: 'read',
+      "Help me keep track of project health. Inspect the available files, changes, tests, and logs. Summarize meaningful changes and flag issues needing attention. Be quiet about unchanged routine results and remember what we learn.",
+    files: "read" as FileAccess,
     shell: true,
-    web: true
+    web: true,
+    accessory: "cap" as const,
   },
   {
-    id: 'writer',
-    name: 'Doc Specialist',
-    description: 'Maintains documentation, architecture notes, changelogs, and user guides.',
-    emoji: '✍️',
-    color: '#ec4899',
+    id: "writer",
+    title: "Write & organize",
+    name: "Writer",
+    description: "Shape ideas, documentation, and clear deliverables.",
+    emoji: "✍️",
+    color: "#dba9ba",
+    icon: FileText,
     instructions:
-      'You are a technical writer. Read the codebase and produce crisp, accurate, readable documentation and release notes in Markdown.',
-    files: 'write',
+      "Help me write clear, accurate documents. Read relevant source material, organize the ideas, and prepare polished Markdown drafts. Adapt to my writing preferences and remember decisions about tone and structure.",
+    files: "write" as FileAccess,
     shell: false,
-    web: false
+    web: false,
+    accessory: "none" as const,
   },
   {
-    id: 'blank',
-    name: 'Custom Dot',
-    description: 'A blank autonomous agent configured from scratch.',
-    emoji: '🤖',
-    color: '#3b82f6',
-    instructions: 'You are an autonomous AI assistant dedicated to this workspace.',
-    files: 'write',
+    id: "blank",
+    title: "Start with an idea",
+    name: "My dot",
+    description: "Make a dot around the way you like to work.",
+    emoji: "✦",
+    color: "#dea88d",
+    icon: Sparkles,
+    instructions:
+      "Be a resourceful, careful partner for my work. Ask for missing context when needed, verify your work, and explain results clearly.",
+    files: "write" as FileAccess,
     shell: true,
-    web: true
-  }
+    web: true,
+    accessory: "none" as const,
+  },
 ];
 
-export const NewDotModal: React.FC = () => {
+export function NewDotModal() {
+  const { showNewDotModal } = useApp();
+  return showNewDotModal ? <NewDotWizard /> : null;
+}
+
+function NewDotWizard() {
   const {
-    showNewDotModal,
     setShowNewDotModal,
     providerOptions,
-    setActiveDotId,
+    openDot,
     showToast,
-    refreshBootstrap
+    refreshBootstrap,
   } = useApp();
-
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('developer');
-  const [name, setName] = useState('Software Engineer');
-  const [description, setDescription] = useState(
-    'Autonomous coding agent that builds features, fixes bugs, and tests code.'
-  );
-  const [emoji, setEmoji] = useState('💻');
-  const [color, setColor] = useState('#6366f1');
+  const [step, setStep] = useState(0);
+  const [templateId, setTemplateId] = useState("partner");
+  const [name, setName] = useState(TEMPLATES[0].name);
+  const [description, setDescription] = useState(TEMPLATES[0].description);
+  const [color, setColor] = useState(TEMPLATES[0].color);
+  const [avatar, setAvatar] = useState<DotAvatarConfig>({
+    ...DEFAULT_AVATAR,
+    accessory: "sprout",
+  });
   const [instructions, setInstructions] = useState(TEMPLATES[0].instructions);
-  const [workspacePath, setWorkspacePath] = useState('');
-  const [providerId, setProviderId] = useState(CODEX_PROVIDER_ID);
-  const [files, setFiles] = useState<FileAccess>('write');
-  const [shell, setShell] = useState(true);
-  const [web, setWeb] = useState(true);
-  const [model, setModel] = useState('gpt-6.1-sol');
+  const [workspace, setWorkspace] = useState("");
+  const [customWorkspace, setCustomWorkspace] = useState(false);
+  const [providerId, setProviderId] = useState(
+    providerOptions.find((item) => item.available)?.id || CODEX_PROVIDER_ID,
+  );
+  const [model, setModel] = useState("auto");
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [files, setFiles] = useState<FileAccess>("write");
+  const [shell, setShell] = useState(true);
+  const [web, setWeb] = useState(true);
   const [creating, setCreating] = useState(false);
-
-  // Load models whenever providerId changes or modal opens
+  const [advanced, setAdvanced] = useState(false);
+  const provider = providerOptions.find((item) => item.id === providerId);
   useEffect(() => {
-    let active = true;
-    setLoadingModels(true);
-    window.dots.api
-      .listModels(providerId)
-      .then((res) => {
-        if (active) setModels(res);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (active) setLoadingModels(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [providerId, showNewDotModal]);
-
-  // Update default workspace whenever name changes
-  useEffect(() => {
-    if (!name.trim()) return;
-    let active = true;
+    if (customWorkspace || !name.trim()) return;
+    let current = true;
     window.dots.api
       .defaultWorkspaceFor(name)
-      .then((p) => {
-        if (active) setWorkspacePath(p);
+      .then((path) => {
+        if (current) setWorkspace(path);
       })
       .catch(() => undefined);
     return () => {
-      active = false;
+      current = false;
     };
-  }, [name]);
-
-  if (!showNewDotModal) return null;
-
-  const handleSelectTemplate = (tpl: Template) => {
-    setSelectedTemplate(tpl.id);
-    setName(tpl.name);
-    setDescription(tpl.description);
-    setEmoji(tpl.emoji);
-    setColor(tpl.color);
-    setInstructions(tpl.instructions);
-    setFiles(tpl.files);
-    setShell(tpl.shell);
-    setWeb(tpl.web);
+  }, [name, customWorkspace]);
+  useEffect(() => {
+    let current = true;
+    setLoadingModels(true);
+    setModels([]);
+    window.dots.api
+      .listModels(providerId)
+      .then((result) => {
+        if (current) setModels(result);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (current) setLoadingModels(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [providerId]);
+  const selectTemplate = (template: (typeof TEMPLATES)[number]) => {
+    setTemplateId(template.id);
+    setName(template.name);
+    setDescription(template.description);
+    setInstructions(template.instructions);
+    setColor(template.color);
+    setAvatar({
+      ...DEFAULT_AVATAR,
+      accessory: template.accessory,
+      glasses: template.id === "researcher" ? "round" : "none",
+    });
+    setFiles(template.files);
+    setShell(template.shell);
+    setWeb(template.web);
   };
-
-  const handlePickFolder = async () => {
+  const pickFolder = async () => {
     try {
-      const chosen = await window.dots.api.pickFolder(workspacePath);
-      if (chosen) setWorkspacePath(chosen);
-    } catch (err: any) {
-      showToast(err.message || 'Failed to select folder', 'error');
+      const chosen = await window.dots.api.pickFolder(workspace);
+      if (chosen) {
+        setWorkspace(chosen);
+        setCustomWorkspace(true);
+      }
+    } catch (error) {
+      showToast(errorMessage(error, "Could not choose a folder."), "error");
     }
   };
-
-  const handleCreate = async () => {
-    if (!name.trim()) {
-      showToast('Give your Dot a name', 'error');
-      return;
-    }
-
+  const close = () => {
+    if (!creating) setShowNewDotModal(false);
+  };
+  const create = async () => {
+    if (!name.trim()) return;
     try {
       setCreating(true);
       const input: DotInput = {
         name: name.trim(),
         description: description.trim(),
-        emoji,
         color,
+        avatar,
+        emoji: TEMPLATES.find((item) => item.id === templateId)?.emoji || "✦",
         instructions: instructions.trim(),
-        workspacePath: workspacePath.trim() || undefined,
+        workspacePath: workspace.trim() || undefined,
         providerId,
-        model: model.trim() || 'auto',
+        model: model.trim() || "auto",
         notify: true,
         permissions: {
           files,
           shell,
           web,
           outsideWorkspace: false,
-          approval: 'never'
-        }
+          approval: "never",
+        },
       };
-
       const dot = await window.dots.api.createDot(input);
-      showToast(`Created Dot "${dot.name}"`, 'success');
       await refreshBootstrap();
-      setActiveDotId(dot.id);
+      openDot(dot.id);
       setShowNewDotModal(false);
-    } catch (err: any) {
-      showToast(err.message || 'Failed to create Dot', 'error');
+      showToast(`${dot.name} is ready to get to know your work.`, "success");
+    } catch (error) {
+      showToast(errorMessage(error, "Could not create your dot."), "error");
     } finally {
       setCreating(false);
     }
   };
-
   return (
-    <div className="modal-overlay" onClick={() => setShowNewDotModal(false)}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
-        {/* Modal Header */}
-        <div
-          style={{
-            padding: '1.15rem 1.25rem',
-            borderBottom: '1px solid var(--border-subtle)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Sparkles size={18} style={{ color: 'var(--accent-primary)' }} />
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 600 }}>Create New Dot</h3>
-          </div>
-
-          <button className="btn-ghost" style={{ padding: '0.25rem' }} onClick={() => setShowNewDotModal(false)}>
-            <X size={16} />
+    <ModalShell
+      title="Meet your new dot"
+      subtitle="A dedicated partner that remembers your work and keeps it moving."
+      onClose={close}
+      width={760}
+      footer={
+        <>
+          <span className="footer-hint">
+            {step === 0
+              ? "You can change everything later."
+              : "Runs locally while Dots is open."}
+          </span>
+          {step === 1 && (
+            <button
+              className="btn-ghost"
+              onClick={() => setStep(0)}
+              disabled={creating}
+            >
+              <ArrowLeft size={14} /> Back
+            </button>
+          )}
+          <button
+            className="btn-primary"
+            disabled={creating || !name.trim()}
+            onClick={step === 0 ? () => setStep(1) : create}
+          >
+            {creating ? (
+              <Loader2 size={14} className="spin" />
+            ) : step === 0 ? null : (
+              <Plus size={14} />
+            )}
+            {step === 0 ? (
+              <>
+                Continue <ArrowRight size={14} />
+              </>
+            ) : creating ? (
+              "Creating your dot…"
+            ) : (
+              `Create ${name.trim() || "dot"}`
+            )}
           </button>
+        </>
+      }
+    >
+      <div className="new-dot-steps">
+        <div className={`new-dot-step ${step === 0 ? "is-active" : ""}`}>
+          <span>1</span> Make it yours
         </div>
-
-        {/* Modal Content */}
-        <div style={{ padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Templates Selector */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.785rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-              Choose a Template:
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-              {TEMPLATES.map((tpl) => (
-                <div
-                  key={tpl.id}
-                  onClick={() => handleSelectTemplate(tpl)}
-                  style={{
-                    padding: '0.65rem 0.75rem',
-                    borderRadius: 'var(--radius-sm)',
-                    border: `1.5px solid ${selectedTemplate === tpl.id ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
-                    background: selectedTemplate === tpl.id ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-input)',
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-fast)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.25rem' }}>
-                    <span style={{ fontSize: '1.1rem' }}>{tpl.emoji}</span>
-                    <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)' }}>{tpl.name}</span>
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.3 }}>
-                    {tpl.description}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Identity Fields */}
-          <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: '0.75rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Icon
-              </label>
-              <input
-                type="text"
-                value={emoji}
-                onChange={(e) => setEmoji(e.target.value)}
-                style={{ width: '100%', textAlign: 'center', fontSize: '1.25rem', padding: '0.35rem 0' }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Dot Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Dot Name"
-                style={{ width: '100%', fontWeight: 600 }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-              Description / Role
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What this Dot specializes in"
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          {/* Model Provider & Model Selection */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Model Provider
-              </label>
-              <select
-                value={providerId}
-                onChange={(e) => setProviderId(e.target.value)}
-                style={{ width: '100%' }}
-              >
-                {providerOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.label} {!opt.available ? `(${opt.reason})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Model {loadingModels ? '(Loading catalogue...)' : ''}
-                </label>
-                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                  {[
-                    { id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol' },
-                    { id: 'gpt-6-astra', label: 'GPT-6 Astra' },
-                    { id: 'gpt-6-sol', label: 'GPT-6 Sol' },
-                    { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
-                    { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' },
-                    { id: 'auto', label: 'Auto' }
-                  ].map((chip) => (
-                    <button
-                      key={chip.id}
-                      type="button"
-                      className={model === chip.id ? 'btn-primary' : 'btn-ghost'}
-                      style={{ fontSize: '0.68rem', padding: '0.12rem 0.4rem', height: 'auto' }}
-                      onClick={() => setModel(chip.id)}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  style={{ flex: 1 }}
-                >
-                  <option value="auto">✨ Automatic (Provider Recommended)</option>
-                  {groupModels(models).map((grp) => (
-                    <optgroup key={grp.label} label={grp.label}>
-                      {grp.models.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.label} {m.isDefault ? '(Default)' : ''}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                  {model !== 'auto' && !models.some((m) => m.id.toLowerCase() === model.toLowerCase()) && (
-                    <optgroup label="Custom Specified Model">
-                      <option value={model}>{model} (Custom)</option>
-                    </optgroup>
-                  )}
-                </select>
-
-                <input
-                  type="text"
-                  placeholder="Custom model ID..."
-                  value={model === 'auto' ? '' : model}
-                  onChange={(e) => setModel(e.target.value.trim() || 'auto')}
-                  style={{ width: '180px', fontSize: '0.78rem', fontFamily: 'var(--font-mono)' }}
-                  title="Type any model ID (e.g. gpt-6.1-sol, gpt-6-astra, fine-tunes)"
-                />
-              </div>
-
-              {model === 'gpt-6.1-sol' && (
-                <div style={{ fontSize: '0.72rem', color: '#818cf8', marginTop: '0.35rem' }}>
-                  🚀 <strong>GPT-6.1 Sol:</strong> Latest OpenAI model optimized for agentic coding and computer workflows.
-                </div>
-              )}
-              {model === 'gpt-6-astra' && (
-                <div style={{ fontSize: '0.72rem', color: '#818cf8', marginTop: '0.35rem' }}>
-                  ⭐ <strong>GPT-6 Astra:</strong> Flagship OpenAI frontier model powering Dots with deep reasoning.
-                </div>
-              )}
-              {model === 'gpt-6-luna' && (
-                <div style={{ fontSize: '0.72rem', color: '#818cf8', marginTop: '0.35rem' }}>
-                  ⚡ <strong>GPT-6 Luna:</strong> High-efficiency, low-latency agent execution model.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Workspace Path */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-              Workspace Folder
-            </label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                type="text"
-                value={workspacePath}
-                onChange={(e) => setWorkspacePath(e.target.value)}
-                style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
-              />
-              <button className="btn-secondary" onClick={handlePickFolder} style={{ fontSize: '0.8rem' }}>
-                Browse...
-              </button>
-            </div>
-          </div>
-
-          {/* Standing Instructions */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-              Standing Instructions
-            </label>
-            <textarea
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              rows={3}
-              style={{ width: '100%', fontSize: '0.8rem', lineHeight: 1.4 }}
-            />
-          </div>
-        </div>
-
-        {/* Modal Footer */}
-        <div
-          style={{
-            padding: '0.85rem 1.25rem',
-            borderTop: '1px solid var(--border-subtle)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: '0.5rem',
-            background: 'var(--bg-card)'
-          }}
-        >
-          <button className="btn-ghost" onClick={() => setShowNewDotModal(false)} disabled={creating}>
-            Cancel
-          </button>
-          <button className="btn-primary" onClick={handleCreate} disabled={creating || !name.trim()}>
-            <Plus size={14} /> Create Dot
-          </button>
+        <div className="new-dot-step-line" />
+        <div className={`new-dot-step ${step === 1 ? "is-active" : ""}`}>
+          <span>2</span> Give it a starting point
         </div>
       </div>
-    </div>
+      {step === 0 ? (
+        <>
+          <div
+            className="new-dot-templates"
+            role="group"
+            aria-label="Dot starting point"
+          >
+            {TEMPLATES.map((template) => {
+              const Icon = template.icon;
+              return (
+                <button
+                  className={`new-dot-template ${templateId === template.id ? "is-selected" : ""}`}
+                  key={template.id}
+                  aria-pressed={templateId === template.id}
+                  onClick={() => selectTemplate(template)}
+                >
+                  <Icon size={18} />
+                  <div>
+                    <strong>{template.title}</strong>
+                    <p>{template.description}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="profile-form-grid" style={{ marginBottom: 24 }}>
+            <Field label="Name">
+              <input
+                data-autofocus
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Give your dot a name"
+                maxLength={80}
+              />
+            </Field>
+            <Field label="About your dot">
+              <input
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="What you’ll work on together"
+                maxLength={300}
+              />
+            </Field>
+          </div>
+          <PanelSection title="A familiar face">
+            <AvatarEditor
+              value={avatar}
+              color={color}
+              onChange={setAvatar}
+              onColorChange={setColor}
+              compact
+            />
+          </PanelSection>
+        </>
+      ) : (
+        <>
+          <div className="new-dot-preview">
+            <DotAvatar
+              avatar={avatar}
+              color={color}
+              name={name}
+              size={70}
+              animated
+            />
+            <div>
+              <strong>{name}</strong>
+              <p>{description || "Your new partner for the work ahead."}</p>
+            </div>
+          </div>
+          <div className="profile-stack">
+            <Field
+              label="How would you like to work together?"
+              hint="Tell your dot what matters, how you prefer updates, and where your judgment is needed."
+            >
+              <textarea
+                value={instructions}
+                onChange={(event) => setInstructions(event.target.value)}
+                rows={5}
+              />
+            </Field>
+            <Field
+              label="A workspace on this computer"
+              hint="Your dot can read and create work here. A dedicated folder keeps it easy to find."
+            >
+              <div className="profile-inline">
+                <input
+                  value={workspace}
+                  onChange={(event) => {
+                    setWorkspace(event.target.value);
+                    setCustomWorkspace(true);
+                  }}
+                />
+                <button className="btn-secondary" onClick={pickFolder}>
+                  <Folder size={14} /> Browse
+                </button>
+              </div>
+            </Field>
+            <PanelSection title="Connect its intelligence">
+              <Field label="Provider">
+                <select
+                  value={providerId}
+                  onChange={(event) => {
+                    setProviderId(event.target.value);
+                    setModel("auto");
+                  }}
+                >
+                  {providerOptions.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                      {!item.available ? " · Not connected" : ""}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {!provider?.available && (
+                <div
+                  className="profile-note is-warning"
+                  style={{ marginTop: 14 }}
+                >
+                  <Info size={14} />
+                  <div>
+                    {provider?.reason || "This provider is not connected."} You
+                    can create your dot now and connect an account in app
+                    settings before starting work.
+                  </div>
+                </div>
+              )}
+              <button
+                className="profile-text-button"
+                style={{ marginTop: 16 }}
+                onClick={() => setAdvanced(!advanced)}
+                aria-expanded={advanced}
+              >
+                {advanced
+                  ? "Hide model & tool settings"
+                  : "Adjust model & tool settings"}
+              </button>
+              {advanced && (
+                <div className="profile-stack" style={{ marginTop: 19 }}>
+                  <div className="profile-form-grid">
+                    <Field label={loadingModels ? "Model · Loading…" : "Model"}>
+                      <select
+                        value={model}
+                        onChange={(event) => setModel(event.target.value)}
+                      >
+                        <option value="auto">
+                          Automatic · Provider recommended
+                        </option>
+                        {groupModels(models).map((group) => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.models.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.label}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                        {model !== "auto" &&
+                          !models.some((item) => item.id === model) && (
+                            <option value={model}>{model} · Custom</option>
+                          )}
+                      </select>
+                    </Field>
+                    <Field label="Custom model ID">
+                      <input
+                        value={model === "auto" ? "" : model}
+                        onChange={(event) =>
+                          setModel(event.target.value.trim() || "auto")
+                        }
+                        placeholder="Provider default"
+                      />
+                    </Field>
+                  </div>
+                  <div>
+                    <SettingRow title="Workspace files">
+                      <select
+                        aria-label="Workspace file access"
+                        value={files}
+                        onChange={(event) =>
+                          setFiles(event.target.value as FileAccess)
+                        }
+                      >
+                        <option value="write">Read & write</option>
+                        <option value="read">Read only</option>
+                      </select>
+                    </SettingRow>
+                    <SettingRow title="Run commands">
+                      <Toggle
+                        label="Allow shell commands"
+                        checked={shell}
+                        onChange={setShell}
+                      />
+                    </SettingRow>
+                    <SettingRow title="Search and browse the web">
+                      <Toggle
+                        label="Allow web access"
+                        checked={web}
+                        onChange={setWeb}
+                      />
+                    </SettingRow>
+                  </div>
+                </div>
+              )}
+            </PanelSection>
+          </div>
+        </>
+      )}
+    </ModalShell>
   );
-};
+}

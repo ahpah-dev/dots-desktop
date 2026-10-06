@@ -166,7 +166,8 @@ export const searchFiles: Tool = {
     for (const rel of files) {
       if (hits.length >= 100 || ctx.signal.aborted) break;
       if (rel.endsWith(sep)) continue;
-      const abs = resolve(dir, rel);
+      let abs: string;
+      try { abs = resolvePath(ctx, resolve(dir, rel)); } catch { continue; }
       const stat = await fs.stat(abs).catch(() => null);
       if (!stat || stat.size > 1024 * 1024) continue;
       const text = await fs.readFile(abs, 'utf8').catch(() => '');

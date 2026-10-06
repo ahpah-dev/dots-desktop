@@ -54,13 +54,22 @@ export class RunStore {
       .slice(0, limit);
   }
 
-  async create(input: Pick<Run, 'dotId' | 'trigger' | 'prompt' | 'newSession'>): Promise<Run> {
+  listAll(limit = 200): Run[] {
+    return [...this.runs.values()].sort((a, b) => b.createdAt - a.createdAt).slice(0, Math.min(1000, Math.max(1, limit)));
+  }
+
+  async create(input: Pick<Run, 'dotId' | 'trigger' | 'prompt' | 'newSession'> & Partial<Pick<Run, 'conversationId' | 'parentRunId' | 'taskId' | 'followupId'>>): Promise<Run> {
+    const id = uid();
     const run: Run = {
-      id: uid(),
+      id,
       dotId: input.dotId,
       trigger: input.trigger,
       prompt: input.prompt,
       newSession: input.newSession,
+      conversationId: input.conversationId ?? id,
+      parentRunId: input.parentRunId,
+      taskId: input.taskId,
+      followupId: input.followupId,
       title: firstLine(input.prompt, 90) || 'Untitled task',
       status: 'queued',
       createdAt: Date.now()

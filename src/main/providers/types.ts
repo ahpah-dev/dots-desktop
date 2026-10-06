@@ -31,6 +31,7 @@ export interface RunContext {
   setThreadId(id: string): void;
   requestApproval(prompt: ApprovalPrompt): Promise<boolean>;
   remember(note: string): Promise<void>;
+  scheduleFollowup?(prompt: string, dueAt: number): Promise<string>;
   thread: ThreadAccess;
 }
 

@@ -34,7 +34,7 @@ export const runCommand: Tool = {
     const command = str(args, 'command').trim();
     if (!command) throw new ToolError('Empty command.');
     // Read-only Dots may only run commands with explicit approval, since a shell can write anywhere.
-    if (ctx.permissions.approval === 'ask' || ctx.permissions.files === 'read') {
+    if (!ctx.actionApproved && (ctx.permissions.approval === 'ask' || ctx.permissions.files === 'read')) {
       const ok = await ctx.requestApproval({ kind: 'shell', summary: 'Run a command', detail: command });
       if (!ok) throw new ToolError('The user declined this command.');
     }
