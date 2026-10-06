@@ -4,7 +4,7 @@
 
 **Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
-[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.1/Dots-Setup-2.0.1.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.1/Dots-2.0.1-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.1)
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.2/Dots-Setup-2.0.2.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.2/Dots-2.0.2-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.2)
 
 ![Dots Desktop conversation workspace](assets/desktop-screenshot-v2.0.1.png)
 
@@ -15,6 +15,7 @@ Dots Desktop is independent, open-source software inspired by [OpenAI Dots](http
 - **A complete new home:** Overview, an attention inbox, global activity, and connections bring your teammates and their work together. Search and a command palette keep navigation quick.
 - **A character of their own:** Personalize each dot's appearance and purpose, with a calm sage and cream interface, refined dark mode, and responsive layouts.
 - **Conversations that stay organized:** Keep separate conversations with the same dot. Messages sent while it works queue up instead of interrupting an active task.
+- **Edit and revert your messages:** Use Edit → Save & resend or Revert here beneath a sent message. A new branch keeps earlier turns and excludes later replies; the original stays in Conversations. Files, memory, and scheduled work remain. Finish or stop active work first.
 - **Ongoing responsibilities:** Give a dot multiple recurring jobs. Manage timing, instructions, and run history independently from its conversations.
 - **Follow-ups with a purpose:** Save durable wakeups so a dot can return to work later while the app is running.
 - **Memory you can inspect:** Keep structured notes about preferences, decisions, and ongoing work alongside each dot's existing memory.
@@ -22,7 +23,7 @@ Dots Desktop is independent, open-source software inspired by [OpenAI Dots](http
 
 ## Getting started
 
-1. Install [Dots-Setup-2.0.1.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.1/Dots-Setup-2.0.1.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
+1. Install [Dots-Setup-2.0.2.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.2/Dots-Setup-2.0.2.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
 2. Connect a model provider in Settings.
 3. Create a dot, give it a purpose, and choose a local workspace.
 4. Start a conversation or add an ongoing responsibility. Review activity and approvals as work progresses.
@@ -86,7 +87,7 @@ Package a Windows installer and portable executable:
 npm run dist
 ```
 
-Artifacts are generated under `release/`: `Dots-Setup-2.0.1.exe` and `Dots-2.0.1-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
+Artifacts are generated under `release/`: `Dots-Setup-2.0.2.exe` and `Dots-2.0.2-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
 ## Website and demo film
 

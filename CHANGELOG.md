@@ -6,6 +6,13 @@
 - Added a 58-second promotional film with original motion graphics, app screens, and original music.
 - Added native playback controls, chapter shortcuts, English captions, and a readable transcript. Video downloads only when played.
 
+## 2.0.2 — October 6, 2026
+
+- Edit your sent messages inline and save & resend from that point.
+- Revert here resends an earlier message in a separate conversation branch; the original remains available in Conversations.
+- Earlier messages carry over, while later replies and provider sessions are excluded from the new branch. Branches persist across app restarts.
+- Conversation revisions keep existing files, saved memory, and scheduled work. Finish or stop active work before revising a message.
+
 ## 2.0.1 — October 6, 2026
 
 - Unified sage-and-cream four-dot logo across the app, Windows icons, tray, website, and GitHub README.

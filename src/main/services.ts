@@ -352,6 +352,10 @@ export class Services implements DotsApi {
     return this.manager.cancel(runId, 'user');
   }
 
+  reviseMessage(runId: string, prompt?: string): Promise<Run> {
+    return this.manager.reviseMessage(runId, prompt);
+  }
+
   async listRuns(dotId: string, limit = 50): Promise<Run[]> {
     return this.runs.listForDot(dotId, limit);
   }

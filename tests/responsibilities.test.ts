@@ -23,7 +23,7 @@ const cleanup: { path: string; manager?: RunManager }[] = [];
 afterEach(async () => {
   for (const entry of cleanup.splice(0)) {
     await entry.manager?.shutdown();
-    await fs.rm(entry.path, { recursive: true, force: true });
+    await fs.rm(entry.path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
 
@@ -60,6 +60,61 @@ function provider(run: AgentProvider['run']): AgentProvider {
 }
 
 describe('durable responsibilities, memories and wakeups', () => {
+  it('edits and reverts into isolated persistent branches without discarded future context', async () => {
+    const seen: { prompt: string; messages: unknown[]; context: string; resume: string | null }[] = [];
+    const { manager, dot, runs, dots, paths } = await setup(provider(async (ctx) => {
+      const thread = await ctx.thread.read();
+      seen.push({ prompt: ctx.prompt, messages: [...thread.messages], context: ctx.context, resume: ctx.resumeThreadId });
+      await ctx.thread.write([...thread.messages, { role: 'user', content: ctx.prompt }, { role: 'assistant', content: `Answer ${ctx.prompt}` }]);
+      ctx.setThreadId(`thread-${ctx.run.id}`);
+      return { finalMessage: `Answer ${ctx.prompt}` };
+    }));
+    const finish = async (run: Run) => { await until(() => !manager.isBusy(dot.id)); return runs.get(run.id)!; };
+    const first = await finish(await manager.start(dot.id, 'Earlier preference', { trigger: 'manual', newSession: true }));
+    const second = await finish(await manager.start(dot.id, 'Original question', { trigger: 'manual', conversationId: first.conversationId }));
+    const future = await finish(await manager.start(dot.id, 'Discarded future secret', { trigger: 'manual', conversationId: first.conversationId }));
+    const edited = await finish(await manager.reviseMessage(second.id, 'Changed question'));
+    expect(edited.conversationId).not.toBe(first.conversationId);
+    expect(edited.prefixRunIds).toEqual([first.id]);
+    expect(seen.at(-1)?.messages).toEqual([{ role: 'user', content: first.prompt }, { role: 'assistant', content: first.finalMessage }]);
+    expect(seen.at(-1)?.resume).toBeNull();
+    expect(seen.at(-1)?.context).not.toContain(future.prompt);
+    expect(runs.get(second.id)?.prompt).toBe('Original question');
+    const continuation = await finish(await manager.start(dot.id, 'Branch follow-up', { trigger: 'manual', conversationId: edited.conversationId }));
+    expect(continuation.prefixRunIds).toEqual([first.id]);
+    const reverted = await finish(await manager.reviseMessage(continuation.id));
+    expect(reverted.prompt).toBe(continuation.prompt);
+    expect(reverted.prefixRunIds).toEqual([first.id, edited.id]);
+    expect(JSON.stringify(seen.at(-1)?.messages)).not.toContain('Original question');
+    const fresh = await finish(await manager.reviseMessage(first.id, 'New beginning'));
+    expect(seen.at(-1)?.messages).toEqual([]);
+    expect(seen.at(-1)?.context).not.toContain(future.prompt);
+    await expect(manager.reviseMessage(first.id, '  ')).rejects.toThrow('Enter a message');
+    const reloaded = new RunStore(paths); await reloaded.init([dot.id]);
+    expect(reloaded.get(reverted.id)?.prefixRunIds).toEqual([first.id, edited.id]);
+    expect(reloaded.get(fresh.id)?.prompt).toBe('New beginning');
+    expect((await dots.readConversation(dot.id, reverted.conversationId!)).messages.length).toBe(6);
+    await dots.touch(dot.id, { providerId: 'codex' });
+    await finish(await manager.reviseMessage(second.id, 'Codex branch'));
+    expect(seen.at(-1)?.context).toContain('Earlier preference');
+    expect(seen.at(-1)?.context).not.toContain(future.prompt);
+    expect(seen.at(-1)?.resume).toBeNull();
+  });
+
+  it('rejects editing while work is active and rejects automatic messages', async () => {
+    const { manager, dot } = await setup(provider(async (ctx) => {
+      if (ctx.signal.aborted) throw new CancelledError();
+      await new Promise<void>((_resolve, reject) => ctx.signal.addEventListener('abort', () => reject(new CancelledError()), { once: true }));
+      return { finalMessage: 'Done' };
+    }));
+    const active = await manager.start(dot.id, 'Busy message', { trigger: 'manual' });
+    await expect(manager.reviseMessage(active.id, 'Edit')).rejects.toThrow('Wait for this Dot');
+    await manager.cancel(active.id);
+    await until(() => !manager.isBusy(dot.id));
+    const task = await manager.start(dot.id, 'Automatic message', { trigger: 'schedule' });
+    await expect(manager.reviseMessage(task.id)).rejects.toThrow('Only your own messages');
+  });
+
   it('persists multiple responsibilities and notes, retaining edits and deletes across restart', async () => {
     const { paths, dots, dot, work } = await setup();
     const research = await work.createTask(dot.id, { title: 'Market brief', prompt: 'Research the market', schedule: { kind: 'interval', everyMinutes: 30 } });

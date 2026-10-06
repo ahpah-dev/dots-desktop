@@ -23,6 +23,7 @@ import {
   X,
   Folder,
   Plus,
+  Pencil,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { DotAvatar } from "./DotAvatar";
@@ -86,6 +87,8 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
   const [prompt, setPrompt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [older, setOlder] = useState<{ run: Run; events: RunEvent[] }[]>([]);
   const [wakeEditor, setWakeEditor] = useState(false);
@@ -107,13 +110,13 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
         ? runs
             .filter(
               (r) =>
-                r.conversationId === conversationId &&
+                (r.conversationId === conversationId || selected?.prefixRunIds?.includes(r.id)) &&
                 r.id !== selectedRunId &&
                 r.createdAt <= (selected?.createdAt ?? 0),
             )
             .sort((a, b) => a.createdAt - b.createdAt)
         : [],
-    [runs, conversationId, selectedRunId, selected?.createdAt],
+    [runs, conversationId, selectedRunId, selected?.createdAt, selected?.prefixRunIds],
   );
   const previousIds = previous.map((r) => r.id).join("|");
   useEffect(() => {
@@ -192,6 +195,23 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
       showToast("Could not copy the result", "error");
     }
   };
+  const revise = async (run: Run, text?: string) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const branch = await window.dots.api.reviseMessage(run.id, text);
+      setEditingId(null);
+      setPrompt("");
+      setSelectedRunId(branch.id);
+      await refreshRuns();
+      showToast("Conversation restarted here. The original is saved in history.");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Could not revise this message", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  useEffect(() => { setEditingId(null); }, [selectedRunId, dotId]);
   const openLink = (href: string) => {
     if (/^https?:\/\//i.test(href)) {
       void window.dots.api
@@ -482,7 +502,29 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
               <React.Fragment key={run.id}>
                 <div className="user-message">
                   <span>You</span>
-                  <p>{run.prompt}</p>
+                  {editingId === run.id ? (
+                    <div className="message-editor">
+                      <textarea aria-label="Edit your message" autoFocus value={editText}
+                        disabled={submitting} onChange={(e) => setEditText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape" && !submitting) setEditingId(null);
+                          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void revise(run, editText); }
+                        }} />
+                      <p className="revision-hint">Starts a new branch from here. Earlier messages are kept; the original stays in history. Workspace changes and memory remain.</p>
+                      <div className="message-actions">
+                        <button disabled={submitting} onClick={() => setEditingId(null)}>Cancel</button>
+                        <button disabled={submitting || busy || !editText.trim()} onClick={() => revise(run, editText)}>Save & resend</button>
+                      </div>
+                    </div>
+                  ) : <p>{run.prompt}</p>}
+                  {run.trigger === "manual" && editingId !== run.id && (
+                    <div className="message-actions">
+                      <button disabled={submitting || busy || activeDot?.paused} title={busy ? "Wait for work to finish or stop it first" : "Edit and resend from this message"}
+                        onClick={() => { setEditingId(run.id); setEditText(run.prompt); }}><Pencil size={13} /> Edit</button>
+                      <button disabled={submitting || busy || activeDot?.paused} title="Resend this message in a new branch, keeping the original in history. Files and memory remain."
+                        onClick={() => revise(run)}><RotateCcw size={13} /> Revert here</button>
+                    </div>
+                  )}
                 </div>
                 {renderEvents(events, run)}
                 {run.status === "failed" && (

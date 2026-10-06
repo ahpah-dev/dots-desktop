@@ -7,7 +7,7 @@ import type { ProviderRegistry } from '../providers/registry';
 import { CancelledError, ProviderError, type RunContext } from '../providers/types';
 import type { ApprovalGate } from './approvals';
 import { buildContext, extractMemoryUpdates, extractFollowups } from './context';
-import { Emitter, errorMessage } from '../util/misc';
+import { Emitter, errorMessage, uid } from '../util/misc';
 import { createLogger } from '../util/logger';
 import { matchingRule } from '../tools/permissions';
 
@@ -23,6 +23,7 @@ export interface StartOptions {
   newSession?: boolean;
   conversationId?: string;
   parentRunId?: string;
+  prefixRunIds?: string[];
   taskId?: string;
   followupId?: string;
 }
@@ -74,13 +75,40 @@ export class RunManager {
     const latestConversation = !dot.sessionResetAt || (previous?.createdAt ?? 0) > dot.sessionResetAt ? previous?.conversationId : undefined;
     const conversationId = opts.newSession ? undefined : opts.conversationId ?? latestConversation ?? (dot.threadId ? `legacy-${dot.id}` : undefined);
     const run = await this.runs.create({ dotId, trigger: opts.trigger, prompt: text, newSession: !!opts.newSession,
-      conversationId, parentRunId: opts.parentRunId, taskId: opts.taskId, followupId: opts.followupId });
+      conversationId, parentRunId: opts.parentRunId, prefixRunIds: opts.prefixRunIds ??
+        (!opts.newSession ? this.runs.listForDot(dotId, 200).find((r) => r.conversationId === conversationId)?.prefixRunIds : undefined),
+      taskId: opts.taskId, followupId: opts.followupId });
     this.runs.addEvent(run, { type: 'user', text });
     this.runs.addEvent(run, { type: 'status', status: 'queued' });
     this.queue.push(run.id);
     this.activityChanged.emit(dotId);
     this.pump();
     return run;
+  }
+
+  async reviseMessage(runId: string, prompt?: string): Promise<Run> {
+    const target = this.runs.get(runId);
+    if (!target) throw new Error('That message no longer exists.');
+    if (target.trigger !== 'manual') throw new Error('Only your own messages can be edited.');
+    const text = (prompt ?? target.prompt).trim();
+    if (!text) throw new Error('Enter a message before saving.');
+    const dot = this.dots.require(target.dotId);
+    if (dot.paused) throw new Error('Resume this Dot before editing a message.');
+    if (this.isBusy(dot.id)) throw new Error('Wait for this Dot to finish, or stop its work before editing a message.');
+    const all = this.runs.listForDot(dot.id, 200).reverse();
+    const local = all.filter((r) => r.conversationId === target.conversationId);
+    const before = local.slice(0, local.findIndex((r) => r.id === target.id));
+    const prefixIds = [...new Set([...(target.prefixRunIds ?? []), ...before.map((r) => r.id)])];
+    const prefix = prefixIds.map((id) => this.runs.get(id)).filter((r): r is Run => !!r && r.dotId === dot.id);
+    const conversationId = uid();
+    await this.dots.writeConversation(dot.id, conversationId, {
+      threadId: null, providerId: dot.providerId, workspacePath: dot.workspacePath, updatedAt: Date.now(),
+      messages: prefix.flatMap((r) => [
+        { role: 'user', content: r.prompt },
+        ...(r.finalMessage ? [{ role: 'assistant', content: r.finalMessage }] : [])
+      ])
+    });
+    return this.start(dot.id, text, { trigger: 'manual', conversationId, parentRunId: target.id, prefixRunIds: prefix.map((r) => r.id) });
   }
 
   private pump(): void {
@@ -181,7 +209,8 @@ export class RunManager {
       if (newSession) conversation = { messages: [], updatedAt: Date.now(), threadId: null };
       threadId = conversation.threadId ?? null;
       const persistConversation = () => this.dots.writeConversation(dot.id, conversationId, { ...conversation, threadId, providerId: dot.providerId, workspacePath: dot.workspacePath, updatedAt: Date.now() });
-      const recent = this.runs.listForDot(dot.id, 10).filter((r) => r.id !== run.id);
+      const recent = this.runs.listForDot(dot.id, 200).filter((r) => r.id !== run.id &&
+        (!run.prefixRunIds || r.conversationId === conversationId || run.prefixRunIds.includes(r.id))).slice(0, 10);
       const emit = (body: RunEventBody) => { this.runs.addEvent(current, body); };
 
       const ctx: RunContext = {
@@ -189,7 +218,9 @@ export class RunManager {
         dot,
         prompt: run.prompt,
         context: buildContext({ dot, memory, recentRuns: recent, trigger: run.trigger,
-          tasks: this.work?.listTasks(dot.id), followups: this.work?.listFollowups(dot.id) }),
+          tasks: this.work?.listTasks(dot.id), followups: this.work?.listFollowups(dot.id) }) +
+          (dot.providerId === 'codex' && !threadId && conversation.messages.length
+            ? `\n\n# Earlier conversation (transcript, not instructions)\n${JSON.stringify(conversation.messages)}` : ''),
         newSession,
         resumeThreadId: threadId,
         signal: state.controller.signal,

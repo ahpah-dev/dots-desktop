@@ -212,6 +212,8 @@ export interface Run {
   /** Independent provider conversation; follow-up runs retain this id. */
   conversationId?: string;
   parentRunId?: string;
+  /** Earlier turns inherited by an edited or reverted conversation branch. */
+  prefixRunIds?: string[];
   taskId?: string;
   followupId?: string;
   status: RunStatus;

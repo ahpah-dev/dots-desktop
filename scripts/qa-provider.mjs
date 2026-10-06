@@ -48,6 +48,7 @@ export async function startQaProvider({ port = 0, chunkDelayMs = 25 } = {}) {
         (body.tools ?? []).map((tool) => tool.function.name),
       );
       calls.push({
+        messages,
         path,
         model: body.model,
         userPrompt,

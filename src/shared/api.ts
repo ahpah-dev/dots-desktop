@@ -65,6 +65,7 @@ export interface DotsApi {
   // runs
   startRun(dotId: string, prompt: string, options?: RunOptions): Promise<Run>;
   continueRun(runId: string, prompt: string): Promise<Run>;
+  reviseMessage(runId: string, prompt?: string): Promise<Run>;
   cancelRun(runId: string): Promise<void>;
   listRuns(dotId: string, limit?: number): Promise<Run[]>;
   listActivity(limit?: number): Promise<Run[]>;
@@ -151,6 +152,7 @@ export const API_METHODS: DotsApiMethod[] = [
   "defaultWorkspaceFor",
   "startRun",
   "continueRun",
+  "reviseMessage",
   "cancelRun",
   "listRuns",
   "listActivity",

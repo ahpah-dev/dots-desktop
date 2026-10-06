@@ -2252,3 +2252,10 @@ input[type="datetime-local"] {
     animation-iteration-count: 1 !important;
   }
 }
+
+.message-actions { display: flex; gap: 8px; margin-top: 10px; }
+.message-actions button { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border-medium); border-radius: 7px; padding: 5px 9px; color: var(--text-muted); background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+.message-actions button:hover:not(:disabled) { color: var(--text-main); background: var(--bg-card); }
+.message-actions button:disabled { opacity: .45; cursor: default; }
+.message-editor textarea { width: 100%; min-height: 110px; resize: vertical; border: 1px solid var(--border-medium); border-radius: 9px; background: var(--bg-card); color: var(--text-main); padding: 12px; font: inherit; line-height: 1.6; }
+.user-message .revision-hint { font-size: 12px; opacity: .7; line-height: 1.5; }
