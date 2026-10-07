@@ -6,6 +6,7 @@ import { once } from 'node:events';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { sceneTiming } from './promo-timeline.mjs';
 
 const WIDTH = 1280, HEIGHT = 720, FPS = 30, DURATION = 58;
 const output = resolve('website/assets');
@@ -22,7 +23,6 @@ const canvas = createCanvas(WIDTH, HEIGHT);
 const ctx = canvas.getContext('2d');
 const clamp = (v) => Math.max(0, Math.min(1, v));
 const ease = (v) => 1 - Math.pow(1 - clamp(v), 3);
-const starts = [0, 6, 13, 21, 28, 36, 43, 50, 58];
 const ink = '#28382f', green = '#35785c', paper = '#f8f9f5';
 
 function roundRect(x, y, w, h, radius, fill, stroke) {
@@ -141,10 +141,10 @@ function drawScene(index, time) {
   }
 }
 function render(time) {
-  const scene=Math.min(7,starts.findIndex((end,index)=>index>0&&time<end)-1);
-  const index=scene<0?7:scene;drawScene(index,time-starts[index]);
-  if(index<7&&time>starts[index+1]-.55){
-    ctx.save();ctx.globalAlpha=ease((time-starts[index+1]+.55)/.55);drawScene(index+1,.8);ctx.restore();
+  const { index, localTime, incoming } = sceneTiming(time);
+  drawScene(index,localTime);
+  if(incoming){
+    ctx.save();ctx.globalAlpha=ease(incoming.progress);drawScene(incoming.index,incoming.localTime);ctx.restore();
   }
   const fade=clamp(time/.35)*clamp((DURATION-time)/.6);
   if(fade<1){ctx.fillStyle=`rgba(35,63,49,${1-fade})`;ctx.fillRect(0,0,WIDTH,HEIGHT);}
@@ -171,6 +171,13 @@ for(let i=0;i<sampleCount;i++){
 }
 const score=resolve(scratch,'score.wav');await writeFile(score,audio);
 render(3);await writeFile(resolve(output,'demo-poster.jpg'),canvas.encodeSync('jpeg',92));
+// Inspect both sides of every cut to catch repeated entrances and flashes.
+for (const cut of [6,13,21,28,36,43,50]) {
+  for (const offset of [-.4,-1/FPS,0,1/FPS,.4]) {
+    render(cut+offset);
+    await writeFile(resolve(scratch,`cut-${cut}-${offset.toFixed(3)}.jpg`),canvas.encodeSync('jpeg',92));
+  }
+}
 
 const encoder=spawn(ffmpeg,['-hide_banner','-loglevel','error','-y','-f','image2pipe','-vcodec','mjpeg','-framerate',String(FPS),'-i','pipe:0','-i',score,'-c:v','libx264','-preset','fast','-crf','21','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-movflags','+faststart','-shortest',resolve(output,'dots-demo.mp4')],{windowsHide:true,stdio:['pipe','ignore','pipe']});
 let errors='';encoder.stderr.on('data',chunk=>errors+=chunk.toString());
