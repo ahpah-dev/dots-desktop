@@ -1,0 +1,24 @@
+.activity-glyph{display:inline-flex;align-items:center;justify-content:center;position:relative;width:26px;height:26px;flex-shrink:0;border-radius:8px;color:var(--accent-primary,#35785c);background:var(--bg-selected,#e4eade);overflow:hidden}
+.activity-glyph svg{position:relative;z-index:1;stroke-width:1.8}
+.activity-glyph i,.activity-glyph b{position:absolute;display:none;pointer-events:none}
+.activity-glyph.is-active.activity-file svg{animation:activity-write 1.8s ease-in-out infinite}
+.activity-glyph.is-active.activity-file i{display:block;bottom:4px;left:7px;height:1px;width:12px;background:currentColor;transform-origin:left;animation:activity-lines 1.8s ease-in-out infinite}
+.activity-glyph.is-active:is(.activity-web,.activity-search) svg{animation:activity-look 2.5s ease-in-out infinite}
+.activity-glyph.is-active:is(.activity-web,.activity-search) i{display:block;inset:3px;border:1px solid currentColor;border-radius:50%;animation:activity-radar 2.5s ease-out infinite}
+.activity-glyph.is-active.activity-shell b{display:block;width:4px;height:2px;right:6px;bottom:6px;background:currentColor;animation:activity-cursor 1.2s steps(1) infinite}
+.activity-glyph.is-active:is(.activity-memory,.activity-mcp,.activity-other,.activity-thinking,.activity-queued) svg{animation:activity-think 2.2s ease-in-out infinite}
+.activity-glyph.activity-done{animation:activity-finish .35s ease-out 1}
+.work-event.is-working{border-color:var(--border-medium);background:var(--bg-selected)}
+.work-event.is-working .work-event-toggle>span:not(.activity-glyph):first-of-type{color:var(--text-main)}
+.live-activity{display:flex;align-items:center;gap:10px;padding:10px 14px;margin:0 14px 12px;border:1px solid var(--border-subtle);border-radius:12px;color:var(--text-muted);font-size:12px;background:var(--bg-card);animation:activity-finish .3s ease-out 1}
+.live-activity strong{font-weight:500;color:var(--text-main)}
+.live-activity>span:last-child{margin-left:auto;color:var(--text-dim);font-size:10px}
+@keyframes activity-write{0%,100%{transform:translate(0,0) rotate(0)}35%{transform:translate(1px,-1px) rotate(-7deg)}70%{transform:translate(-1px,1px) rotate(4deg)}}
+@keyframes activity-lines{0%,100%{transform:scaleX(.25);opacity:.2}70%{transform:scaleX(1);opacity:.8}}
+@keyframes activity-look{0%,100%{transform:rotate(0)}35%{transform:rotate(-8deg)}70%{transform:rotate(6deg)}}
+@keyframes activity-radar{0%{transform:scale(.5);opacity:.5}80%,100%{transform:scale(1.2);opacity:0}}
+@keyframes activity-cursor{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes activity-think{0%,100%{transform:scale(1)}50%{transform:scale(.88) rotate(-4deg)}}
+@keyframes activity-finish{from{opacity:.4;transform:translateY(3px) scale(.98)}to{opacity:1;transform:none}}
+.mascots-hidden .activity-glyph *, .mascots-document-hidden .activity-glyph *, .mascots-scrolling .activity-glyph *{animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){.activity-glyph,.activity-glyph *,.live-activity{animation:none!important}}

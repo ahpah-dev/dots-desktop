@@ -427,7 +427,7 @@
 .avatar-editor-preview:hover .dot-mascot-motion { animation: mascot-hello .85s cubic-bezier(.2,.8,.2,1) 1; }
 .overview-dot-card:active .dot-mascot-motion,.sidebar-dot:active .dot-mascot-motion { transform: scale(.96,1.03); }
 .dot-mascot.is-animated[data-motion-visible="false"] *,
-.mascots-hidden .dot-mascot *, .mascots-scrolling .dot-mascot * { animation-play-state: paused!important; }
+.mascots-hidden .dot-mascot:not([data-background-motion="true"]) *, .mascots-document-hidden .dot-mascot *, .mascots-scrolling .dot-mascot * { animation-play-state: paused!important; }
 @keyframes mascot-idle { 0%,100% { transform: translateY(0) rotate(-.8deg); } 50% { transform: translateY(-2px) rotate(.8deg); } }
 @keyframes mascot-working { 0%,100% { transform: translateY(0) rotate(-1deg); } 25% { transform: translateY(-3px) rotate(2deg); } 65% { transform: translateY(-1px) rotate(-2deg); } }
 @keyframes mascot-curious { 0%,40%,100% { transform: rotate(0); } 55%,75% { transform: translateY(-2px) rotate(6deg); } }
@@ -1236,3 +1236,11 @@
     transition: none;
   }
 }
+
+.dot-mascot.is-animated[data-activity="file"] .dot-mascot-motion { animation-name: mascot-writing; animation-duration: 2.8s; }
+.dot-mascot.is-animated:is([data-activity="web"],[data-activity="search"]) .dot-mascot-motion { animation-name: mascot-looking; animation-duration: 3.6s; }
+.dot-mascot.is-animated[data-activity="shell"] .dot-mascot-motion { animation-name: mascot-command; animation-duration: 2.2s; }
+@keyframes mascot-writing { 0%,100% { transform: rotate(0); } 25%,65% { transform: translateY(1px) rotate(-3deg); } 45%,80% { transform: translateY(-1px) rotate(2deg); } }
+@keyframes mascot-looking { 0%,100% { transform: translateX(0) rotate(0); } 30% { transform: translateX(-2px) rotate(-4deg); } 70% { transform: translateX(2px) rotate(4deg); } }
+@keyframes mascot-command { 0%,65%,100% { transform: translateY(0); } 35% { transform: translateY(-3px); } }
+@media(prefers-reduced-motion:reduce){.dot-mascot.is-animated .dot-mascot-motion{animation:none!important}}

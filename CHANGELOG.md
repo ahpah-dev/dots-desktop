@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.4 — October 7, 2026
+
+- File work, web searches, shell commands, memory updates, and connected tools have their own gentle activity animations in the conversation and dot profile.
+- Added a draggable, always-on-top desktop dot with live speech bubbles when Dots is minimized or closed to the tray. It follows active work and approval requests, with controls to reopen the right conversation, stop work, and switch teammates.
+- Desktop settings offer background-only or always-visible mode, saved screen position, and optional spoken updates, which are off by default. Hide the dot from its close button and restore it from Settings or the system tray.
+- The companion uses a restricted bridge and displays short activity summaries. Hidden windows pause animation, reduced motion disables it, and live updates are batched without retaining tool arguments or output.
+- Closing with background mode disabled quits the app even if the desktop dot is visible.
+
 ## Website — October 6, 2026
 
 - Added scroll reveals, pointer-responsive cards and characters, gentle ambient motion, and reduced-motion support.

@@ -2,6 +2,7 @@ import { useId, useEffect, useRef, type CSSProperties } from "react";
 import { Shuffle } from "lucide-react";
 import type { Dot, DotAvatarConfig, DotStatus } from "@shared/types";
 import { observeMascot } from "../lib/mascotMotion";
+import type { ActivityKind } from "@shared/activity";
 import "../profile.css";
 
 export const DEFAULT_AVATAR: DotAvatarConfig = {
@@ -50,6 +51,8 @@ export function DotAvatar({
   color,
   name,
   className = "",
+  activity,
+  backgroundMotion = false,
 }: {
   dot?: Pick<Dot, "name" | "color" | "avatar"> & { paused?: boolean; status?: DotStatus };
   size?: number;
@@ -58,6 +61,8 @@ export function DotAvatar({
   color?: string;
   name?: string;
   className?: string;
+  activity?: ActivityKind;
+  backgroundMotion?: boolean;
 }) {
   const config = normalizeAvatar(avatar || dot?.avatar);
   const fill = /^#[0-9a-f]{6}$/i.test(color || dot?.color || "")
@@ -82,6 +87,8 @@ export function DotAvatar({
       style={{ width: size, height: size, "--mascot-phase": `${-phase * .7}s` } as CSSProperties}
       data-mood={mood}
       data-eyes={config.eyes}
+      data-activity={activity}
+      data-background-motion={backgroundMotion}
       role="img"
       aria-label={`${label}'s avatar`}
     >

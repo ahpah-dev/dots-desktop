@@ -24,6 +24,8 @@ import { DotSchedule } from "./DotSchedule";
 import { DotSettings } from "./DotSettings";
 import { DotAvatar } from "./DotAvatar";
 import { Responsibilities } from "./Responsibilities";
+import { ActivityGlyph } from "./ActivityGlyph";
+import { activeTool, toolActivity } from "@shared/activity";
 
 export const DotView: React.FC = () => {
   const {
@@ -34,6 +36,8 @@ export const DotView: React.FC = () => {
     setView,
     settings,
     setSelectedRunId,
+    selectedRunId,
+    activeRunEvents,
   } = useApp();
   if (!activeDot)
     return (
@@ -68,6 +72,8 @@ export const DotView: React.FC = () => {
     { id: "schedule", label: "Scheduled", icon: <Clock size={15} /> },
     { id: "settings", label: "Profile", icon: <SlidersHorizontal size={15} /> },
   ];
+  const tool = activeDot.activeRunId === selectedRunId && activeDot.status === "running" ? activeTool(activeRunEvents) : undefined;
+  const activity = tool ? toolActivity(tool) : undefined;
   return (
     <main className="dot-workspace studio-dot-workspace">
       <header className="studio-workspace-header">
@@ -121,9 +127,10 @@ export const DotView: React.FC = () => {
         {activeTab === "tasks" && (
           <aside className="dot-profile-rail">
             <div className="profile-mascot">
-              <DotAvatar dot={activeDot} size={116} animated />
+              <DotAvatar dot={activeDot} size={116} animated activity={activity?.kind} />
             </div>
             <h2>{activeDot.name}</h2>
+            {activity && <div className="live-activity" role="status"><ActivityGlyph kind={activity.kind} active/><strong>{activity.label}</strong></div>}
             <span className="dot-handle">
               @{activeDot.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-dot
             </span>

@@ -27,17 +27,10 @@ import {
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { DotAvatar } from "./DotAvatar";
-import type { Run, RunEvent, ToolCategory } from "@shared/types";
+import { ActivityGlyph } from "./ActivityGlyph";
+import { toolActivity } from "@shared/activity";
+import type { Run, RunEvent } from "@shared/types";
 
-const icons: Record<ToolCategory, React.ReactNode> = {
-  shell: <Terminal size={14} />,
-  file: <FileCode size={14} />,
-  web: <Globe size={14} />,
-  search: <Search size={14} />,
-  memory: <Brain size={14} />,
-  mcp: <Layers size={14} />,
-  other: <Layers size={14} />,
-};
 const readable: Record<string, string> = {
   run_command: "Running a command",
   read_file: "Reading a file",
@@ -333,7 +326,7 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
           expanded[key] ?? (e.type === "tool" && e.status === "error");
         return (
           <div
-            className={`work-event ${e.type === "tool" && e.status === "error" ? "error" : ""}`}
+            className={`work-event ${e.type === "tool" && e.status === "error" ? "error" : ""} ${e.type === "tool" && e.status === "running" && run.status === "running" ? "is-working" : ""}`}
             key={key}
           >
             <button
@@ -341,7 +334,7 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
               aria-expanded={isOpen}
               onClick={() => setExpanded((p) => ({ ...p, [key]: !isOpen }))}
             >
-              {e.type === "tool" ? icons[e.category] : <Brain size={14} />}
+              {e.type === "tool" ? <ActivityGlyph kind={toolActivity(e).kind} active={e.status === "running" && run.status === "running"}/> : <Brain size={14} />}
               <span>
                 {e.type === "tool"
                   ? (readable[e.name] ?? e.name)

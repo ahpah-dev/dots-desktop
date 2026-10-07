@@ -13,6 +13,7 @@ export default defineConfig({
     target: 'chrome130',
     sourcemap: false,
     rollupOptions: {
+      input: { main: resolve(__dirname,'src/renderer/index.html'), widget: resolve(__dirname,'src/renderer/widget.html') },
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],

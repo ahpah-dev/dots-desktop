@@ -702,6 +702,13 @@ function SettingsContent() {
               </SettingRow>
             </div>
           </PanelSection>
+          <PanelSection title="Your on-screen dot" description="A small, draggable teammate shares live activity while Dots runs in the background.">
+            <SettingRow title="Show a desktop dot" description="Appears when the main window is minimized or closed to the tray.">
+              <Toggle label="Show desktop dot" checked={settings?.desktopDotEnabled ?? true} disabled={!!busy} onChange={value=>general({desktopDotEnabled:value,...(value?{runInBackground:true}:{})})}/>
+            </SettingRow>
+            <Field label="When to show it"><select aria-label="Desktop dot visibility" value={settings?.desktopDotMode ?? 'background'} disabled={!!busy} onChange={event=>general({desktopDotMode:event.target.value as 'background'|'always'})}><option value="background">When Dots is in the background</option><option value="always">Always on screen</option></select></Field>
+            <SettingRow title="Read activity updates aloud" description="Use your computer's voice to speak the dot's short updates. Off by default."><Toggle label="Spoken desktop dot updates" checked={settings?.desktopDotVoice ?? false} disabled={!!busy} onChange={value=>general({desktopDotVoice:value})}/></SettingRow>
+          </PanelSection>
           <PanelSection title="Workspaces and capacity">
             <div className="profile-stack">
               <Field

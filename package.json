@@ -1,7 +1,7 @@
 {
   "name": "dots-desktop",
   "productName": "Dots",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Persistent, autonomous AI agents (Dots) with their own workspace, memory, tools and schedules.",
   "main": "dist/main/index.js",
   "author": "Dots",
@@ -18,6 +18,7 @@
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:messages": "node scripts/message-smoke.mjs",
     "test:motion": "node scripts/motion-smoke.mjs",
+    "test:desktop-dot": "node scripts/desktop-dot-smoke.mjs",
     "dist": "npm run build && electron-builder",
     "dist:dir": "npm run build && electron-builder --dir",
     "media:capture": "node scripts/capture-demo.mjs",

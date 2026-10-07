@@ -11,6 +11,7 @@ import type { AppSettings, ApprovalRequest, Dot, PushEvent, Run } from '@shared/
 import { Services, type Host } from './services';
 import { createLogger, initLogger } from './util/logger';
 import { firstLine } from './util/misc';
+import { DesktopDot } from './desktopDot';
 
 const log = createLogger('main');
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
@@ -28,6 +29,8 @@ let quitting = false;
 let shutdownDone = false;
 let blockerId: number | null = null;
 let trayHintShown = false;
+let desktopDot: DesktopDot | null = null;
+let mainOpening = false;
 
 process.on('uncaughtException', (err) => log.error('uncaughtException', err));
 process.on('unhandledRejection', (err) => log.error('unhandledRejection', err));
@@ -45,6 +48,8 @@ function asset(name: string): string {
 
 function push(event: PushEvent): void {
   if (win && !win.isDestroyed()) win.webContents.send(PUSH_CHANNEL, event);
+  desktopDot?.onEvent(event);
+  if (event.type === 'settings') refreshTray();
 }
 
 function showWindow(nav?: PushEvent): void {
@@ -54,11 +59,14 @@ function showWindow(nav?: PushEvent): void {
     win.show();
     win.focus();
   }
-  if (nav) win?.webContents.once('did-finish-load', () => push(nav));
-  if (nav && win && !win.webContents.isLoading()) push(nav);
+  if (nav && win) {
+    if (win.webContents.isLoading()) win.webContents.once('did-finish-load', () => push(nav));
+    else push(nav);
+  }
 }
 
 function createWindow(hidden: boolean): void {
+  mainOpening = !hidden;
   const dark = nativeTheme.shouldUseDarkColors;
   win = new BrowserWindow({
     width: 1440,
@@ -89,10 +97,16 @@ function createWindow(hidden: boolean): void {
   win.on('blur', publishWindowState);
   win.on('enter-full-screen', publishWindowState);
   win.on('leave-full-screen', publishWindowState);
+  win.on('show',()=>desktopDot?.sync());
+  win.on('hide',()=>desktopDot?.sync());
+  win.on('minimize',()=>desktopDot?.sync());
+  win.on('restore',()=>desktopDot?.sync());
   win.webContents.on('did-finish-load', publishWindowState);
 
   win.once('ready-to-show', () => {
+    mainOpening = false;
     if (!hidden) win?.show();
+    desktopDot?.sync();
     if (process.argv.includes('--capture-screenshot')) {
       const idx = process.argv.indexOf('--capture-screenshot');
       const targetPath = process.argv[idx + 1] || 'screenshot.png';
@@ -168,7 +182,7 @@ function createWindow(hidden: boolean): void {
     if (s?.runInBackground) {
       e.preventDefault();
       win?.hide();
-      if (!trayHintShown && Notification.isSupported()) {
+      if (!trayHintShown && s.desktopNotifications && Notification.isSupported()) {
         trayHintShown = true;
         new Notification({ title: 'Dots is still running', body: 'Your Dots keep working in the background. Use the tray icon to reopen or quit.', silent: true }).show();
       }
@@ -179,9 +193,12 @@ function createWindow(hidden: boolean): void {
         detail: 'Quitting will stop their current tasks. You can enable "Keep running in the background" in Settings.'
       });
       if (choice === 0) { e.preventDefault(); win?.hide(); }
+      else { e.preventDefault(); quitting=true; app.quit(); }
+    } else {
+      e.preventDefault(); quitting=true; app.quit();
     }
   });
-  win.on('closed', () => { win = null; });
+  win.on('closed', () => { win = null; mainOpening=false; desktopDot?.sync(); });
 
   if (DEV_URL) void win.loadURL(DEV_URL);
   else void win.loadFile(join(__dirname, '..', 'renderer', 'index.html'));
@@ -273,6 +290,7 @@ function refreshTray(): void {
         label: 'Keep running in background', type: 'checkbox', checked: settings.runInBackground,
         click: (item) => void services?.updateSettings({ runInBackground: item.checked })
       },
+      { label:'Show desktop dot',type:'checkbox',checked:settings.desktopDotEnabled,click:item=>void services?.updateSettings({desktopDotEnabled:item.checked}) },
       { label: 'Quit Dots', click: () => { quitting = true; app.quit(); } }
     ]));
   }, 250);
@@ -308,8 +326,9 @@ function notifyApproval(req: ApprovalRequest): void {
 
 function applySettings(s: AppSettings): void {
   nativeTheme.themeSource = s.theme;
+  desktopDot?.sync();
   win?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#191c1a' : '#fbfaf7');
-  if (app.isPackaged) {
+  if (app.isPackaged && !process.argv.includes('--demo-mode')) {
     app.setLoginItemSettings({ openAtLogin: s.launchAtLogin, args: s.launchAtLogin ? ['--hidden'] : [] });
   }
 }
@@ -395,6 +414,8 @@ async function bootstrap(): Promise<void> {
 
   const s = services.settings.get();
   createWindow(startHidden || (s.startMinimized && s.runInBackground));
+  desktopDot = new DesktopDot(services,()=>mainOpening || !!win && win.isVisible() && !win.isMinimized(),nav=>showWindow(nav),DEV_URL);
+  desktopDot.sync();
   // Pre-warm Codex detection so the first screen is instant.
   void services.auth.status().then((auth) => push({ type: 'auth', auth }));
 
@@ -408,6 +429,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', (e) => {
   quitting = true;
+  desktopDot?.dispose(); desktopDot=null;
   if (shutdownDone || !services) return;
   e.preventDefault();
   void services.shutdown().catch((err) => log.error('shutdown failed', err)).finally(() => {

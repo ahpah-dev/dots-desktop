@@ -17,6 +17,7 @@ const common = {
 };
 
 const targets = [
+  { ...common, entryPoints: [resolve(root, 'src/preload/desktopDot.ts')], outfile: resolve(root, 'dist/preload/desktopDot.js') },
   { ...common, entryPoints: [resolve(root, 'src/main/index.ts')], outfile: resolve(root, 'dist/main/index.js') },
   { ...common, entryPoints: [resolve(root, 'src/preload/index.ts')], outfile: resolve(root, 'dist/preload/index.js') }
 ];

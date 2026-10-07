@@ -6,7 +6,10 @@ let scrolling = false;
 
 const root = () => document.documentElement;
 const hide = () => root().classList.add('mascots-hidden');
-const syncVisibility = () => root().classList.toggle('mascots-hidden', document.hidden || !document.hasFocus());
+const syncVisibility = () => {
+  root().classList.toggle('mascots-hidden', document.hidden || !document.hasFocus());
+  root().classList.toggle('mascots-document-hidden', document.hidden);
+};
 const onScroll = () => {
   if (!scrolling) { scrolling = true; root().classList.add('mascots-scrolling'); }
   clearTimeout(scrollTimer);
@@ -39,7 +42,7 @@ export function observeMascot(element: HTMLElement): () => void {
       window.removeEventListener('blur', hide);
       window.removeEventListener('focus', syncVisibility);
       clearTimeout(scrollTimer); scrolling = false;
-      root().classList.remove('mascots-hidden', 'mascots-scrolling');
+      root().classList.remove('mascots-hidden', 'mascots-scrolling', 'mascots-document-hidden');
     }
   };
 }

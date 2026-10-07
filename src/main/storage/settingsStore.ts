@@ -9,6 +9,10 @@ export function defaultSettings(defaultWorkspaceRoot: string): AppSettings {
     startMinimized: false,
     maxConcurrentRuns: 3,
     desktopNotifications: true,
+    desktopDotEnabled: true,
+    desktopDotMode: 'background',
+    desktopDotVoice: false,
+    desktopDotPosition: null,
     useCodexUserConfig: false,
     codexPathOverride: '',
     defaultWorkspaceRoot,
@@ -42,6 +46,11 @@ export class SettingsStore {
   private sanitize(s: AppSettings): AppSettings {
     return {
       ...s,
+      desktopDotEnabled: s.desktopDotEnabled !== false,
+      desktopDotMode: s.desktopDotMode === 'always' ? 'always' : 'background',
+      desktopDotVoice: s.desktopDotVoice === true,
+      desktopDotPosition: s.desktopDotPosition && Number.isFinite(s.desktopDotPosition.x) && Number.isFinite(s.desktopDotPosition.y)
+        ? { x: Math.round(Math.max(-100000, Math.min(100000, s.desktopDotPosition.x))), y: Math.round(Math.max(-100000, Math.min(100000, s.desktopDotPosition.y))) } : null,
       maxConcurrentRuns: Math.min(10, Math.max(1, Math.round(Number(s.maxConcurrentRuns) || 3))),
       theme: ['system', 'light', 'dark'].includes(s.theme) ? s.theme : 'system',
       codexPathOverride: String(s.codexPathOverride ?? '').trim()

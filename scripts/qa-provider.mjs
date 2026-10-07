@@ -77,6 +77,11 @@ export async function startQaProvider({ port = 0, chunkDelayMs = 25 } = {}) {
               content: "Checked the complete Dots tool workflow.\n",
             },
           });
+        if (String(userPrompt).includes("[qa:command]") && available.has("run_command"))
+          requested.push({
+            name: "run_command",
+            args: { command: process.platform === "win32" ? "Start-Sleep -Milliseconds 3000; Write-Output 'desktop-dot-check'" : "sleep 3; printf desktop-dot-check", timeout_seconds: 15 },
+          });
         if (available.has("remember"))
           requested.push({
             name: "remember",

@@ -343,6 +343,10 @@ export interface AppSettings {
   startMinimized: boolean;
   maxConcurrentRuns: number;
   desktopNotifications: boolean;
+  desktopDotEnabled: boolean;
+  desktopDotMode: "background" | "always";
+  desktopDotVoice: boolean;
+  desktopDotPosition: { x: number; y: number } | null;
   /** Load the user's own ~/.codex/config.toml (MCP servers, plugins, hooks…). Off = isolated, predictable runs. */
   useCodexUserConfig: boolean;
   /** Absolute path override for the Codex executable. */
