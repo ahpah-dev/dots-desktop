@@ -76,7 +76,7 @@ export class DesktopDot {
     const initial = { x: position?.x ?? area.x + area.width - 382, y: position?.y ?? area.y + area.height - 214, width: 360, height: 192 };
     const bounds = clampDesktopBounds(initial,screen.getDisplayMatching(initial).workArea);
     this.window = new BrowserWindow({ ...bounds, title:'Your desktop dot', show:false, frame:false, transparent:true, resizable:false, maximizable:false, minimizable:false, fullscreenable:false, alwaysOnTop:true, skipTaskbar:true, hasShadow:false, focusable:false,
-      webPreferences:{preload:join(__dirname,'..','preload','desktopDot.js'),contextIsolation:true,sandbox:true,nodeIntegration:false,spellcheck:false,autoplayPolicy:'no-user-gesture-required'} });
+      webPreferences:{preload:join(__dirname,'..','preload','desktopDot.js'),contextIsolation:true,sandbox:true,nodeIntegration:false,spellcheck:false,backgroundThrottling:false,autoplayPolicy:'no-user-gesture-required'} });
     this.window.setAlwaysOnTop(true,'floating');
     this.window.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:false});
     this.window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
