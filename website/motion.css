@@ -18,7 +18,6 @@
 .possibility-card:hover{transform:translateY(-3px)}
 .possibility-card::after{display:none}
 .possibility-card:hover::after{opacity:1}
-.possibility-card:hover .mini-character{animation:small-hello .9s ease-in-out}
 .tour-tabs button{transition:background .25s,color .25s,box-shadow .25s}
 .tour-copy.is-changing{animation:tour-enter .4s cubic-bezier(.2,.8,.2,1)}
 .detail-icon{transition:transform .3s,background .3s}
@@ -88,3 +87,21 @@
   .possibility-card:hover{transform:none}
 }
 @media(prefers-reduced-motion:reduce){.scroll-progress{display:none}}
+
+/* Character-sized motion only. Tap a teammate for a little greeting. */
+button.mini-character{border:0;padding:0;cursor:pointer;transform-origin:50% 80%;transition:scale .2s}
+button.mini-character:active{scale:.94 1.04}
+button.mini-character.is-greeting{animation:small-hello .85s cubic-bezier(.2,.8,.2,1) 1}
+button.mini-character.is-greeting i:last-child{animation:dot-wink .85s ease-in-out 1;transform-origin:center}
+.character-main::after{content:'✦';position:absolute;right:-5px;top:20px;font-size:22px;color:#73966b;opacity:0;animation:dot-twinkle 8s ease-in-out infinite}
+.hero-world.is-resting .character-main::after,html.is-scrolling .character-main::after,html.is-scrolling .mini-character,html.is-scrolling .mini-character *,html.is-hidden .character-main::after{animation-play-state:paused!important}
+.hero-world .character-eyes{transition:translate .25s}
+@media(hover:hover) and (pointer:fine){.hero-world:hover .character-eyes{translate:2px 0}.hero-world:hover .character-smile{scale:1.12}}
+@keyframes dot-wink{0%,30%,70%,100%{scale:1 1}45%,55%{scale:1 .15}}
+@keyframes dot-twinkle{0%,65%,100%{opacity:0;transform:translateY(3px) scale(.7) rotate(-15deg)}75%,82%{opacity:.65;transform:translateY(-4px) scale(1) rotate(10deg)}}
+@media(max-width:760px),(hover:none),(pointer:coarse){.character-main::after{animation:none}}
+@media(prefers-reduced-motion:reduce){button.mini-character,button.mini-character i,.character-main::after{animation:none!important;transition:none;scale:1}.hero-world .character-eyes{translate:none!important}}
+
+.possibility-card.is-visible .mini-character:not(.is-greeting):not(.has-greeted){animation:card-hello .8s var(--reveal-delay,0ms) cubic-bezier(.2,.8,.2,1) 1}
+@keyframes card-hello{0%,100%{translate:0 0;rotate:0deg}35%{translate:0 -3px;rotate:-4deg}65%{rotate:3deg}}
+@media(prefers-reduced-motion:reduce){.possibility-card.is-visible .mini-character{animation:none!important}}

@@ -409,19 +409,33 @@
   height: 100%;
   overflow: visible;
 }
-.dot-mascot.is-animated .dot-mascot-body {
-  transform-origin: 50px 60px;
-  animation: mascot-breathe 5s ease-in-out infinite;
-}
-@keyframes mascot-breathe {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-1deg);
-  }
-  50% {
-    transform: translateY(-2px) rotate(1deg);
-  }
-}
+
+.dot-mascot { position: relative; }
+.dot-mascot-motion { display: block; width: 100%; height: 100%; transform-origin: 50% 82%; }
+.dot-mascot.is-animated .dot-mascot-motion { animation: mascot-idle 5.8s ease-in-out infinite; animation-delay: var(--mascot-phase); }
+.dot-mascot.is-animated[data-mood="working"] .dot-mascot-motion { animation-name: mascot-working; animation-duration: 2.6s; }
+.dot-mascot.is-animated[data-mood="curious"] .dot-mascot-motion { animation-name: mascot-curious; animation-duration: 5s; }
+.dot-mascot.is-animated[data-mood="waiting"] .dot-mascot-motion { animation-name: mascot-waiting; animation-duration: 6s; }
+.dot-mascot.is-animated[data-eyes="dot"] .dot-mascot-eyes { transform-box: fill-box; transform-origin: center; animation: mascot-blink 7.4s infinite; animation-delay: var(--mascot-phase); }
+.dot-mascot.is-animated[data-mood="resting"] .dot-mascot-motion,
+.dot-mascot.is-animated[data-mood="resting"] .dot-mascot-eyes { animation: none; }
+.dot-mascot[data-mood="resting"] .dot-mascot-eyes { transform: scaleY(.65); transform-box: fill-box; transform-origin: center; }
+.mascot-sparkle { position: absolute; right: 8%; top: 15%; font-size: 13px; color: var(--accent-primary); opacity: 0; pointer-events: none; }
+.dot-mascot.is-animated:is([data-mood="working"],[data-mood="curious"]) .mascot-sparkle { animation: mascot-sparkle 2.6s ease-in-out infinite; }
+.overview-dot-card:is(:hover,:focus-visible) .dot-mascot-motion,
+.sidebar-dot:is(:hover,:focus-visible) .dot-mascot-motion,
+.avatar-editor-preview:hover .dot-mascot-motion { animation: mascot-hello .85s cubic-bezier(.2,.8,.2,1) 1; }
+.overview-dot-card:active .dot-mascot-motion,.sidebar-dot:active .dot-mascot-motion { transform: scale(.96,1.03); }
+.dot-mascot.is-animated[data-motion-visible="false"] *,
+.mascots-hidden .dot-mascot *, .mascots-scrolling .dot-mascot * { animation-play-state: paused!important; }
+@keyframes mascot-idle { 0%,100% { transform: translateY(0) rotate(-.8deg); } 50% { transform: translateY(-2px) rotate(.8deg); } }
+@keyframes mascot-working { 0%,100% { transform: translateY(0) rotate(-1deg); } 25% { transform: translateY(-3px) rotate(2deg); } 65% { transform: translateY(-1px) rotate(-2deg); } }
+@keyframes mascot-curious { 0%,40%,100% { transform: rotate(0); } 55%,75% { transform: translateY(-2px) rotate(6deg); } }
+@keyframes mascot-waiting { 0%,35%,100% { transform: rotate(-1deg); } 55%,75% { transform: rotate(2deg); } }
+@keyframes mascot-blink { 0%,43%,47%,100% { transform: scaleY(1); } 45% { transform: scaleY(.12); } }
+@keyframes mascot-hello { 0%,100% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-4px) rotate(-7deg); } 50% { transform: translateY(-2px) rotate(5deg); } 75% { transform: rotate(-2deg); } }
+@keyframes mascot-sparkle { 0%,55%,100% { opacity: 0; transform: translateY(3px) scale(.6) rotate(-15deg); } 70%,80% { opacity: .7; transform: translateY(-3px) scale(1) rotate(12deg); } }
+@media (prefers-reduced-motion: reduce) { .dot-mascot .dot-mascot-motion,.dot-mascot .dot-mascot-eyes,.dot-mascot .mascot-sparkle { animation: none!important; } }
 .avatar-editor {
   display: grid;
   grid-template-columns: 185px 1fr;

@@ -65,6 +65,15 @@ try {
     if(width===390) check('Mobile has no continuous decorative animation',await page.evaluate(()=>['.character-main','.character-eyes','.character-small','.character-peach'].every(selector=>getComputedStyle(document.querySelector(selector)).animationName==='none') && getComputedStyle(document.querySelector('.film-play-icon'),'::after').animationName==='none'));
   }
   await resize(1440,1100);
+  const hello = page.getByRole('button',{name:'Say hello to the researcher dot'});
+  await hello.scrollIntoViewIfNeeded();
+  await page.waitForFunction(()=>!document.documentElement.classList.contains('is-scrolling'));
+  await hello.click();
+  check('Character greeting plays once and winks',await hello.evaluate(element=>getComputedStyle(element).animationName==='small-hello' && getComputedStyle(element).animationIterationCount==='1' && getComputedStyle(element.lastElementChild).animationName==='dot-wink'));
+  await page.waitForFunction(()=>!document.querySelector('button.mini-character').classList.contains('is-greeting'));
+  check('Greeting settles without a repeated entrance',await hello.evaluate(element=>getComputedStyle(element).animationName==='none'));
+  await hello.focus();await page.keyboard.press('Enter');
+  check('Keyboard activation replays the greeting',await hello.evaluate(element=>element.classList.contains('is-greeting')));
   await page.getByRole('heading',{name:'Meet your next teammate in motion.'}).scrollIntoViewIfNeeded();
   await page.waitForFunction(()=>document.querySelector('.hero-world').classList.contains('is-resting'));
   check('Offscreen hero animations pause',await page.evaluate(()=>getComputedStyle(document.querySelector('.character-main')).animationPlayState==='paused'));
@@ -96,6 +105,8 @@ try {
   await page.emulateMedia({reducedMotion:'reduce'});
   await resize(390,844);await page.reload();await page.waitForSelector('#film-play');
   check('Reduced motion keeps content visible without automatic motion',await page.evaluate(()=>!document.documentElement.classList.contains('motion-ready') && getComputedStyle(document.querySelector('.hero-copy h1')).animationName==='none'));
+  await page.getByRole('button',{name:'Say hello to the builder dot'}).click();
+  check('Reduced motion disables character greetings',await page.evaluate(()=>[...document.querySelectorAll('button.mini-character')].every(element=>getComputedStyle(element).animationName==='none' && !element.classList.contains('is-greeting'))));
   await page.locator('#demo-title').scrollIntoViewIfNeeded();
   await screenshot(resolve(output,'demo-mobile.png'));
   await page.evaluate(()=>document.querySelector('video').muted=true);

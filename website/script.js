@@ -87,6 +87,18 @@
     }, 160);
   }, { passive: true });
 
+  // Small, user-triggered greetings; no pointer tracking or animation loop.
+  document.querySelectorAll('button.mini-character').forEach(character => {
+    let greetingTimer;
+    character.addEventListener('click', () => {
+      if (reducedMotion.matches || character.classList.contains('is-greeting')) return;
+      character.classList.add('has-greeted');
+      character.classList.add('is-greeting');
+      clearTimeout(greetingTimer);
+      greetingTimer = setTimeout(() => character.classList.remove('is-greeting'), 900);
+    });
+  });
+
   const video = document.getElementById('demo-video');
   const stage = document.getElementById('film-stage');
   const play = document.getElementById('film-play');

@@ -13,6 +13,12 @@
 - Shortened scroll reveals, paused decorative motion during scrolling and offscreen, and disabled continuous decoration on mobile and touch devices.
 - Replaced JavaScript scroll-progress layout reads with a native CSS scroll timeline where supported.
 
+## 2.0.3 — October 7, 2026
+
+- Dots blink and breathe, greet you on hover or keyboard focus, and show gentle working, waiting, and approval motions. Paused dots rest.
+- Animated avatars share one visibility observer. Decorative motion pauses offscreen, during scrolling, and when the app is hidden or unfocused; reduced motion disables it.
+- Website teammates give a brief greeting on arrival and wink when clicked or activated with the keyboard, with a small desktop hero sparkle. Large backgrounds and mobile idle decoration remain static.
+
 ## 2.0.2 — October 6, 2026
 
 - Edit your sent messages inline and save & resend from that point.

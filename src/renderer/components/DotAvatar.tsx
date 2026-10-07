@@ -1,6 +1,7 @@
-import { useId } from "react";
+import { useId, useEffect, useRef, type CSSProperties } from "react";
 import { Shuffle } from "lucide-react";
-import type { Dot, DotAvatarConfig } from "@shared/types";
+import type { Dot, DotAvatarConfig, DotStatus } from "@shared/types";
+import { observeMascot } from "../lib/mascotMotion";
 import "../profile.css";
 
 export const DEFAULT_AVATAR: DotAvatarConfig = {
@@ -50,7 +51,7 @@ export function DotAvatar({
   name,
   className = "",
 }: {
-  dot?: Pick<Dot, "name" | "color" | "avatar">;
+  dot?: Pick<Dot, "name" | "color" | "avatar"> & { paused?: boolean; status?: DotStatus };
   size?: number;
   animated?: boolean;
   avatar?: Partial<DotAvatarConfig>;
@@ -64,161 +65,179 @@ export function DotAvatar({
     : "#78b7a0";
   const gradient = useId().replace(/:/g, "");
   const label = name || dot?.name || "Dot";
+  const mascot = useRef<HTMLSpanElement>(null);
+  const mood = dot?.paused || dot?.status === "paused" ? "resting"
+    : dot?.status === "running" ? "working"
+    : dot?.status === "awaiting-approval" ? "curious"
+    : dot?.status === "queued" ? "waiting" : "idle";
+  const phase = [...label].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 7;
+  useEffect(() => {
+    if (animated && mascot.current) return observeMascot(mascot.current);
+    return undefined;
+  }, [animated]);
   return (
     <span
+      ref={mascot}
       className={`dot-mascot ${animated ? "is-animated" : ""} ${className}`}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, "--mascot-phase": `${-phase * .7}s` } as CSSProperties}
+      data-mood={mood}
+      data-eyes={config.eyes}
       role="img"
       aria-label={`${label}'s avatar`}
     >
-      <svg viewBox="0 0 100 100" fill="none" aria-hidden="true">
-        <defs>
-          <linearGradient
-            id={gradient}
-            x1="28"
-            y1="19"
-            x2="77"
-            y2="85"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor={fill} />
-            <stop offset="1" stopColor={fill} />
-          </linearGradient>
-        </defs>
-        <ellipse
-          cx="50"
-          cy="88"
-          rx="24"
-          ry="4"
-          fill="currentColor"
-          opacity=".07"
-        />
-        <g className="dot-mascot-body">
-          {config.shape === "circle" ? (
-            <circle cx="50" cy="51" r="34" fill={`url(#${gradient})`} />
-          ) : config.shape === "squircle" ? (
-            <rect
-              x="17"
-              y="18"
-              width="66"
-              height="66"
-              rx="24"
-              fill={`url(#${gradient})`}
-            />
-          ) : (
-            <path
-              d="M49 16C66 12 81 24 84 40C91 55 79 77 63 82C48 91 30 81 21 69C10 56 12 38 23 28C28 20 38 16 49 16Z"
-              fill={`url(#${gradient})`}
-            />
-          )}
-          <path
-            d="M29 31C33 25 39 22 45 22"
-            stroke="white"
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity=".26"
+      <span className="dot-mascot-motion">
+        <svg viewBox="0 0 100 100" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient
+              id={gradient}
+              x1="28"
+              y1="19"
+              x2="77"
+              y2="85"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop stopColor={fill} />
+              <stop offset="1" stopColor={fill} />
+            </linearGradient>
+          </defs>
+          <ellipse
+            cx="50"
+            cy="88"
+            rx="24"
+            ry="4"
+            fill="currentColor"
+            opacity=".07"
           />
-          <ellipse cx="32" cy="62" rx="5" ry="3" fill="white" opacity=".15" />
-          <ellipse cx="69" cy="62" rx="5" ry="3" fill="white" opacity=".15" />
-          <g stroke="#24332c" strokeWidth="3.3" strokeLinecap="round">
-            {config.eyes === "dot" ? (
-              <>
-                <ellipse
-                  cx="39"
-                  cy="50"
-                  rx="2.9"
-                  ry="4.1"
-                  fill="#24332c"
-                  stroke="none"
-                />
-                <ellipse
-                  cx="61"
-                  cy="50"
-                  rx="2.9"
-                  ry="4.1"
-                  fill="#24332c"
-                  stroke="none"
-                />
-              </>
-            ) : config.eyes === "happy" ? (
-              <>
-                <path d="M35 51Q39 43 43 51" />
-                <path d="M57 51Q61 43 65 51" />
-              </>
+          <g className="dot-mascot-body">
+            {config.shape === "circle" ? (
+              <circle cx="50" cy="51" r="34" fill={`url(#${gradient})`} />
+            ) : config.shape === "squircle" ? (
+              <rect
+                x="17"
+                y="18"
+                width="66"
+                height="66"
+                rx="24"
+                fill={`url(#${gradient})`}
+              />
             ) : (
-              <>
-                <path d="M35 50L43 50" />
-                <path d="M57 50L65 50" />
-              </>
+              <path
+                d="M49 16C66 12 81 24 84 40C91 55 79 77 63 82C48 91 30 81 21 69C10 56 12 38 23 28C28 20 38 16 49 16Z"
+                fill={`url(#${gradient})`}
+              />
             )}
-            <path d="M45 63Q50 67 55 63" strokeWidth="2" />
-          </g>
-          {config.glasses !== "none" && (
-            <g stroke="#2c3b33" strokeWidth="2.3">
-              {config.glasses === "round" ? (
+            <path
+              d="M29 31C33 25 39 22 45 22"
+              stroke="white"
+              strokeWidth="3"
+              strokeLinecap="round"
+              opacity=".26"
+            />
+            <ellipse cx="32" cy="62" rx="5" ry="3" fill="white" opacity=".15" />
+            <ellipse cx="69" cy="62" rx="5" ry="3" fill="white" opacity=".15" />
+            <g stroke="#24332c" strokeWidth="3.3" strokeLinecap="round">
+              <g className="dot-mascot-eyes">
+              {config.eyes === "dot" ? (
                 <>
-                  <circle cx="38" cy="51" r="9" />
-                  <circle cx="62" cy="51" r="9" />
+                  <ellipse
+                    cx="39"
+                    cy="50"
+                    rx="2.9"
+                    ry="4.1"
+                    fill="#24332c"
+                    stroke="none"
+                  />
+                  <ellipse
+                    cx="61"
+                    cy="50"
+                    rx="2.9"
+                    ry="4.1"
+                    fill="#24332c"
+                    stroke="none"
+                  />
+                </>
+              ) : config.eyes === "happy" ? (
+                <>
+                  <path d="M35 51Q39 43 43 51" />
+                  <path d="M57 51Q61 43 65 51" />
                 </>
               ) : (
                 <>
-                  <rect x="28" y="43" width="20" height="16" rx="4" />
-                  <rect x="52" y="43" width="20" height="16" rx="4" />
+                  <path d="M35 50L43 50" />
+                  <path d="M57 50L65 50" />
                 </>
               )}
-              <path d="M47 50Q50 48 53 50M21 46L29 48M71 48L79 46" />
+              </g>
+              <path d="M45 63Q50 67 55 63" strokeWidth="2" />
             </g>
-          )}
-          {config.accessory === "cap" && (
-            <g>
-              <path d="M27 28C30 10 52 9 62 20L64 30Z" fill="#394c42" />
-              <path d="M24 30Q48 20 74 27Q81 31 74 34L24 34Z" fill="#465f51" />
-              <path d="M49 14L51 25" stroke="#718b7a" strokeWidth="2" />
-            </g>
-          )}
-          {config.accessory === "sprout" && (
-            <g>
-              <path
-                d="M50 21V11"
-                stroke="#466348"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              <path
-                d="M49 14C39 15 36 6 36 4C45 3 51 8 49 14Z"
-                fill="#577954"
-              />
-              <path
-                d="M51 12C52 5 59 3 66 5C64 13 57 17 51 12Z"
-                fill="#80a46f"
-              />
-            </g>
-          )}
-          {config.accessory === "headphones" && (
-            <g stroke="#34483c" strokeWidth="4">
-              <path d="M18 49V43C18 23 32 15 50 15C68 15 82 25 82 43V49" />
-              <rect
-                x="14"
-                y="44"
-                width="9"
-                height="21"
-                rx="4"
-                fill="#415b4b"
-                strokeWidth="2"
-              />
-              <rect
-                x="77"
-                y="44"
-                width="9"
-                height="21"
-                rx="4"
-                fill="#415b4b"
-                strokeWidth="2"
-              />
-            </g>
-          )}
-        </g>
-      </svg>
+            {config.glasses !== "none" && (
+              <g stroke="#2c3b33" strokeWidth="2.3">
+                {config.glasses === "round" ? (
+                  <>
+                    <circle cx="38" cy="51" r="9" />
+                    <circle cx="62" cy="51" r="9" />
+                  </>
+                ) : (
+                  <>
+                    <rect x="28" y="43" width="20" height="16" rx="4" />
+                    <rect x="52" y="43" width="20" height="16" rx="4" />
+                  </>
+                )}
+                <path d="M47 50Q50 48 53 50M21 46L29 48M71 48L79 46" />
+              </g>
+            )}
+            {config.accessory === "cap" && (
+              <g>
+                <path d="M27 28C30 10 52 9 62 20L64 30Z" fill="#394c42" />
+                <path d="M24 30Q48 20 74 27Q81 31 74 34L24 34Z" fill="#465f51" />
+                <path d="M49 14L51 25" stroke="#718b7a" strokeWidth="2" />
+              </g>
+            )}
+            {config.accessory === "sprout" && (
+              <g>
+                <path
+                  d="M50 21V11"
+                  stroke="#466348"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M49 14C39 15 36 6 36 4C45 3 51 8 49 14Z"
+                  fill="#577954"
+                />
+                <path
+                  d="M51 12C52 5 59 3 66 5C64 13 57 17 51 12Z"
+                  fill="#80a46f"
+                />
+              </g>
+            )}
+            {config.accessory === "headphones" && (
+              <g stroke="#34483c" strokeWidth="4">
+                <path d="M18 49V43C18 23 32 15 50 15C68 15 82 25 82 43V49" />
+                <rect
+                  x="14"
+                  y="44"
+                  width="9"
+                  height="21"
+                  rx="4"
+                  fill="#415b4b"
+                  strokeWidth="2"
+                />
+                <rect
+                  x="77"
+                  y="44"
+                  width="9"
+                  height="21"
+                  rx="4"
+                  fill="#415b4b"
+                  strokeWidth="2"
+                />
+              </g>
+            )}
+          </g>
+        </svg>
+      </span>
+      {animated && <span className="mascot-sparkle" aria-hidden="true">✦</span>}
     </span>
   );
 }

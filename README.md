@@ -4,7 +4,7 @@
 
 **Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
-[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.2/Dots-Setup-2.0.2.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.2/Dots-2.0.2-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.2)
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.3/Dots-Setup-2.0.3.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.3/Dots-2.0.3-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.3)
 
 ![Dots Desktop conversation workspace](assets/desktop-screenshot-v2.0.1.png)
 
@@ -23,7 +23,7 @@ Dots Desktop is independent, open-source software inspired by [OpenAI Dots](http
 
 ## Getting started
 
-1. Install [Dots-Setup-2.0.2.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.2/Dots-Setup-2.0.2.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
+1. Install [Dots-Setup-2.0.3.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.3/Dots-Setup-2.0.3.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
 2. Connect a model provider in Settings.
 3. Create a dot, give it a purpose, and choose a local workspace.
 4. Start a conversation or add an ongoing responsibility. Review activity and approvals as work progresses.
@@ -87,7 +87,7 @@ Package a Windows installer and portable executable:
 npm run dist
 ```
 
-Artifacts are generated under `release/`: `Dots-Setup-2.0.2.exe` and `Dots-2.0.2-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
+Artifacts are generated under `release/`: `Dots-Setup-2.0.3.exe` and `Dots-2.0.3-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
 ## Website and demo film
 
