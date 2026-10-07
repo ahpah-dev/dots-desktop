@@ -44,7 +44,7 @@ function DesktopDotWidget() {
     try {await window.desktopDot.control(action,action==='stop'?state?.runId:undefined);setError('');} catch {setError('Open Dots to review this action.');}
   };
   if (!state) return <div className="desktop-dot-widget"><p>{error || 'Meeting your dot…'}</p></div>;
-  return <section className="desktop-dot-widget" data-activity={state.activity} aria-label="Desktop dot live activity">
+  return <section className="desktop-dot-widget" data-activity={state.activity} aria-label="Desktop dot live activity" onPointerDown={()=>control('focus')}>
     <div className="desktop-dot-drag" title="Drag to move your dot"><GripHorizontal size={15}/><span>{state.pinned?'Following this dot':'Following active work'}</span></div>
     <button className="widget-dismiss" aria-label="Hide desktop dot" title="Hide desktop dot" onClick={()=>control('hide')}><X size={13}/></button>
     <div className="widget-companion"><DotAvatar dot={state.dot ?? undefined} size={85} animated activity={state.activity} backgroundMotion/></div>

@@ -48,7 +48,7 @@ export interface DesktopDotState {
   theme: 'light' | 'dark';
 }
 
-export type DesktopDotAction = 'open' | 'stop' | 'hide' | 'next' | 'auto' | 'toggle-voice';
+export type DesktopDotAction = 'open' | 'stop' | 'hide' | 'next' | 'auto' | 'toggle-voice' | 'focus';
 export const DESKTOP_DOT_STATE_CHANNEL = 'desktop-dot:state';
 export const DESKTOP_DOT_GET_CHANNEL = 'desktop-dot:get';
 export const DESKTOP_DOT_CONTROL_CHANNEL = 'desktop-dot:control';
