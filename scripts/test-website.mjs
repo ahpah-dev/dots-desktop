@@ -48,7 +48,7 @@ try {
     await writeFile(path, Buffer.from(encoded, 'base64'));
   };
   page.on('response',response=>{if(response.url().includes('dots-demo.mp4'))mediaRequests.push(response.status());});
-  await page.waitForSelector('#film-play');await page.evaluate(()=>document.fonts.ready);
+  await page.waitForSelector('#film-play');await page.waitForLoadState('load');await page.evaluate(()=>document.fonts.ready);
   check('Film waits for user playback and does not download at page load',await page.evaluate(()=>document.querySelector('video').paused && document.querySelector('video').currentTime===0) && mediaRequests.length===0);
   check('Scroll reveal and character motion initialize',await page.evaluate(()=>document.documentElement.classList.contains('motion-ready') && getComputedStyle(document.querySelector('.character-eyes')).animationName.includes('character-blink')));
   check('Large grid and secondary decorations stay static',await page.evaluate(()=>['.world-grid','.character-small','.character-peach','.floating-note','.orbit-label'].every(selector=>getComputedStyle(document.querySelector(selector)).animationName==='none')));
