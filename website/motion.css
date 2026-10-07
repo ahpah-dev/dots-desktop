@@ -48,7 +48,7 @@
 .film-footer i{font-style:normal;padding:0 8px;color:#758f70}
 .film-status{font-size:11px;text-align:center;min-height:0;margin-top:10px}
 .film-status:empty{display:none}
-.film-chapters{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:19px}
+.film-chapters{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:19px}
 .film-chapters button{display:flex;align-items:center;gap:10px;text-align:left;padding:17px 15px;border:1px solid var(--line);background:#f2f5ed;border-radius:11px;color:#778a6d;transition:background .25s,border-color .25s,translate .25s}
 .film-chapters button:hover,.film-chapters button[aria-current=true]{background:#e8efdf;border-color:#a9be98;translate:0 -2px}
 .film-chapters span{font-size:9px;color:#9ba98e}

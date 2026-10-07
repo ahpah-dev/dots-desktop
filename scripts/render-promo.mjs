@@ -4,11 +4,11 @@ import ffmpeg from 'ffmpeg-static';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { existsSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { sceneTiming } from './promo-timeline.mjs';
+import { sceneTiming, SCENE_STARTS } from './promo-timeline.mjs';
 
-const WIDTH = 1280, HEIGHT = 720, FPS = 30, DURATION = 58;
+const WIDTH = 1280, HEIGHT = 720, FPS = 30, DURATION = SCENE_STARTS.at(-1);
 const output = resolve('website/assets');
 const scratch = resolve('artifacts/qa/promo');
 await mkdir(scratch, { recursive: true });
@@ -19,6 +19,13 @@ const images = {};
 for (const name of ['overview', 'conversation', 'memory', 'responsibilities', 'profile']) {
   images[name] = await loadImage(resolve(output, `demo/${name}.png`));
 }
+const clips={};
+for(const name of ['activity','desktop']) {
+  const directory=resolve('artifacts/qa/promo-footage',name);
+  const metadata=JSON.parse(await readFile(resolve(directory,'frames.json'),'utf8'));
+  clips[name]=await Promise.all(metadata.frames.map(async frame=>({...frame,image:await loadImage(resolve(directory,frame.file))})));
+}
+function footage(name,time) { const frames=clips[name];return (frames.findLast(frame=>frame.at<=Math.max(0,time))??frames[0]).image; }
 const canvas = createCanvas(WIDTH, HEIGHT);
 const ctx = canvas.getContext('2d');
 const clamp = (v) => Math.max(0, Math.min(1, v));
@@ -84,6 +91,8 @@ const products = [
   null,
   { title:['Your team.','One home.'], subtitle:['A researcher. A builder.','A keeper of the details.'], image:'overview', tag:'YOUR PERSONAL TEAM', note:'A purpose for every teammate.' },
   { title:['Hand over','the next thing.'], subtitle:['Give your dot a brief.','See the work. Pick up the conversation.'], image:'conversation', tag:'FROM A BRIEF TO PROGRESS', note:'Your conversation carries forward.' },
+  { title:['Know what','your dot','is doing.'], subtitle:['Files. Web searches. Commands.','Little motions. Clear live updates.'], image:'activity', tag:'NEW IN 2.0.4 · WORK IN MOTION', note:'See each step as it happens.' },
+  null,
   { title:['Less repeating.','More remembering.'], subtitle:['Preferences. Decisions. Context.','Memory you can inspect and edit.'], image:'memory', tag:'CONTEXT THAT STAYS CLOSE', note:'Keep the useful details.' },
   { title:['Give the work','a rhythm.'], subtitle:['Ongoing responsibilities.','Recurring checks. Durable follow-ups.'], image:'responsibilities', tag:'THE THINGS YOUR DOT OWNS', note:'Daily, interval, and cron schedules.' },
   { title:['A capable dot.','You in control.'], subtitle:['Choose its tools and permissions.','Review work. Pause when you need to.'], image:'profile', tag:'CLEAR BOUNDARIES', note:'Local work. Reviewable activity.' },
@@ -91,26 +100,61 @@ const products = [
 function productScene(index, time) {
   const item=products[index];background(time);
   logo(66,44,44);text('dots',118,76,26,ink,'semi');text(item.tag,76,177,12,'#7b9075','semi');
-  const baseSize = index === 3 ? 46 : 53;
+  const baseSize = index === 5 ? 46 : 53;
   ctx.font = `${baseSize}px "Film Semi", sans-serif`;
   const widest = Math.max(...item.title.map(line => ctx.measureText(line).width));
   const titleSize = Math.min(baseSize, baseSize * 345 / widest);
   lines(item.title,76,258,titleSize,ink,time,titleSize * 1.2);
   item.subtitle.forEach((line,i)=>text(line,78,429+i*28,17,'#758477'));
-  text(`${String(index+1).padStart(2,'0')} / 08`,78,651,12,'#91a08c');
+  text(`${String(index+1).padStart(2,'0')} / 10`,78,651,12,'#91a08c');
+  if(index===3) activityChips(time);
   const p=ease(time/1.1), x=475+(1-p)*150, y=136 + Math.sin(time*.8)*3;
-  const width=858,height=width*images[item.image].height/images[item.image].width;
+  const source=item.image==='activity'?footage('activity',time):images[item.image];
+  const width=item.image==='activity'?790:858,height=width*source.height/source.width;
   ctx.save();ctx.globalAlpha*=p;ctx.translate(x+width/2,y+height/2);ctx.rotate(-.025 + Math.sin(time*.3)*.003);
   ctx.shadowColor='#36503e24';ctx.shadowBlur=42;ctx.shadowOffsetY=24;
   roundRect(-width/2,-height/2,width,height,14,'white');ctx.shadowColor='transparent';
   ctx.beginPath();ctx.roundRect(-width/2,-height/2,width,height,14);ctx.clip();
   const zoom=1.006+ease(time/8)*.01;
-  ctx.drawImage(images[item.image],-width*zoom/2,-height*zoom/2,width*zoom,height*zoom);ctx.restore();
+  ctx.drawImage(source,-width*zoom/2,-height*zoom/2,width*zoom,height*zoom);ctx.restore();
   badge(item.note,770,616,time);
 }
+function activityChips(time) {
+  const labels=['Files','Web','Commands'], widths=[95,92,138];let x=76;
+  for(let i=0;i<3;i++) {
+    const p=ease((time-.6-i*.15)/.7);ctx.save();ctx.globalAlpha*=p;
+    roundRect(x,515+(1-p)*12,widths[i],45,12,'#e8efdf');
+    ctx.save();ctx.translate(x+22,537+(1-p)*12);ctx.strokeStyle=green;ctx.lineWidth=1.7;ctx.lineCap='round';
+    if(i===0){ctx.rotate(Math.sin(time*3)*.12);ctx.beginPath();ctx.moveTo(-6,6);ctx.lineTo(5,-5);ctx.lineTo(8,-2);ctx.lineTo(-3,9);ctx.closePath();ctx.stroke();ctx.beginPath();ctx.moveTo(-8,10);ctx.lineTo(8,10);ctx.stroke();}
+    if(i===1){ctx.rotate(Math.sin(time*2)*.1);ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.moveTo(-9,0);ctx.lineTo(9,0);ctx.ellipse(0,0,4,9,0,0,Math.PI*2);ctx.stroke();}
+    if(i===2){roundRect(-11,-9,22,18,4,null,green);ctx.beginPath();ctx.moveTo(-6,-3);ctx.lineTo(-2,0);ctx.lineTo(-6,3);if(time%1.2<.6){ctx.moveTo(1,4);ctx.lineTo(6,4);}ctx.stroke();}
+    ctx.restore();text(labels[i],x+40,542+(1-p)*12,13,green,'semi');ctx.restore();x+=widths[i]+8;
+  }
+}
+function desktopScene(time) {
+  background(time);logo(66,44,44);text('dots',118,76,26,ink,'semi');
+  text('NEW IN 2.0.4 · YOUR DESKTOP DOT',76,177,12,'#7b9075','semi');
+  lines(['Still here.','Still on it.'],76,266,55,ink,time,67);
+  text('Minimize. Close to the tray.',78,429,17,'#758477');text('Your dot keeps you posted.',78,457,17,'#758477');
+  text('05 / 10',78,651,12,'#91a08c');
+  const enter=ease(time/1.1);ctx.save();ctx.globalAlpha*=enter;ctx.translate((1-enter)*100,0);
+  ctx.shadowColor='#36503e24';ctx.shadowBlur=30;ctx.shadowOffsetY=16;
+  roundRect(450,126,768,438,20,'#e8eddf','#d4dfc8');ctx.shadowColor='transparent';
+  ctx.beginPath();ctx.roundRect(450,126,768,438,20);ctx.clip();
+  text('YOUR DESKTOP',477,155,10,'#829375','semi');
+  for(const [i,label] of ['Project','Brief','Notes'].entries()){roundRect(476,180+i*60,48,45,10,'#ffffff70');text(label,500,207+i*60,10,'#829375','regular','center');}
+  const minimize=ease((time-.45)/.8);
+  if(minimize<1){ctx.save();ctx.globalAlpha*=1-minimize;const w=710*(1-minimize)+30*minimize,h=w*images.conversation.height/images.conversation.width;ctx.drawImage(images.conversation,477+610*minimize,168+350*minimize,w,h);ctx.restore();}
+  const appear=ease((time-.9)/.6);ctx.save();ctx.globalAlpha*=appear;
+  ctx.drawImage(footage('desktop',time-.9),536,190+(1-appear)*24,648,346);ctx.restore();
+  roundRect(465,540,738,16,7,'#ffffff80');logo(1088,539,16);text('Dots is running in the tray',484,551,9,'#829375');ctx.restore();
+  badge('Open. Stop. Switch teammates.',757,598,time);
+  text('Optional spoken updates',78,530,15,green,'semi');
+}
 function drawScene(index, time) {
-  if(index>=1&&index<=5){productScene(index,time);return;}
-  background(time,index===0||index===7);
+  if(index===4){desktopScene(time);return;}
+  if(index>=1&&index<=7){productScene(index,time);return;}
+  background(time,index===0||index===9);
   if(index===0){
     logo(70,48,48);text('dots',126,83,28,paper,'semi');text('YOUR WORK, MOVING FORWARD',76,181,12,'#b3ccb0','semi');
     lines(['A little dot.','A lot less on','your plate.'],74,276,66,paper,time,79);
@@ -118,7 +162,7 @@ function drawScene(index, time) {
     character(982,348,270,'#bbd0a8',time);character(781,177,77,'#d9cde6',time, .15);character(1157,559,70,'#e8cbb0',time,.09);
     badge('Good things are in motion.',803,95,time,true);
     text('DOTS DESKTOP · THE DEMO FILM',77,664,11,'#a6bfa6');
-  }else if(index===6){
+  }else if(index===8){
     text('A TEAM THAT GETS YOUR WORLD',WIDTH/2,104,12,'#899b80','semi','center');
     const labels=['The researcher','The builder','The keeper'];const colors=['#bbd0a8','#e8cbb0','#d9cde6'];
     const purposes=['Get the clear picture.','Make something real.','Keep the important things moving.'];
@@ -170,9 +214,9 @@ for(let i=0;i<sampleCount;i++){
   audio.writeInt16LE(Math.round(Math.max(-.98,Math.min(.98,(right+pluck+kick)*edge*2))*32767),46+i*4);
 }
 const score=resolve(scratch,'score.wav');await writeFile(score,audio);
-render(3);await writeFile(resolve(output,'demo-poster.jpg'),canvas.encodeSync('jpeg',92));
+render(33);await writeFile(resolve(output,'demo-poster.jpg'),canvas.encodeSync('jpeg',92));
 // Inspect both sides of every cut to catch repeated entrances and flashes.
-for (const cut of [6,13,21,28,36,43,50]) {
+for (const cut of SCENE_STARTS.slice(1,-1)) {
   for (const offset of [-.4,-1/FPS,0,1/FPS,.4]) {
     render(cut+offset);
     await writeFile(resolve(scratch,`cut-${cut}-${offset.toFixed(3)}.jpg`),canvas.encodeSync('jpeg',92));
@@ -202,23 +246,33 @@ A researcher. A builder. A keeper of the details.
 Hand over the next thing.
 Give your dot a brief. See the work. Pick up the conversation.
 
-00:21.000 --> 00:28.000
+00:21.000 --> 00:30.000
+Know what your dot is doing.
+File work, web searches, and commands
+have clear, gentle activity animations.
+
+00:30.000 --> 00:39.000
+Still here. Still on it.
+Your desktop dot shares live updates when minimized or closed to the tray.
+Open, stop, switch teammates, or enable spoken updates.
+
+00:39.000 --> 00:46.000
 Less repeating. More remembering.
 Preferences, decisions, and context. Memory you can inspect and edit.
 
-00:28.000 --> 00:36.000
+00:46.000 --> 00:54.000
 Give the work a rhythm.
 Ongoing responsibilities, recurring checks, and durable follow-ups.
 
-00:36.000 --> 00:43.000
+00:54.000 --> 01:01.000
 A capable dot. You in control.
 Choose tools and permissions. Review work. Pause when you need to.
 
-00:43.000 --> 00:50.000
+01:01.000 --> 01:08.000
 The researcher. The builder. The keeper.
 Make room for what matters.
 
-00:50.000 --> 00:58.000
+01:08.000 --> 01:16.000
 Good things are in motion. Meet your next teammate.
 Dots Desktop. Your computer must be on and Dots running.
 `);

@@ -105,22 +105,24 @@
   const status = document.getElementById('film-status');
   const chapters = [...document.querySelectorAll('[data-demo-time]')];
   let pendingSeek = null;
+  let playbackRequest = 0;
   video.addEventListener('loadedmetadata', () => {
     if (pendingSeek !== null) { video.currentTime = pendingSeek; pendingSeek = null; }
   });
   async function startFilm(time) {
-    if (play.disabled) return;
+    const request = ++playbackRequest;
     play.disabled = true; status.textContent = 'Loading the film…';
     if (Number.isFinite(video.duration)) video.currentTime = time;
     else pendingSeek = time;
     try {
       await video.play();
+      if (request !== playbackRequest) return;
       stage.classList.add('has-started');
       status.textContent = '';
       video.focus({ preventScroll: true });
     } catch {
-      status.textContent = 'The film could not start. Try playing it again, or use your browser’s video controls.';
-    } finally { play.disabled = false; }
+      if (request === playbackRequest) status.textContent = 'The film could not start. Try playing it again, or use your browser’s video controls.';
+    } finally { if (request === playbackRequest) play.disabled = false; }
   }
   play.addEventListener('click', () => startFilm(video.ended ? 0 : video.currentTime || 0));
   chapters.forEach(chapter => chapter.addEventListener('click', () => startFilm(Number(chapter.dataset.demoTime))));

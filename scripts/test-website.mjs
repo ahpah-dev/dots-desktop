@@ -84,14 +84,21 @@ try {
   await page.evaluate(()=>document.querySelector('video').muted=true);
   await page.getByRole('button',{name:'Play the Dots Desktop demo film'}).click();
   await page.waitForFunction(()=>{const v=document.querySelector('video');return !v.paused && v.readyState>=2 && v.currentTime>0.5;});
-  check('Native H.264/AAC film plays with real decoded frames',await page.evaluate(()=>{const v=document.querySelector('video');return Math.abs(v.duration-58)<.2 && v.videoWidth===1280 && v.getVideoPlaybackQuality().totalVideoFrames>0;}));
+  check('Native H.264/AAC film plays with real decoded frames',await page.evaluate(()=>{const v=document.querySelector('video');return Math.abs(v.duration-76)<.2 && v.videoWidth===1280 && v.getVideoPlaybackQuality().totalVideoFrames>0;}));
   check('Player supports range streaming',mediaRequests.some(status=>status===206));
   await page.getByRole('button',{name:/Keep the context/}).click();
-  await page.waitForFunction(()=>{const v=document.querySelector('video');return v.currentTime>=21 && v.currentTime<24;});
+  await page.waitForFunction(()=>{const v=document.querySelector('video');return v.currentTime>=39 && v.currentTime<42;});
   check('Chapter navigation seeks and resumes playback');
   await page.evaluate(()=>{const v=document.querySelector('video');v.textTracks[0].mode='showing';});
-  await page.waitForFunction(()=>document.querySelector('video').textTracks[0].cues?.length===8);
-  check('English captions load all eight scenes');
+  await page.waitForFunction(()=>document.querySelector('video').textTracks[0].cues?.length===10);
+  check('English captions load all ten scenes');
+  for(const [label,time] of [['Work in motion',21],['Your desktop dot',30]]) {
+    await page.getByRole('button',{name:new RegExp(label)}).click();
+    await page.waitForFunction(time=>{const v=document.querySelector('video');return !v.paused&&v.currentTime>=time&&v.currentTime<time+3;},time).catch(async error=>{
+      console.error('Chapter playback state',await page.evaluate(()=>{const v=document.querySelector('video');return {time:v.currentTime,paused:v.paused,ready:v.readyState,hidden:document.hidden,status:document.querySelector('#film-status').textContent};}));throw error;
+    });
+    check(`${label} chapter seeks to the new feature`);
+  }
   await page.evaluate(()=>document.querySelector('video').pause());
   check('Pause control works',await page.evaluate(()=>document.querySelector('video').paused));
   await page.evaluate(()=>{const v=document.querySelector('video');v.textTracks[0].mode='hidden';v.currentTime=0;v.playbackRate=4;return v.play();});

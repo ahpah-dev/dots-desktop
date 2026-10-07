@@ -2,7 +2,7 @@
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 
-export async function startQaProvider({ port = 0, chunkDelayMs = 25 } = {}) {
+export async function startQaProvider({ port = 0, chunkDelayMs = 25, promotional = false } = {}) {
   const calls = [];
   const server = createServer(async (request, response) => {
     const path = new URL(request.url, "http://127.0.0.1").pathname;
@@ -55,6 +55,7 @@ export async function startQaProvider({ port = 0, chunkDelayMs = 25 } = {}) {
         toolResults: toolResults.map((message) => message.content),
       });
       if (String(userPrompt).includes("[qa:slow]")) await sleep(1500);
+      if (promotional) await sleep(900);
       if (response.destroyed) return;
       response.writeHead(200, {
         "content-type": "text/event-stream",
@@ -73,20 +74,20 @@ export async function startQaProvider({ port = 0, chunkDelayMs = 25 } = {}) {
           requested.push({
             name: "write_file",
             args: {
-              path: "qa-output.txt",
-              content: "Checked the complete Dots tool workflow.\n",
+              path: promotional ? "release-brief.md" : "qa-output.txt",
+              content: promotional ? "# Release brief\n\nThe workspace is ready for the next step.\n" : "Checked the complete Dots tool workflow.\n",
             },
           });
-        if (String(userPrompt).includes("[qa:command]") && available.has("run_command"))
+        if ((promotional || String(userPrompt).includes("[qa:command]")) && available.has("run_command"))
           requested.push({
             name: "run_command",
-            args: { command: process.platform === "win32" ? "Start-Sleep -Milliseconds 3000; Write-Output 'desktop-dot-check'" : "sleep 3; printf desktop-dot-check", timeout_seconds: 15 },
+            args: { command: process.platform === "win32" ? `Start-Sleep -Milliseconds 3000; Write-Output '${promotional ? 'Workspace check complete.' : 'desktop-dot-check'}'` : `sleep 3; printf '${promotional ? 'Workspace check complete.' : 'desktop-dot-check'}'`, timeout_seconds: 15 },
           });
         if (available.has("remember"))
           requested.push({
             name: "remember",
             args: {
-              note: "QA fixture: writes, memories, and wakeups are verified locally.",
+              note: promotional ? "Keep release briefs concise and include a clear next step." : "QA fixture: writes, memories, and wakeups are verified locally.",
             },
           });
         const alreadyScheduled = messages.some((message) =>
@@ -98,8 +99,7 @@ export async function startQaProvider({ port = 0, chunkDelayMs = 25 } = {}) {
           requested.push({
             name: "schedule_followup",
             args: {
-              prompt:
-                "Check qa-output.txt and report whether the local QA artifact is still present.",
+              prompt: promotional ? "Review the release brief and identify the next useful step." : "Check qa-output.txt and report whether the local QA artifact is still present.",
               due_at: new Date(Date.now() + 3_600_000).toISOString(),
             },
           });
@@ -107,7 +107,7 @@ export async function startQaProvider({ port = 0, chunkDelayMs = 25 } = {}) {
       if (requested.length) {
         send({
           role: "assistant",
-          content: "I’ll verify the workspace, memory, and persistent wakeup.",
+          content: promotional ? "I’ll draft the brief and check the workspace." : "I’ll verify the workspace, memory, and persistent wakeup.",
         });
         await sleep(chunkDelayMs);
         for (const [index, tool] of requested.entries()) {
@@ -140,7 +140,7 @@ export async function startQaProvider({ port = 0, chunkDelayMs = 25 } = {}) {
         );
         const summary = failures.length
           ? `The local QA turn finished with ${failures.length} tool action(s) declined or blocked. Review the activity details.\n\n${failures.map((message) => message.content).join("\n")}`
-          : "The local QA workflow is complete. The workspace artifact, durable memory, and one-time wakeup are ready to review.";
+          : promotional ? "Your release brief is ready. I saved the useful details and scheduled a follow-up." : "The local QA workflow is complete. The workspace artifact, durable memory, and one-time wakeup are ready to review.";
         for (const text of summary.match(/.{1,32}/gs) ?? []) {
           send({ content: text });
           await sleep(chunkDelayMs);

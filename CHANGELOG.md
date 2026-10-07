@@ -16,6 +16,9 @@
 
 ## Website — October 7, 2026
 
+- Extended the trailer to 76 seconds with fresh v2.0.4 footage, animated tool activity, and a live desktop companion demonstration. Added chapter shortcuts and captions for both new features, with ten scenes and continuous transitions.
+- Chapter shortcuts now honor the latest selection even while an earlier seek is still loading.
+
 - Fixed the demo film's scene transitions so incoming animations continue through each dissolve without appearing early and restarting.
 - Removed pointer-driven parallax, card tilt and moving gradients, large-grid animation, and blurred text entrances.
 - Shortened scroll reveals, paused decorative motion during scrolling and offscreen, and disabled continuous decoration on mobile and touch devices.

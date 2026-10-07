@@ -94,18 +94,19 @@ Artifacts are generated under `release/`: `Dots-Setup-2.0.4.exe` and `Dots-2.0.4
 
 ## Website and demo film
 
-The website includes scroll reveals, interactive characters and cards, and a 58-second promotional film. Playback starts on request with native controls, chapter shortcuts, English captions, and a transcript. Reduced-motion preferences keep the content visible without automatic motion. The film combines real app screens, original motion graphics, and an original synth score.
+The website includes scroll reveals, interactive characters and cards, and a 76-second promotional film. Fresh v2.0.4 footage shows live tool activity and the desktop dot keeping you posted while the main window is minimized. Playback starts on request with native controls, six chapter shortcuts, English captions, and a transcript. Reduced-motion preferences keep the content visible without automatic motion. The film combines real app screens, original motion graphics, and an original synth score.
 
 To regenerate the media and verify the player:
 
 ```powershell
 npm run build
 npm run media:capture
+node scripts/capture-promo-activity.mjs
 npm run media:render
 npm run test:website
 ```
 
-Media is saved under `website/assets/`. Test `DOTS_WEBSITE_URL` can point to the deployed site for the same playback checks. Rendering uses the development-only Canvas and FFmpeg packages; they are not included in the website or desktop installer.
+Media is saved under `website/assets/`. Activity capture uses an isolated demo workspace and a local example provider; it performs real file and command actions without paid model calls. Test `DOTS_WEBSITE_URL` can point to the deployed site for the same playback checks. Rendering uses the development-only Canvas and FFmpeg packages; they are not included in the website or desktop installer.
 
 ## Project structure
 
