@@ -3,8 +3,8 @@
 .hero-copy>h1{animation:hero-arrive .9s cubic-bezier(.2,.8,.2,1) both}
 .hero-copy>p{animation:hero-arrive .9s .14s cubic-bezier(.2,.8,.2,1) both}
 .hero-actions,.hero-footnote{animation:hero-arrive .9s .24s cubic-bezier(.2,.8,.2,1) both}
-.hero-world{transform:translate3d(var(--pointer-x,0px),var(--pointer-y,0px),0);transition:transform .7s cubic-bezier(.2,.8,.2,1)}
-.world-grid{animation:grid-drift 22s ease-in-out infinite alternate}
+.hero-world{transform:none}
+.world-grid{animation:none}
 .character-main .character-eyes{animation:character-blink 6s infinite;transform-origin:center}
 .floating-note{animation:note-drift 8s ease-in-out infinite 1s}
 .orbit-label{animation:orbit-drift 7s ease-in-out infinite}
@@ -12,11 +12,11 @@
 .button span,.text-link span,.release-pill b{transition:translate .25s}
 .button:hover span,.text-link:hover span,.release-pill:hover b{translate:3px 0}
 .inline-play{font-size:10px;color:#6b8b5e}
-.motion-ready [data-reveal]{transition:opacity .7s var(--reveal-delay,0ms),translate .8s var(--reveal-delay,0ms) cubic-bezier(.2,.8,.2,1),transform .35s,box-shadow .35s}
-.motion-ready [data-reveal]:not(.is-visible){opacity:0;translate:0 24px}
-.possibility-card{transform:perspective(900px) rotateX(var(--tilt-x,0deg)) rotateY(var(--tilt-y,0deg));transition:transform .35s,box-shadow .35s;isolation:isolate}
-.possibility-card:hover{box-shadow:0 18px 40px #34552b15}
-.possibility-card::after{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(circle at var(--spot-x,50%) var(--spot-y,50%),#ffffff8c,transparent 65%);opacity:0;transition:opacity .35s;pointer-events:none}
+.motion-ready [data-reveal]{transition:opacity .35s var(--reveal-delay,0ms),translate .4s var(--reveal-delay,0ms) cubic-bezier(.2,.8,.2,1)}
+.motion-ready [data-reveal]:not(.is-visible){opacity:0;translate:0 12px}
+.possibility-card{transition:transform .2s;isolation:isolate}
+.possibility-card:hover{transform:translateY(-3px)}
+.possibility-card::after{display:none}
 .possibility-card:hover::after{opacity:1}
 .possibility-card:hover .mini-character{animation:small-hello .9s ease-in-out}
 .tour-tabs button{transition:background .25s,color .25s,box-shadow .25s}
@@ -63,7 +63,7 @@
 .film-transcript>div{display:grid;grid-template-columns:1fr 1fr;gap:14px 30px;padding:22px 0 8px}
 .film-transcript p{font-size:11px;line-height:1.8}
 .film-transcript strong{color:#546b4c;font-weight:500}
-@keyframes hero-arrive{from{opacity:0;translate:0 20px;filter:blur(4px)}to{opacity:1;translate:0 0;filter:blur(0)}}
+@keyframes hero-arrive{from{opacity:0;translate:0 20px;}to{opacity:1;translate:0 0;}}
 @keyframes grid-drift{from{rotate:-3deg;scale:1}to{rotate:3deg;scale:1.05}}
 @keyframes character-blink{0%,45%,49%,100%{scale:1 1}47%{scale:1 .12}}
 @keyframes note-drift{0%,100%{translate:0 0;rotate:0deg}50%{translate:0 -7px;rotate:-1deg}}
@@ -74,3 +74,17 @@
 @media(max-width:1050px){.site-header nav{gap:20px;font-size:12px}.demo-intro{gap:40px}.film-chapters button{padding-inline:12px;gap:7px}.film-chapters strong{font-size:10px}}
 @media(max-width:760px){.demo-section{padding-top:18px;padding-bottom:44px}.demo-intro{grid-template-columns:1fr;gap:18px;margin-bottom:25px}.demo-intro>p{font-size:12px;max-width:100%;padding:0}.film-shell{border-radius:17px}.film-play{top:49%;gap:8px;padding:8px}.film-play-icon{width:49px;height:49px}.film-play-icon svg{width:20px;height:20px}.film-play-icon::after{inset:-5px}.film-play-label{font-size:11px}.film-play-label small{font-size:8px;margin-top:5px}.film-tag{top:11px;right:12px;font-size:5px;letter-spacing:.8px;gap:5px}.film-tag i{height:3px;width:3px}.film-footer{padding:12px 14px;gap:12px}.film-footer p{font-size:8px}.film-footer>span{font-size:7px}.film-chapters{grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}.film-chapters button{padding:13px 11px;gap:7px}.film-chapters strong{font-size:9px}.film-transcript{margin-top:15px}.film-transcript>div{grid-template-columns:1fr;gap:12px}.film-transcript p{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.motion-ready [data-reveal]:not(.is-visible){opacity:1;translate:none}.hero-world,.possibility-card{transform:none!important}.scroll-progress{display:none}*{scroll-behavior:auto!important}.film-play-icon::after{display:none}}
+
+/* Keep large surfaces static; pause decoration while scrolling or out of view. */
+.character-small,.character-peach,.floating-note,.orbit-label{animation:none}
+.hero-world.is-resting *,.film-stage.is-resting *,html.is-scrolling .hero-world *,html.is-scrolling .film-play-icon::after,html.is-hidden *{animation-play-state:paused!important}
+.scroll-progress{display:none}
+@supports(animation-timeline:scroll()){
+  .scroll-progress{display:block;transform:scaleX(0);animation:scroll-fill linear both;animation-timeline:scroll(root block)}
+}
+@keyframes scroll-fill{to{transform:scaleX(1)}}
+@media(max-width:760px),(hover:none),(pointer:coarse){
+  .hero-world *,.film-play-icon::after{animation:none!important}
+  .possibility-card:hover{transform:none}
+}
+@media(prefers-reduced-motion:reduce){.scroll-progress{display:none}}

@@ -6,6 +6,12 @@
 - Added a 58-second promotional film with original motion graphics, app screens, and original music.
 - Added native playback controls, chapter shortcuts, English captions, and a readable transcript. Video downloads only when played.
 
+## Website — October 7, 2026
+
+- Removed pointer-driven parallax, card tilt and moving gradients, large-grid animation, and blurred text entrances.
+- Shortened scroll reveals, paused decorative motion during scrolling and offscreen, and disabled continuous decoration on mobile and touch devices.
+- Replaced JavaScript scroll-progress layout reads with a native CSS scroll timeline where supported.
+
 ## 2.0.2 — October 6, 2026
 
 - Edit your sent messages inline and save & resend from that point.

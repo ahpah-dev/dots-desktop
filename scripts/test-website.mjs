@@ -51,12 +51,23 @@ try {
   await page.waitForSelector('#film-play');await page.evaluate(()=>document.fonts.ready);
   check('Film waits for user playback and does not download at page load',await page.evaluate(()=>document.querySelector('video').paused && document.querySelector('video').currentTime===0) && mediaRequests.length===0);
   check('Scroll reveal and character motion initialize',await page.evaluate(()=>document.documentElement.classList.contains('motion-ready') && getComputedStyle(document.querySelector('.character-eyes')).animationName.includes('character-blink')));
+  check('Large grid and secondary decorations stay static',await page.evaluate(()=>['.world-grid','.character-small','.character-peach','.floating-note','.orbit-label'].every(selector=>getComputedStyle(document.querySelector(selector)).animationName==='none')));
+  check('Entrance animations do not blur large text surfaces',await page.evaluate(()=>getComputedStyle(document.querySelector('.hero-copy h1')).filter==='none'));
+  await page.locator('.hero-world').dispatchEvent('pointermove',{clientX:650,clientY:250});
+  await page.locator('.possibility-card').first().dispatchEvent('pointermove',{clientX:200,clientY:750});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(resolve)));
+  check('Pointer movement does not update gradient or tilt styles',await page.evaluate(()=>!document.querySelector('.hero-world').style.getPropertyValue('--pointer-x') && !document.querySelector('.possibility-card').style.getPropertyValue('--spot-x')));
+  check('Scrolling pauses ambient motion',await page.evaluate(()=>{window.dispatchEvent(new Event('scroll'));return document.documentElement.classList.contains('is-scrolling') && getComputedStyle(document.querySelector('.character-main')).animationPlayState==='paused';}));
+  await page.waitForFunction(()=>!document.documentElement.classList.contains('is-scrolling'));
   for(const width of [1440,800,390]) {
     await resize(width,1000);
     check(`No horizontal overflow at ${width}px`,await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    if(width===390) check('Mobile has no continuous decorative animation',await page.evaluate(()=>['.character-main','.character-eyes','.character-small','.character-peach'].every(selector=>getComputedStyle(document.querySelector(selector)).animationName==='none') && getComputedStyle(document.querySelector('.film-play-icon'),'::after').animationName==='none'));
   }
   await resize(1440,1100);
   await page.getByRole('heading',{name:'Meet your next teammate in motion.'}).scrollIntoViewIfNeeded();
+  await page.waitForFunction(()=>document.querySelector('.hero-world').classList.contains('is-resting'));
+  check('Offscreen hero animations pause',await page.evaluate(()=>getComputedStyle(document.querySelector('.character-main')).animationPlayState==='paused'));
   await page.waitForFunction(()=>document.querySelector('.film-shell').classList.contains('is-visible'));
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.film-shell')).opacity === '1');
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));

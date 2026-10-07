@@ -63,57 +63,29 @@
   const progress = document.createElement('div');
   progress.className = 'scroll-progress'; progress.setAttribute('aria-hidden', 'true');
   document.body.prepend(progress);
-  let scrollFrame = 0;
-  function updateProgress() {
-    scrollFrame = 0;
-    const range = document.documentElement.scrollHeight - window.innerHeight;
-    progress.style.setProperty('--scroll-progress', String(range > 0 ? Math.min(1, Math.max(0, window.scrollY / range)) : 0));
-  }
-  window.addEventListener('scroll', () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(updateProgress); }, { passive: true });
-  window.addEventListener('resize', updateProgress, { passive: true });
-  updateProgress();
-
+  // Native scroll timelines avoid per-frame JS and document layout reads.
   const world = document.querySelector('.hero-world');
+  const filmStage = document.getElementById('film-stage');
   if ('IntersectionObserver' in window) {
-    const heroObserver = new IntersectionObserver(([entry]) => world.classList.toggle('is-resting', !entry.isIntersecting));
-    heroObserver.observe(world);
-  }
-  if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-    let pointerFrame = 0;
-    world.addEventListener('pointermove', event => {
-      if (reducedMotion.matches || pointerFrame) return;
-      const x = event.clientX, y = event.clientY;
-      pointerFrame = requestAnimationFrame(() => {
-        pointerFrame = 0;
-        const bounds = world.getBoundingClientRect();
-        world.style.setProperty('--pointer-x', `${((x - bounds.left) / bounds.width - .5) * 12}px`);
-        world.style.setProperty('--pointer-y', `${((y - bounds.top) / bounds.height - .5) * 9}px`);
-      });
-    }, { passive: true });
-    world.addEventListener('pointerleave', () => {
-      if (pointerFrame) { cancelAnimationFrame(pointerFrame); pointerFrame = 0; }
-      world.style.setProperty('--pointer-x', '0px'); world.style.setProperty('--pointer-y', '0px');
+    const ambientObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => entry.target.classList.toggle('is-resting', !entry.isIntersecting));
     });
-    document.querySelectorAll('.possibility-card').forEach(card => {
-      let frame = 0;
-      card.addEventListener('pointermove', event => {
-        if (reducedMotion.matches || frame) return;
-        const x = event.clientX, y = event.clientY;
-        frame = requestAnimationFrame(() => {
-          frame = 0;
-          const bounds = card.getBoundingClientRect();
-          const rx = (x - bounds.left) / bounds.width, ry = (y - bounds.top) / bounds.height;
-          card.style.setProperty('--tilt-x', `${(ry - .5) * -4}deg`);
-          card.style.setProperty('--tilt-y', `${(rx - .5) * 4}deg`);
-          card.style.setProperty('--spot-x', `${rx * 100}%`); card.style.setProperty('--spot-y', `${ry * 100}%`);
-        });
-      }, { passive: true });
-      card.addEventListener('pointerleave', () => {
-        if (frame) { cancelAnimationFrame(frame); frame = 0; }
-        card.style.setProperty('--tilt-x', '0deg'); card.style.setProperty('--tilt-y', '0deg');
-      });
-    });
+    ambientObserver.observe(world);
+    ambientObserver.observe(filmStage);
   }
+  let scrollTimer;
+  let scrolling = false;
+  window.addEventListener('scroll', () => {
+    if (!scrolling) {
+      scrolling = true;
+      document.documentElement.classList.add('is-scrolling');
+    }
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      scrolling = false;
+      document.documentElement.classList.remove('is-scrolling');
+    }, 160);
+  }, { passive: true });
 
   const video = document.getElementById('demo-video');
   const stage = document.getElementById('film-stage');
@@ -148,6 +120,7 @@
     chapters.forEach(chapter => chapter.setAttribute('aria-current', String(chapter === active)));
   });
   document.addEventListener('visibilitychange', () => {
+    document.documentElement.classList.toggle('is-hidden', document.hidden);
     if (document.hidden) {
       world.classList.add('is-resting');
       if (!video.paused) video.pause();
