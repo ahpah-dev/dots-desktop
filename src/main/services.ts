@@ -25,12 +25,15 @@ import {
   type ProviderProfileInput,
   type PushEvent,
   type Run,
-  type RunEvent
+  type RunEvent,
+  type TeamJob,
+  type TeamJobInput
 } from '@shared/types';
 import type { DotsApi, RunOptions } from '@shared/api';
 import { CredentialStore, type SecretCipher } from './storage/credentialStore';
 import { DotStore } from './storage/dotStore';
-import { ProviderStore } from './storage/providerStore';
+import { ProviderStore, normalizeBaseUrl } from './storage/providerStore';
+import { listModelDetails } from './providers/openai/chat';
 import { RunStore } from './storage/runStore';
 import { SettingsStore, defaultSettings } from './storage/settingsStore';
 import { WorkStore } from './storage/workStore';
@@ -38,6 +41,7 @@ import { CodexAuthService } from './providers/codex/auth';
 import { ProviderRegistry } from './providers/registry';
 import { ApprovalGate } from './engine/approvals';
 import { RunManager } from './engine/runManager';
+import { TeamManager } from './engine/teamManager';
 import { Scheduler } from './engine/scheduler';
 import { Paths, slugify } from './util/paths';
 import { exists } from './util/jsonStore';
@@ -74,6 +78,7 @@ export class Services implements DotsApi {
   readonly registry: ProviderRegistry;
   readonly approvals = new ApprovalGate();
   readonly manager: RunManager;
+  readonly teams: TeamManager;
   readonly scheduler: Scheduler;
 
   constructor(dataDir: string, private host: Host) {
@@ -87,6 +92,7 @@ export class Services implements DotsApi {
     this.auth = new CodexAuthService(() => this.settings.get().codexPathOverride, (url) => host.openExternal(url));
     this.registry = new ProviderRegistry(this.auth, this.providerStore);
     this.manager = new RunManager(this.dots, this.runs, this.registry, this.settings, this.approvals, this.work);
+    this.teams = new TeamManager(this.paths.teams, this.dots, this.runs, this.manager);
     this.scheduler = new Scheduler(this.dots, this.manager, (id) => this.pushDot(id), this.work);
   }
 
@@ -96,6 +102,7 @@ export class Services implements DotsApi {
     await this.dots.init();
     await this.runs.init(this.dots.list().map((d) => d.id));
     await this.work.init((id) => this.runs.get(id));
+    await this.teams.init();
     // Keep persisted overdue dates so an app restart does not skip the pending check.
     for (const d of this.dots.list()) if (d.nextRunAt == null) await this.scheduler.refresh(d);
     this.wire();
@@ -103,6 +110,7 @@ export class Services implements DotsApi {
   }
 
   private wire(): void {
+    this.teams.changed.on(job => this.host.push({ type: 'team-job', job }));
     this.work.changed.on((dotId) => {
       this.host.push({ type: 'tasks', dotId, tasks: this.work.listTasks(dotId) });
       this.host.push({ type: 'followups', dotId, followups: this.work.listFollowups(dotId) });
@@ -131,7 +139,9 @@ export class Services implements DotsApi {
 
   async shutdown(): Promise<void> {
     this.scheduler.stop();
+    await this.teams.shutdown();
     await this.manager.shutdown();
+    await this.teams.shutdown();
     await this.auth.cancelLogin().catch(() => undefined);
   }
 
@@ -238,6 +248,25 @@ export class Services implements DotsApi {
       return [];
     }
   }
+
+  async inspectProviderProfile(input: ProviderProfileInput): Promise<{ ok: boolean; message: string; models: ModelInfo[] }> {
+    try {
+      const baseUrl = normalizeBaseUrl(input.baseUrl);
+      const saved = input.id ? this.providerStore.get(input.id) : undefined;
+      // Reusing a saved secret requires the exact endpoint it was saved for.
+      let key = input.apiKey?.trim() || '';
+      if (!key && saved && saved.baseUrl === baseUrl) key = await this.providerStore.getApiKey(saved.id) || '';
+      if (!key && input.requiresKey !== false) throw new Error('Paste an API key before testing. A saved key can only be reused with its original endpoint.');
+      const models = await listModelDetails(baseUrl, key, AbortSignal.timeout(20_000));
+      if (!models.length) return { ok: false, message: 'Connected, but no models were returned. Load a model in your local server or check this endpoint.', models };
+      return { ok: true, message: `Connected. Found ${models.length} models. Choose a model with tool support for file and command tasks.`, models };
+    } catch (error) { return { ok: false, message: errorMessage(error), models: [] }; }
+  }
+
+  async listTeamJobs(): Promise<TeamJob[]> { return this.teams.list(); }
+  startTeamJob(input: TeamJobInput): Promise<TeamJob> { return this.teams.create(input); }
+  cancelTeamJob(id: string): Promise<TeamJob> { return this.teams.cancel(id); }
+  resumeTeamJob(id: string, additionalTokens?: number): Promise<TeamJob> { return this.teams.resume(id, additionalTokens); }
 
   // ───────────── dots ─────────────
 

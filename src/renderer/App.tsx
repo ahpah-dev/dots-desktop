@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { useApp } from "./context/AppContext";
+import { TeamworkPage } from "./components/TeamworkPage";
 import { Sidebar } from "./components/Sidebar";
 import { DotView } from "./components/DotView";
 import { ApprovalBanner } from "./components/ApprovalBanner";
@@ -220,6 +221,7 @@ export const App: React.FC = () => {
         {view === "activity" && <ActivityPage />}
         {view === "inbox" && <InboxPage />}
         {view === "connections" && <ConnectionsPage />}
+        {view === "teamwork" && <TeamworkPage />}
         {view === "dot" && <DotView />}
       </div>
 

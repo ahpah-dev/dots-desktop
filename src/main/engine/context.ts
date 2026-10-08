@@ -25,12 +25,13 @@ function describePermissions(dot: Dot): string {
 
 /** Builds the standing context given to the agent on every run: who it is, what it remembers, what it did recently. */
 export function buildContext({ dot, memory, recentRuns, trigger, tasks = [], followups = [], now = new Date() }: ContextInput): string {
+  const memoryLimit = Math.min(MAX_MEMORY_CHARS, Math.floor((dot.budget.maxContextTokens || 12_000) * .75));
   const mem = memory.trim();
-  const memText = mem.length > MAX_MEMORY_CHARS ? `…(older memory omitted)\n${mem.slice(-MAX_MEMORY_CHARS)}` : mem;
+  const memText = mem.length > memoryLimit ? `…(older memory omitted)\n${mem.slice(-memoryLimit)}` : mem;
 
   const history = recentRuns
     .filter((r) => r.status === 'succeeded' || r.status === 'failed')
-    .slice(0, 6)
+    .slice(0, (dot.budget.maxContextTokens || 12_000) <= 6000 ? 3 : 6)
     .map((r) => {
       const when = new Date(r.endedAt ?? r.createdAt).toLocaleString();
       const result = (r.finalMessage ?? r.error ?? '').replace(/\s+/g, ' ').trim().slice(0, 220);
@@ -42,8 +43,8 @@ export function buildContext({ dot, memory, recentRuns, trigger, tasks = [], fol
     `You are a persistent, autonomous AI agent (a "Dot") running inside the Dots desktop app.${dot.description ? ` ${dot.description}` : ''}`,
     `## Standing instructions\n${dot.instructions.trim() || '(none — use good judgement)'}`,
     `## Memory (persists across tasks)\n${memText || '(empty — nothing remembered yet)'}`,
-    tasks.some((t) => t.status === 'active') ? `## Ongoing responsibilities\n${tasks.filter((t) => t.status === 'active').slice(0, 20).map((t) => `- ${t.title}: ${t.prompt.slice(0, 1000)}${t.nextRunAt ? ` (next: ${new Date(t.nextRunAt).toISOString()})` : ''}`).join('\n')}` : '',
-    followups.some((f) => f.status === 'pending') ? `## Already scheduled wakeups\n${followups.filter((f) => f.status === 'pending').slice(0, 20).map((f) => `- ${new Date(f.dueAt).toISOString()}: ${f.prompt.slice(0, 500)}`).join('\n')}\nAvoid scheduling duplicate wakeups.` : '',
+    tasks.some((t) => t.status === 'active') ? `## Ongoing responsibilities (brief context)\n${tasks.filter((t) => t.status === 'active').slice(0, 6).map((t) => `- ${t.title}: ${t.prompt.slice(0, 300)}${t.nextRunAt ? ` (next: ${new Date(t.nextRunAt).toISOString()})` : ''}`).join('\n')}` : '',
+    followups.some((f) => f.status === 'pending') ? `## Already scheduled wakeups (brief context)\n${followups.filter((f) => f.status === 'pending').slice(0, 6).map((f) => `- ${new Date(f.dueAt).toISOString()}: ${f.prompt.slice(0, 180)}`).join('\n')}\nAvoid scheduling duplicate wakeups.` : '',
     dot.permissions.rules?.length ? `## Custom action rules\n${dot.permissions.rules.map((r) => `- ${r.effect.toUpperCase()} ${r.action}${r.pattern ? ` when arguments contain "${r.pattern}"` : ''}`).join('\n')}` : '',
     history.length ? `## Recent task history (newest first)\n${history.join('\n')}` : '',
     [
@@ -52,7 +53,7 @@ export function buildContext({ dot, memory, recentRuns, trigger, tasks = [], fol
       `- Operating system: ${process.platform}`,
       `- Your workspace (working directory): ${dot.workspacePath}`,
       `- Permissions: ${describePermissions(dot)}`,
-      `- This task was started ${trigger === 'schedule' ? 'by your schedule' : trigger === 'followup' ? 'by a persistent wakeup' : trigger === 'dot-message' ? 'by a teammate message' : 'by the user'}.`
+      `- This task was started ${trigger === 'team' ? 'as a coordinated team assignment' : trigger === 'schedule' ? 'by your schedule' : trigger === 'followup' ? 'by a persistent wakeup' : trigger === 'dot-message' ? 'by a teammate message' : 'by the user'}.`
     ].join('\n'),
     [
       '## Rules',

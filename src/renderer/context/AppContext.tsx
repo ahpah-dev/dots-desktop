@@ -30,7 +30,7 @@ declare global {
 
 export type TabType =
   "tasks" | "responsibilities" | "memory" | "files" | "schedule" | "settings";
-export type ViewType = "home" | "dot" | "activity" | "inbox" | "connections";
+export type ViewType = "home" | "dot" | "activity" | "inbox" | "connections" | "teamwork";
 
 interface Toast {
   id: string;
@@ -69,7 +69,8 @@ interface AppContextValue {
   showNewDotModal: boolean;
   setShowNewDotModal: (show: boolean) => void;
   showSettingsModal: boolean;
-  setShowSettingsModal: (show: boolean) => void;
+  setShowSettingsModal: (show: boolean, section?: "account" | "providers" | "desktop") => void;
+  settingsSection: "account" | "providers" | "desktop" | null;
   showOnboardingModal: boolean;
   setShowOnboardingModal: (show: boolean) => void;
   refreshRuns: () => Promise<void>;
@@ -103,7 +104,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [providerOptions, setProviderOptions] = useState<ProviderOption[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [showNewDotModal, setShowNewDotModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showSettingsModal, setSettingsVisible] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<"account" | "providers" | "desktop" | null>(null);
+  const setShowSettingsModal = useCallback((show: boolean, section?: "account" | "providers" | "desktop") => {
+    setSettingsSection(section ?? null);
+    setSettingsVisible(show);
+  }, []);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const activeDotRef = useRef(activeDotId);
   const runRef = useRef(selectedRunId);
@@ -420,6 +426,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setShowNewDotModal,
     showSettingsModal,
     setShowSettingsModal,
+    settingsSection,
     showOnboardingModal,
     setShowOnboardingModal,
     refreshRuns,

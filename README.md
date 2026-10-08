@@ -1,16 +1,35 @@
 <p align="center"><img src="assets/logo.svg" width="88" height="88" alt="Dots Desktop logo"></p>
 
-# Dots Desktop 2.0
+# Dots Desktop 2.1
 
 **Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
-[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.7/Dots-Setup-2.0.7.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.7/Dots-2.0.7-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.7)
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.1.0/Dots-Setup-2.1.0.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.1.0/Dots-2.1.0-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.1.0)
 
 ![Dots Desktop conversation workspace](assets/desktop-screenshot-v2.0.1.png)
 
 Dots Desktop is independent, open-source software inspired by [OpenAI Dots](https://learn.chatgpt.com/docs/dots). It runs locally and connects to your Codex installation or an OpenAI-compatible provider. It is not affiliated with OpenAI and does not include OpenAI's hosted Dots service. See the [capability comparison](docs/DOTS_PARITY.md) for the scope and remaining gaps.
 
-## What changed in 2.0
+## New in 2.1
+
+- **Teamwork:** choose two to eight Dots, write one goal, and edit their assignments. Work in parallel, pass results along a sequence, or add a review step. Each Dot uses its own model, workspace, permissions, and token limits; the lead combines their answers. The coordinator handles dependencies, bounded concurrency, cancellation, and durable results. Resume unfinished assignments after interruption without repeating completed work.
+- **Token efficiency:** Economy, Balanced, and Thorough presets set context, response, tool-step, and task allowances. Older API history and long tool outputs are compacted while keeping the current request and valid tool-call/result pairs. No extra summarization request is required. Conversation and team views show input, output, cached, and estimated usage.
+- **Guided API setup:** presets for NVIDIA NIM, OpenRouter (including `openrouter/free`), Groq, Cerebras, Ollama, LM Studio, OpenAI, and custom OpenAI-compatible routers. Follow the key link, paste your key, discover available models, filter free models and confirmed tool support, and test before saving. Local servers can connect without a key. Optional fallback models stay at the same endpoint; keys remain encrypted by Windows.
+- **Faster setup:** API setup is available directly from onboarding, Connections, and the new-Dot dialog. Teamwork is in the sidebar and command palette, and completed team answers appear above assignment details.
+
+### Use a team
+
+Open **Teamwork**, describe a goal, select at least two resumed Dots with **Talk to other dots** enabled, choose a lead and a work pattern, then edit the assignments and start. Follow live progress or open each conversation. **Stop team task** cancels running and queued assignments. **Resume unfinished work** keeps successful contributions and can add token allowance. Different workspaces are independent: exchange results or file paths explicitly when the task needs them.
+
+### Connect a router or local model
+
+Open **Settings → Model providers → Add provider**. Choose a preset, use **Get API key** where needed, paste the key, then **Test connection & discover models**. Select a model and save. Pick that provider in a Dot's **Profile → Model & computer**, or while creating a Dot. For Ollama or LM Studio, start the local server and load a tool-capable model first.
+
+NVIDIA provides [trial API access](https://docs.api.nvidia.com/nim/docs/introduction), subject to its account limits and [trial terms](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf). OpenRouter's [free router](https://openrouter.ai/openrouter/free) selects compatible free models; [provider rate limits](https://openrouter.ai/pricing/) apply. Other models and fallback choices can be paid. Connection tests discover models; they do not make a chat-completion request or prove every model's tool support. Live cloud credentials are not included.
+
+Token counts use provider usage when available, otherwise a UTF-8 based estimate. Input context caps are estimates, and total allowances stop subsequent requests as usage arrives; in-flight requests can exceed the remaining allowance. Codex controls its own context and output, and its total limit can be enforced only when it reports usage. Team jobs recover as interrupted after an app restart and require an explicit Resume.
+
+## Desktop features
 
 - **A complete new home:** Overview, an attention inbox, global activity, and connections bring your teammates and their work together. Search and a command palette keep navigation quick.
 - **A character of their own:** Choose from eleven accessories, including hats, a crown, a flower, a scarf, and headphones. Set accessory and glasses colors independently with presets or a custom color in Profile → Personalization, then save. A calm sage and cream interface, refined dark mode, and responsive layouts keep each dot at home.
@@ -25,7 +44,7 @@ Dots Desktop is independent, open-source software inspired by [OpenAI Dots](http
 
 ## Getting started
 
-1. Install [Dots-Setup-2.0.7.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.7/Dots-Setup-2.0.7.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
+1. Install [Dots-Setup-2.1.0.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.1.0/Dots-Setup-2.1.0.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
 2. Connect a model provider in Settings.
 3. Create a dot, give it a purpose, and choose a local workspace.
 4. Start a conversation or add an ongoing responsibility. Review activity and approvals as work progresses.
@@ -42,7 +61,7 @@ Windows 10 or 11 (x64) is required for the published installer. The application 
 
 ### Let dots talk to each other
 
-**Talk to other dots** is enabled by default for new Dots. Upgrading to 2.0.7 enables it once for existing Dots too. You can turn it off in **Profile → Permissions** and save; that choice persists across restarts. The option is also available when creating a Dot.
+**Talk to other dots** is enabled by default for new Dots. Upgrading to 2.1.0 enables it once for existing Dots too. You can turn it off in **Profile → Permissions** and save; that choice persists across restarts. The option is also available when creating a Dot.
 
 Then ask a dot to consult a teammate, for example: “Ask Researcher to check these facts, then use its answer to finish the brief.” A busy teammate queues the request. Its answer returns as a labeled turn in the original conversation, and each participant uses its own permissions, workspace, model and task budget. API providers use messaging tools; Codex requests delivery through a structured final block handled by the app.
 
@@ -85,6 +104,7 @@ Run the Electron smoke workflow after building:
 ```powershell
 npm run test:smoke
 npm run test:desktop-dot
+npm run test:teamwork
 node scripts/panel-smoke.mjs
 ```
 
@@ -98,7 +118,7 @@ Package a Windows installer and portable executable:
 npm run dist
 ```
 
-Artifacts are generated under `release/`: `Dots-Setup-2.0.7.exe` and `Dots-2.0.7-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
+Artifacts are generated under `release/`: `Dots-Setup-2.1.0.exe` and `Dots-2.1.0-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
 ## Website and demo film
 

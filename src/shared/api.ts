@@ -21,6 +21,8 @@ import type {
   PushEvent,
   Run,
   RunEvent,
+  TeamJob,
+  TeamJobInput,
 } from "./types";
 
 export interface RunOptions {
@@ -52,7 +54,13 @@ export interface DotsApi {
   saveProviderProfile(input: ProviderProfileInput): Promise<ProviderProfile>;
   deleteProviderProfile(id: string): Promise<void>;
   testProvider(id: string): Promise<{ ok: boolean; message: string }>;
+  inspectProviderProfile(input: ProviderProfileInput): Promise<{ ok: boolean; message: string; models: ModelInfo[] }>;
   listModels(providerId: string): Promise<ModelInfo[]>;
+
+  listTeamJobs(): Promise<TeamJob[]>;
+  startTeamJob(input: TeamJobInput): Promise<TeamJob>;
+  cancelTeamJob(id: string): Promise<TeamJob>;
+  resumeTeamJob(id: string, additionalTokens?: number): Promise<TeamJob>;
 
   // dots
   createDot(input: DotInput): Promise<DotSummary>;
@@ -143,7 +151,12 @@ export const API_METHODS: DotsApiMethod[] = [
   "saveProviderProfile",
   "deleteProviderProfile",
   "testProvider",
+  "inspectProviderProfile",
   "listModels",
+  "listTeamJobs",
+  "startTeamJob",
+  "cancelTeamJob",
+  "resumeTeamJob",
   "createDot",
   "updateDot",
   "deleteDot",

@@ -37,15 +37,18 @@ export class ProviderStore {
 
     const id = input.id ?? uid();
     const existing = this.profiles.find((p) => p.id === id);
-    if (!existing && !input.apiKey?.trim()) throw new Error('An API key is required.');
+    const requiresKey = input.requiresKey !== false;
+    if (existing && existing.baseUrl !== baseUrl && !input.apiKey?.trim() && await this.creds.has(secretKey(id))) throw new Error('Enter a new key when changing endpoints, or create a separate local provider. Saved keys are not forwarded to another server.');
+    if (requiresKey && !input.apiKey?.trim() && !await this.creds.has(secretKey(id))) throw new Error('Enter an API key, or choose a local server that does not require one.');
 
     // Persist the secret first: if secure storage fails, no half-saved profile remains.
     if (input.apiKey?.trim()) await this.creds.set(secretKey(id), input.apiKey.trim());
 
-    const profile: StoredProfile = { id, kind: 'openai-compatible', label, baseUrl, defaultModel: input.defaultModel.trim() };
+    const fallbackModels = [...new Set((input.fallbackModels || []).map(model => model.trim()).filter(Boolean))].slice(0, 3);
+    const profile: StoredProfile = { id, kind: 'openai-compatible', label, baseUrl, defaultModel: input.defaultModel.trim(), requiresKey, presetId: input.presetId, fallbackModels };
     this.profiles = existing ? this.profiles.map((p) => (p.id === id ? profile : p)) : [...this.profiles, profile];
     await writeJson(this.file, this.profiles);
-    return { ...profile, hasKey: true };
+    return { ...profile, hasKey: await this.creds.has(secretKey(id)) };
   }
 
   async delete(id: string): Promise<void> {
@@ -63,5 +66,7 @@ export function normalizeBaseUrl(raw: string): string {
     throw new Error('Enter a valid URL, e.g. https://api.openai.com/v1');
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('The URL must start with http:// or https://');
+  if (url.username || url.password || url.search || url.hash) throw new Error('Enter a base URL without credentials, query parameters, or a fragment.');
+  url.pathname = url.pathname.replace(/\/(?:chat\/completions|models)\/?$/, '').replace(/\/+$/, '');
   return url.toString().replace(/\/+$/, '');
 }

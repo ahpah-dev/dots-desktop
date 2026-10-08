@@ -21,6 +21,7 @@ import type {
   ModelInfo,
 } from "@shared/types";
 import { CODEX_PROVIDER_ID } from "@shared/types";
+import { normalizeBudget, TOKEN_PRESETS } from "@shared/budget";
 import { groupModels } from "@shared/models";
 import { AvatarEditor, DotAvatar, DEFAULT_AVATAR } from "./DotAvatar";
 import {
@@ -133,6 +134,7 @@ export function NewDotModal() {
 function NewDotWizard() {
   const {
     setShowNewDotModal,
+    setShowSettingsModal,
     providerOptions,
     openDot,
     showToast,
@@ -154,6 +156,7 @@ function NewDotWizard() {
     providerOptions.find((item) => item.available)?.id || CODEX_PROVIDER_ID,
   );
   const [model, setModel] = useState("auto");
+  const [tokenPreset, setTokenPreset] = useState("balanced");
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [files, setFiles] = useState<FileAccess>("write");
@@ -237,6 +240,7 @@ function NewDotWizard() {
         providerId,
         model: model.trim() || "auto",
         notify: true,
+        budget: normalizeBudget(TOKEN_PRESETS.find(preset => preset.id === tokenPreset)?.budget),
         permissions: {
           talkToDots,
           files,
@@ -425,6 +429,10 @@ function NewDotWizard() {
                   ))}
                 </select>
               </Field>
+              <Field label="Token style" hint="Economy is useful for free tiers. Adjust limits later in the dot profile."><select value={tokenPreset} onChange={event => setTokenPreset(event.target.value)}>{TOKEN_PRESETS.map(preset => <option key={preset.id} value={preset.id}>{preset.label}</option>)}</select></Field>
+              <button className="btn-ghost" onClick={() => setShowSettingsModal(true, "providers")}>
+                Connect another provider <ArrowRight size={13} />
+              </button>
               {!provider?.available && (
                 <div
                   className="profile-note is-warning"

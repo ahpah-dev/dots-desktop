@@ -30,6 +30,7 @@ function OnboardingContent() {
   const {
     setShowOnboardingModal,
     setShowNewDotModal,
+    setShowSettingsModal,
     auth,
     loginProgress,
     providerOptions,
@@ -42,13 +43,14 @@ function OnboardingContent() {
   const [busy, setBusy] = useState(false);
   const codexConnected = auth?.installed && auth.loggedIn;
   const available = providerOptions.some((provider) => provider.available);
-  const finish = async (create: boolean) => {
+  const finish = async (create: boolean, connectProvider = false) => {
     if (busy) return;
     try {
       setBusy(true);
       await window.dots.api.updateSettings({ onboardingComplete: true });
       await refreshBootstrap();
       setShowOnboardingModal(false);
+      if (connectProvider) setShowSettingsModal(true, 'providers');
       if (create && !bootstrap?.dots.length) setShowNewDotModal(true);
     } catch (error) {
       showToast(errorMessage(error, "Could not finish setup."), "error");
@@ -194,6 +196,9 @@ function OnboardingContent() {
               later.
             </p>
           </div>
+          <PanelSection title="Use a router or local model" description="Guided setup for NVIDIA NIM, OpenRouter free models, Groq, Cerebras, Ollama, LM Studio, and custom endpoints.">
+            <button className="btn-secondary" disabled={busy} onClick={() => void finish(false, true)}>Connect an API provider <ArrowUpRight size={14} /></button>
+          </PanelSection>
           <PanelSection
             title={
               codexConnected

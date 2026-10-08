@@ -18,6 +18,9 @@ export interface ProviderProfile {
   baseUrl: string; // e.g. https://api.openai.com/v1
   defaultModel: string;
   hasKey: boolean;
+  presetId?: string;
+  requiresKey?: boolean;
+  fallbackModels?: string[];
 }
 
 export interface ProviderProfileInput {
@@ -27,6 +30,9 @@ export interface ProviderProfileInput {
   defaultModel: string;
   /** Only sent when the user types a new key. Empty/undefined keeps the existing one. */
   apiKey?: string;
+  presetId?: string;
+  requiresKey?: boolean;
+  fallbackModels?: string[];
 }
 
 export interface ProviderOption {
@@ -44,6 +50,9 @@ export interface ModelInfo {
   isDefault?: boolean;
   reasoningEfforts?: string[];
   defaultReasoningEffort?: string;
+  contextWindow?: number;
+  supportsTools?: boolean;
+  free?: boolean;
 }
 
 // ───────────────────────────── Authentication ─────────────────────────────
@@ -134,6 +143,12 @@ export interface Budget {
   maxMinutes: number;
   /** Max tool-calling iterations (OpenAI-compatible provider). */
   maxSteps: number;
+  /** Approximate maximum input context sent on each API request. */
+  maxContextTokens?: number;
+  /** Maximum generated tokens per API request. */
+  maxOutputTokens?: number;
+  /** Stop starting API requests once this task's token allowance is exhausted. */
+  maxTokens?: number;
 }
 
 export interface Dot {
@@ -198,7 +213,7 @@ export interface DotSummary extends Dot {
 
 // ───────────────────────────── Runs ─────────────────────────────
 
-export type RunTrigger = "manual" | "schedule" | "followup" | "dot-message";
+export type RunTrigger = "manual" | "schedule" | "followup" | "dot-message" | "team";
 export type RunStatus =
   "queued" | "running" | "succeeded" | "failed" | "cancelled" | "interrupted";
 
@@ -206,6 +221,7 @@ export interface Usage {
   inputTokens: number;
   outputTokens: number;
   cachedTokens?: number;
+  estimated?: boolean;
 }
 
 export interface Run {
@@ -222,6 +238,8 @@ export interface Run {
   prefixRunIds?: string[];
   taskId?: string;
   followupId?: string;
+  team?: { jobId: string; stepId: string; role: "worker" | "synthesis" };
+  budget?: Budget;
   /** Provenance of a teammate request or automatic reply. */
   dotMessage?: {
     sourceDotId: string;
@@ -381,7 +399,42 @@ export const DEFAULT_PERMISSIONS: Permissions = {
   approval: "never",
 };
 
-export const DEFAULT_BUDGET: Budget = { maxMinutes: 30, maxSteps: 60 };
+export const DEFAULT_BUDGET: Budget = { maxMinutes: 30, maxSteps: 60, maxContextTokens: 12_000, maxOutputTokens: 2048, maxTokens: 50_000 };
+
+export interface TeamStepInput {
+  id: string;
+  dotId: string;
+  title: string;
+  prompt: string;
+  dependsOn: string[];
+}
+export interface TeamJobInput {
+  title: string;
+  goal: string;
+  leadDotId: string;
+  steps: TeamStepInput[];
+  maxTokens: number;
+}
+export interface TeamStep extends TeamStepInput {
+  status: "pending" | RunStatus;
+  runId?: string;
+  result?: string;
+  error?: string;
+  usage?: Usage;
+}
+export interface TeamJob extends Omit<TeamJobInput, "steps"> {
+  id: string;
+  steps: TeamStep[];
+  status: "running" | "synthesizing" | "succeeded" | "failed" | "cancelled" | "interrupted";
+  createdAt: number;
+  updatedAt: number;
+  synthesisRunId?: string;
+  result?: string;
+  error?: string;
+  usage: Usage;
+  previousUsage?: Usage;
+  synthesisUsage?: Usage;
+}
 
 // ───────────────────────────── Bootstrap / events ─────────────────────────────
 
@@ -396,6 +449,7 @@ export interface Bootstrap {
 }
 
 export type PushEvent =
+  | { type: "team-job"; job: TeamJob }
   | { type: "dot"; dot: DotSummary }
   | { type: "dot-removed"; dotId: string }
   | { type: "run"; run: Run }

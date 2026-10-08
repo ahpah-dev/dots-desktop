@@ -181,6 +181,8 @@ export function ModalShell({
       (autofocus || panel.current)?.focus();
     });
     const handleKey = (event: KeyboardEvent) => {
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      if (dialogs[dialogs.length - 1] !== panel.current) return;
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();

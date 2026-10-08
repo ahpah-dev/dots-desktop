@@ -16,6 +16,7 @@ import { Emitter, uid } from '../util/misc';
 import { validateSpec } from '@shared/schedule';
 import { createLogger } from '../util/logger';
 import { normalizeAvatar } from '@shared/avatar';
+import { normalizeBudget } from '@shared/budget';
 
 const log = createLogger('dots');
 
@@ -155,10 +156,7 @@ export class DotStore {
         return { id: rule.id || uid(), action: rule.action.trim(), effect: rule.effect, pattern: rule.pattern?.trim() || undefined };
       });
     }
-    const budget: Budget = {
-      maxMinutes: clampInt(d.budget?.maxMinutes, 1, 24 * 60, DEFAULT_BUDGET.maxMinutes),
-      maxSteps: clampInt(d.budget?.maxSteps, 1, 500, DEFAULT_BUDGET.maxSteps)
-    };
+    const budget: Budget = normalizeBudget(d.budget);
     const name = d.name.trim();
     if (!name) throw new Error('Give your Dot a name.');
     let schedule = d.schedule;
@@ -275,9 +273,4 @@ export class DotStore {
   private validateConversationId(id: string): void {
     if (!/^[\w-]{1,100}$/.test(id)) throw new Error('Invalid conversation id.');
   }
-}
-
-function clampInt(v: unknown, min: number, max: number, fallback: number): number {
-  const n = Math.round(Number(v));
-  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 }

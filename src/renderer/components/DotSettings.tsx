@@ -22,6 +22,7 @@ import type {
   PermissionRule,
 } from "@shared/types";
 import { CODEX_PROVIDER_ID } from "@shared/types";
+import { normalizeBudget, TOKEN_PRESETS } from "@shared/budget";
 import { groupModels } from "@shared/models";
 import { AvatarEditor, DotAvatar, normalizeAvatar } from "./DotAvatar";
 import {
@@ -73,7 +74,7 @@ function draftFor(dot: DotSummary | null) {
           approval: "ask" as const,
           rules: [] as PermissionRule[],
         },
-    budget: dot?.budget ? { ...dot.budget } : { maxMinutes: 30, maxSteps: 60 },
+    budget: normalizeBudget(dot?.budget),
   };
 }
 
@@ -168,16 +169,7 @@ export function DotSettings({ dotId }: { dotId: string }) {
             pattern: rule.pattern?.trim() || undefined,
           })),
         },
-        budget: {
-          maxMinutes: Math.min(
-            720,
-            Math.max(1, Number(draft.budget.maxMinutes) || 30),
-          ),
-          maxSteps: Math.min(
-            500,
-            Math.max(1, Number(draft.budget.maxSteps) || 60),
-          ),
-        },
+        budget: normalizeBudget(draft.budget),
       };
       if (draft.workspacePath.trim() === activeDot?.workspacePath) {
         delete patch.workspacePath;
@@ -723,7 +715,14 @@ export function DotSettings({ dotId }: { dotId: string }) {
               </div>
             </div>
           </PanelSection>
-          <PanelSection title="Limits per task">
+          <PanelSection title="Limits per task" description="Spend less context on routine work, or give complex tasks room to think.">
+            <div className="token-presets">{TOKEN_PRESETS.map(preset => <button key={preset.id} className={`token-preset ${draft.budget.maxContextTokens === preset.budget.maxContextTokens ? 'selected' : ''}`} aria-pressed={draft.budget.maxContextTokens === preset.budget.maxContextTokens} onClick={() => update("budget", normalizeBudget({ ...draft.budget, ...preset.budget }))}><strong>{preset.label}</strong><small>{preset.description}</small></button>)}</div>
+            <div className="profile-form-grid token-fields">{([
+              ['maxContextTokens', 'Context per request', 1024, 128000],
+              ['maxOutputTokens', 'Output per response', 128, 32000],
+              ['maxTokens', 'Total tokens per task', 1024, 2000000],
+            ] as const).map(([key, label, min, max]) => <Field key={key} label={label}><input type="number" min={min} max={max} value={draft.budget[key]} onChange={event => update("budget", { ...draft.budget, [key]: Number(event.target.value) })} /></Field>)}</div>
+            <p className="budget-hint">API requests keep recent context and compact older history. Total limits stop new requests as usage is reported; a final request can exceed the remaining allowance. Codex manages its own context and output; its total limit applies when usage is reported.</p>
             <div className="profile-form-grid">
               <Field label="Maximum duration (minutes)">
                 <input

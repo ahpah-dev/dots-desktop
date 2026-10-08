@@ -180,6 +180,8 @@ export function Overview() {
             <Plus size={16} /> Create a dot
           </button>
         </div>
+        <button className="team-entry" onClick={() => setView("teamwork")}><span><strong>Put your dots on the same team.</strong><small>Plan assignments, work in parallel, and bring the results together.</small></span><ArrowUpRight size={20} /></button>
+        <button className="team-entry" onClick={() => setView("teamwork")}><span><strong>Put your dots on the same team.</strong><small>Plan assignments, work in parallel, and bring the results together.</small></span><ArrowUpRight size={20} /></button>
         <div className="overview-summary">
           <div>
             <span className="summary-icon">
@@ -583,7 +585,7 @@ export function ConnectionsPage() {
             </div>
             <button
               className="btn-secondary"
-              onClick={() => setShowSettingsModal(true)}
+              onClick={() => setShowSettingsModal(true, "account")}
             >
               Manage account <ArrowUpRight size={14} />
             </button>
@@ -606,7 +608,7 @@ export function ConnectionsPage() {
             </div>
             <button
               className="btn-secondary"
-              onClick={() => setShowSettingsModal(true)}
+              onClick={() => setShowSettingsModal(true, "desktop")}
             >
               Computer settings <ArrowUpRight size={14} />
             </button>
@@ -681,7 +683,7 @@ export function ConnectionsPage() {
           </div>
           <button
             className="btn-secondary"
-            onClick={() => setShowSettingsModal(true)}
+            onClick={() => setShowSettingsModal(true, "providers")}
           >
             <Plus size={15} /> Add an AI provider
           </button>
@@ -714,6 +716,8 @@ export function CommandPalette() {
   const [index, setIndex] = useState(0);
   const commands = [
     { label: "Overview", hint: "Your workspace", run: () => setView("home") },
+    { label: "Teamwork", hint: "Plan a task with several dots", run: () => setView("teamwork") },
+    { label: "Teamwork", hint: "Plan a task with several dots", run: () => setView("teamwork") },
     {
       label: "Needs you",
       hint: "Review approvals",

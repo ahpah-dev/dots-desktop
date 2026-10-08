@@ -1,5 +1,6 @@
 import { CancelledError, ProviderError } from '../types';
 import { sleep } from '../../util/misc';
+import type { ModelInfo } from '@shared/types';
 
 export interface ToolCall {
   id: string;
@@ -52,12 +53,21 @@ async function readError(res: Response): Promise<HttpError> {
   return new HttpError(res.status, msg, Number.isFinite(ra) && ra > 0 ? ra * 1000 : undefined);
 }
 
-export async function listModelIds(baseUrl: string, apiKey: string, signal: AbortSignal): Promise<string[]> {
-  const res = await fetch(`${baseUrl}/models`, { headers: { authorization: `Bearer ${apiKey}` }, signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]) })
+export async function listModelDetails(baseUrl: string, apiKey: string, signal: AbortSignal): Promise<ModelInfo[]> {
+  const res = await fetch(`${baseUrl}/models`, { headers: apiKey ? { authorization: `Bearer ${apiKey}` } : {}, signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]) })
     .catch((e) => { throw new ProviderError(`Couldn't reach ${baseUrl}: ${e instanceof Error ? e.message : e}`); });
   if (!res.ok) throw friendly(await readError(res));
-  const j: any = await res.json().catch(() => ({}));
-  return ((j.data ?? []) as { id: string }[]).map((m) => m.id).sort();
+  const j: any = await res.json();
+  if (!Array.isArray(j.data)) throw new ProviderError('The endpoint did not return a compatible model list. Check its API base URL.');
+  return j.data.filter((model: any) => typeof model.id === 'string').map((model: any) => ({
+    id: model.id, label: model.name || model.id,
+    contextWindow: typeof model.context_length === 'number' ? model.context_length : undefined,
+    supportsTools: Array.isArray(model.supported_parameters) ? model.supported_parameters.includes('tools') : undefined,
+    free: model.id === 'openrouter/free' || model.id.endsWith(':free') || (model.pricing?.prompt !== undefined && model.pricing?.completion !== undefined && Number(model.pricing.prompt) === 0 && Number(model.pricing.completion) === 0),
+  })).sort((a: ModelInfo, b: ModelInfo) => a.id.localeCompare(b.id));
+}
+export async function listModelIds(baseUrl: string, apiKey: string, signal: AbortSignal): Promise<string[]> {
+  return (await listModelDetails(baseUrl, apiKey, signal)).map(model => model.id);
 }
 
 interface ChatOptions {
@@ -66,6 +76,7 @@ interface ChatOptions {
   body: Record<string, unknown>;
   signal: AbortSignal;
   onText?: (fullText: string) => void;
+  onRetry?: (message: string) => void;
 }
 
 /** One chat-completions call with streaming, retries (429/5xx/network) and exponential backoff. */
@@ -86,6 +97,7 @@ export async function chatCompletion(opts: ChatOptions): Promise<ChatResult> {
         throw new ProviderError(`Network error talking to the provider: ${err instanceof Error ? err.message : String(err)}`);
       }
       const wait = err instanceof HttpError && err.retryAfterMs ? Math.min(err.retryAfterMs, 60_000) : 1000 * 2 ** (attempt - 1);
+      opts.onRetry?.(`Provider busy or temporarily unavailable. Retrying in ${Math.ceil(wait / 1000)}s (${attempt}/${maxAttempts - 1}).`);
       await sleep(wait, opts.signal);
     }
   }
@@ -94,7 +106,7 @@ export async function chatCompletion(opts: ChatOptions): Promise<ChatResult> {
 async function attemptChat(opts: ChatOptions): Promise<ChatResult> {
   const res = await fetch(`${opts.baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${opts.apiKey}`, accept: 'text/event-stream, application/json' },
+    headers: { 'content-type': 'application/json', ...(opts.apiKey ? { authorization: `Bearer ${opts.apiKey}` } : {}), accept: 'text/event-stream, application/json' },
     body: JSON.stringify({ ...opts.body, stream: true }),
     signal: opts.signal
   });
@@ -111,7 +123,7 @@ async function attemptChat(opts: ChatOptions): Promise<ChatResult> {
       content,
       toolCalls: (choice?.message?.tool_calls ?? []) as ToolCall[],
       finishReason: choice?.finish_reason ?? null,
-      usage: j.usage ? { inputTokens: j.usage.prompt_tokens ?? 0, outputTokens: j.usage.completion_tokens ?? 0 } : undefined
+      usage: j.usage ? { inputTokens: j.usage.prompt_tokens ?? 0, outputTokens: j.usage.completion_tokens ?? 0, cachedTokens: j.usage.prompt_tokens_details?.cached_tokens ?? 0 } : undefined
     };
   }
 
@@ -128,7 +140,7 @@ async function attemptChat(opts: ChatOptions): Promise<ChatResult> {
     let j: any;
     try { j = JSON.parse(data); } catch { return; }
     if (j.error) throw new ProviderError(j.error.message ?? 'The provider reported an error mid-stream.');
-    if (j.usage) usage = { inputTokens: j.usage.prompt_tokens ?? 0, outputTokens: j.usage.completion_tokens ?? 0 };
+    if (j.usage) usage = { inputTokens: j.usage.prompt_tokens ?? 0, outputTokens: j.usage.completion_tokens ?? 0, cachedTokens: j.usage.prompt_tokens_details?.cached_tokens ?? 0 };
     const choice = j.choices?.[0];
     if (!choice) return;
     const delta = choice.delta ?? {};

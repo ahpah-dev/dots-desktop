@@ -1,10 +1,10 @@
 # OpenAI Dots capability comparison
 
-Researched against official OpenAI documentation on October 6, 2026. Dots Desktop 2.0 is independent software. This comparison describes product behavior and implementation boundaries; it does not claim access to OpenAI's private service, APIs, or account data.
+Researched against official OpenAI documentation on October 6, 2026. Dots Desktop 2.1 is independent software. This comparison describes product behavior and implementation boundaries; it does not claim access to OpenAI's private service, APIs, or account data.
 
 ## Desktop experience
 
-| Capability | OpenAI Dots reference | Dots Desktop 2.0 |
+| Capability | OpenAI Dots reference | Dots Desktop 2.1 |
 | --- | --- | --- |
 | Personal agent identity | Name and configurable appearance. [Meet dots](https://learn.chatgpt.com/docs/dots) | Multiple named dots with personalized appearance, purpose, and instructions. |
 | Ongoing work | Responsibilities carry across interactions. [Tasks and memory](https://learn.chatgpt.com/docs/dots/tasks-and-memory) | Separate conversations, multiple responsibilities, persistent task history, and queued follow-up messages. |
@@ -13,9 +13,9 @@ Researched against official OpenAI documentation on October 6, 2026. Dots Deskto
 | Persistent notes | Preferences and decisions carry forward. [Tasks and memory](https://learn.chatgpt.com/docs/dots/tasks-and-memory) | Editable local memory and structured notes about preferences, decisions, and ongoing work. |
 | Activity review | Inspect progress, files, and decisions. [Controls](https://learn.chatgpt.com/docs/dots/controls) | Overview, global activity, per-dot run timelines, files, and an attention inbox. |
 | Rules and approvals | Custom rules supplement safeguards. [Controls](https://learn.chatgpt.com/docs/dots/controls) | Built-in compatible-provider tools enforce custom rules. Codex execution is rejected before dispatch if approval mode is `ask` or any custom rule has `ask`/`deny`, rather than pretending those controls can intercept Codex actions. |
-| Stop and pause controls | Main work, delegated work, and schedules have separate controls. [Controls](https://learn.chatgpt.com/docs/dots/controls) | Cancel tasks, pause a dot, disable routines, and remove pending wakeups separately. |
+| Stop and pause controls | Main work, delegated work, and schedules have separate controls. [Controls](https://learn.chatgpt.com/docs/dots/controls) | Cancel tasks or whole team jobs, pause a dot, disable routines, and remove pending wakeups separately. |
 | Local files and tools | A connected computer supplies local resources. [Computers and apps](https://learn.chatgpt.com/docs/dots/computers-and-apps) | Direct local workspace, shell, file, and network tools with configured permissions. |
-| Parallel work | Background agents handle independent work. [Tasks and memory](https://learn.chatgpt.com/docs/dots/tasks-and-memory) | Different dots can run concurrently; work for a single dot is serialized. This is local execution, not a full cloud orchestration service. |
+| Parallel work | Background agents handle independent work. [Tasks and memory](https://learn.chatgpt.com/docs/dots/tasks-and-memory) | Teamwork supports parallel assignments, sequential handoffs, review steps, and a lead synthesis. Dependency graphs, results, interruption recovery, group cancellation, and token allowances are persisted locally. Different dots can run concurrently; work for a single dot is serialized. |
 | Read results aloud | Desktop result convenience, distinct from a voice call. | Finished results can be read aloud when system speech synthesis is available. This does not provide a conversational voice session. |
 
 ## Infrastructure-dependent gaps

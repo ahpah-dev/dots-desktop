@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ProviderSetup } from "./ProviderSetup";
 import {
   KeyRound,
   SlidersHorizontal,
@@ -48,9 +49,10 @@ function SettingsContent() {
     showToast,
     refreshBootstrap,
     refreshProviders,
+    settingsSection,
   } = useApp();
   const [tab, setTab] = useState<"account" | "providers" | "desktop">(
-    "account",
+    settingsSection ?? (auth?.loggedIn ? "account" : "providers"),
   );
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState("");
@@ -129,6 +131,9 @@ function SettingsContent() {
       baseUrl: profile.baseUrl,
       defaultModel: profile.defaultModel,
       apiKey: "",
+      requiresKey: profile.requiresKey,
+      presetId: profile.presetId,
+      fallbackModels: profile.fallbackModels,
     });
   const saveProvider = () => {
     if (!providerEditor) return;
@@ -423,7 +428,7 @@ function SettingsContent() {
                       {profile.defaultModel}
                     </p>
                     <span className="settings-provider-key">
-                      {profile.hasKey ? "API key saved" : "No API key saved"}
+                      {profile.hasKey ? "API key saved" : profile.requiresKey === false ? "No key required" : "No API key saved"}
                       {providerTest[profile.id]
                         ? ` · ${providerTest[profile.id].ok ? "Last test passed" : "Last test failed"}`
                         : ""}
@@ -506,7 +511,7 @@ function SettingsContent() {
               onClick={() =>
                 setProviderEditor({
                   label: "",
-                  baseUrl: "https://api.openai.com/v1",
+                  baseUrl: "",
                   defaultModel: "",
                   apiKey: "",
                 })
@@ -516,104 +521,8 @@ function SettingsContent() {
             </button>
           </PanelSection>
           {providerEditor && (
-            <PanelSection
-              title={providerEditor.id ? "Edit provider" : "Connect a provider"}
-            >
-              <div className="profile-stack">
-                <div className="profile-form-grid">
-                  <Field label="Provider name">
-                    <input
-                      value={providerEditor.label}
-                      onChange={(event) =>
-                        setProviderEditor({
-                          ...providerEditor,
-                          label: event.target.value,
-                        })
-                      }
-                      placeholder="OpenAI, Ollama, or your provider"
-                    />
-                  </Field>
-                  <Field label="Default model">
-                    <input
-                      value={providerEditor.defaultModel}
-                      onChange={(event) =>
-                        setProviderEditor({
-                          ...providerEditor,
-                          defaultModel: event.target.value,
-                        })
-                      }
-                      placeholder="Model ID from your provider"
-                    />
-                  </Field>
-                </div>
-                <Field label="API base URL">
-                  <input
-                    value={providerEditor.baseUrl}
-                    onChange={(event) =>
-                      setProviderEditor({
-                        ...providerEditor,
-                        baseUrl: event.target.value,
-                      })
-                    }
-                    placeholder="https://api.openai.com/v1"
-                  />
-                </Field>
-                <Field
-                  label={
-                    providerEditor.id ? "Replace API key (optional)" : "API key"
-                  }
-                  hint={
-                    providerEditor.id
-                      ? "Leave empty to keep the saved key."
-                      : "Enter the credential accepted by your endpoint."
-                  }
-                >
-                  <input
-                    type="password"
-                    autoComplete="off"
-                    value={providerEditor.apiKey || ""}
-                    onChange={(event) =>
-                      setProviderEditor({
-                        ...providerEditor,
-                        apiKey: event.target.value,
-                      })
-                    }
-                    placeholder={
-                      providerEditor.id ? "Keep existing key" : "API key"
-                    }
-                  />
-                </Field>
-                <div
-                  className="profile-actions"
-                  style={{ justifyContent: "flex-end" }}
-                >
-                  <button
-                    className="btn-ghost"
-                    disabled={!!busy}
-                    onClick={() => setProviderEditor(null)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="btn-primary"
-                    onClick={saveProvider}
-                    disabled={
-                      !!busy ||
-                      !providerEditor.label.trim() ||
-                      !providerEditor.baseUrl.trim() ||
-                      !providerEditor.defaultModel.trim() ||
-                      (!providerEditor.id && !providerEditor.apiKey?.trim())
-                    }
-                  >
-                    {busy === "provider" ? (
-                      <Loader2 size={13} className="spin" />
-                    ) : (
-                      <CheckCircle2 size={13} />
-                    )}{" "}
-                    Save provider
-                  </button>
-                </div>
-              </div>
+            <PanelSection title={providerEditor.id ? "Edit provider" : "Connect a provider"}>
+              <ProviderSetup key={providerEditor.id || "new"} value={providerEditor} onChange={setProviderEditor} onSave={saveProvider} onCancel={() => setProviderEditor(null)} busy={!!busy} />
             </PanelSection>
           )}
           <div className="profile-note">

@@ -7,6 +7,7 @@ import {
   Activity,
   Inbox,
   Plug,
+  Users,
   ChevronDown,
   Command,
   ArrowUpRight,
@@ -47,6 +48,7 @@ export const Sidebar: React.FC = () => {
       icon: <Inbox size={17} />,
       count: approvals.length,
     },
+    { id: "teamwork", label: "Teamwork", icon: <Users size={17} /> },
     { id: "activity", label: "Activity", icon: <Activity size={17} /> },
     { id: "connections", label: "Connections", icon: <Plug size={17} /> },
   ];

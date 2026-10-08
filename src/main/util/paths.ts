@@ -6,6 +6,7 @@ export class Paths {
 
   get settings() { return join(this.root, 'settings.json'); }
   get providers() { return join(this.root, 'providers.json'); }
+  get teams() { return join(this.root, 'teams.json'); }
   get credentials() { return join(this.root, 'credentials.bin'); }
   get logs() { return join(this.root, 'logs'); }
   get dots() { return join(this.root, 'dots'); }

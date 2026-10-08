@@ -522,6 +522,11 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
                   )}
                 </div>
                 {renderEvents(events, run)}
+                {(() => {
+                  const lastUsage = events.findLast(event => event.type === 'usage');
+                  const usage = lastUsage?.type === 'usage' ? lastUsage.usage : run.usage;
+                  return usage ? <div className="run-token-usage">{usage.estimated ? 'Estimated: ' : ''}{(usage.inputTokens + usage.outputTokens).toLocaleString()} tokens · {usage.inputTokens.toLocaleString()} input · {usage.outputTokens.toLocaleString()} output{usage.cachedTokens ? ` · ${usage.cachedTokens.toLocaleString()} cached` : ''}</div> : null;
+                })()}
                 {run.status === "failed" && (
                   <div className="task-error">
                     <XCircle size={18} />

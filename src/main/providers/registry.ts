@@ -36,7 +36,7 @@ export class ProviderRegistry {
     return [
       codex,
       ...profiles.map<ProviderOption>((p) => ({
-        id: p.id, kind: 'openai-compatible', label: p.label, available: p.hasKey, reason: p.hasKey ? undefined : 'No API key'
+        id: p.id, kind: 'openai-compatible', label: p.label, available: p.hasKey || p.requiresKey === false, reason: p.hasKey || p.requiresKey === false ? undefined : 'No API key'
       }))
     ];
   }
