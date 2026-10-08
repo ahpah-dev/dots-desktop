@@ -131,6 +131,7 @@ describe('codex event translator', () => {
     });
     expect(translator.usage?.inputTokens).toBe(100);
     expect(translator.usage?.outputTokens).toBe(60);
+    expect(events.at(-1)).toMatchObject({ type: 'usage', turnCompleted: true });
   });
 
   it('humanizes error messages', () => {

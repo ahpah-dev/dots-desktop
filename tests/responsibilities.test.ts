@@ -12,6 +12,7 @@ import { RunManager } from '../src/main/engine/runManager';
 import { Scheduler } from '../src/main/engine/scheduler';
 import { ApprovalGate } from '../src/main/engine/approvals';
 import { extractFollowups } from '../src/main/engine/context';
+import { CodexEventTranslator } from '../src/main/providers/codex/events';
 import { authorizeTool, matchingRule } from '../src/main/tools/permissions';
 import { scheduleFollowupTool } from '../src/main/tools/registry';
 import { searchFiles } from '../src/main/tools/files';
@@ -60,6 +61,51 @@ function provider(run: AgentProvider['run']): AgentProvider {
 }
 
 describe('durable responsibilities, memories and wakeups', () => {
+  it.each([50000, 90000])('retains a confirmed Codex answer when final usage reaches %i tokens', async (inputTokens) => {
+    const usage = { inputTokens, outputTokens: 700, cachedTokens: 40000 };
+    const f = await setup(provider(async (ctx) => {
+      const translator = new CodexEventTranslator(ctx.emit, ctx.setThreadId);
+      translator.handle({ type: 'turn.started' });
+      translator.handle({ type: 'item.completed', item: { id: 'answer', type: 'agent_message', text: 'Completed and verified.' } });
+      translator.handle({ type: 'turn.completed', usage: { input_tokens: inputTokens, output_tokens: 700, cached_input_tokens: 40000 } });
+      expect(ctx.signal.aborted).toBe(false);
+      return { finalMessage: translator.finalMessage, usage: translator.usage };
+    }));
+    await f.dots.update(f.dot.id, { providerId: 'codex', budget: { maxMinutes: 30, maxSteps: 60, maxTokens: 50000 } });
+    const run = await f.manager.start(f.dot.id, 'Complete a task', { trigger: 'manual' });
+    await until(() => !f.manager.isBusy(f.dot.id));
+    expect(f.runs.get(run.id)).toMatchObject({ status: 'succeeded', finalMessage: 'Completed and verified.', usage });
+    expect(f.runs.get(run.id)?.error).toBeUndefined();
+    expect(await f.runs.events(run.id)).toContainEqual(expect.objectContaining({ type: 'final', text: 'Completed and verified.' }));
+    const reload = new RunStore(f.paths); await reload.init([f.dot.id]);
+    expect(reload.get(run.id)?.status).toBe('succeeded');
+  });
+
+  it('still stops a live over-budget Codex task even after an intermediate message', async () => {
+    const f = await setup(provider(async (ctx) => {
+      ctx.emit({ type: 'message', id: 'progress', text: 'Work is in progress.' });
+      ctx.emit({ type: 'usage', usage: { inputTokens: 50000, outputTokens: 10 } });
+      expect(ctx.signal.aborted).toBe(true);
+      throw new CancelledError();
+    }));
+    await f.dots.update(f.dot.id, { providerId: 'codex' });
+    const run = await f.manager.start(f.dot.id, 'Continue working', { trigger: 'manual' });
+    await until(() => !f.manager.isBusy(f.dot.id));
+    expect(f.runs.get(run.id)).toMatchObject({ status: 'failed', error: 'Stopped after reaching the task token budget.' });
+    expect(f.runs.get(run.id)?.finalMessage).toBeUndefined();
+  });
+
+  it('does not hide a real provider failure after a displayed message', async () => {
+    const f = await setup(provider(async (ctx) => {
+      ctx.emit({ type: 'message', id: 'progress', text: 'A partial answer.' });
+      throw new Error('Provider connection failed before completion.');
+    }));
+    await f.dots.update(f.dot.id, { providerId: 'codex' });
+    const run = await f.manager.start(f.dot.id, 'Continue working', { trigger: 'manual' });
+    await until(() => !f.manager.isBusy(f.dot.id));
+    expect(f.runs.get(run.id)).toMatchObject({ status: 'failed', error: 'Provider connection failed before completion.' });
+  });
+
   it('edits and reverts into isolated persistent branches without discarded future context', async () => {
     const seen: { prompt: string; messages: unknown[]; context: string; resume: string | null }[] = [];
     const { manager, dot, runs, dots, paths } = await setup(provider(async (ctx) => {

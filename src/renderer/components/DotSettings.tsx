@@ -723,7 +723,7 @@ export function DotSettings({ dotId }: { dotId: string }) {
               ['maxOutputTokens', 'Output per response', 128, 32000],
               ['maxTokens', 'Total tokens per task', 1024, 2000000],
             ] as const).map(([key, label, min, max]) => <Field key={key} label={label}><input type="number" min={min} max={max} value={draft.budget[key]} onChange={event => update("budget", { ...draft.budget, [key]: Number(event.target.value) })} /></Field>)}</div>
-            <p className="budget-hint">API requests keep recent context and compact older history. Total limits stop new requests as usage is reported; a final request can exceed the remaining allowance. Codex manages its own context and output; its total limit applies when usage is reported.</p>
+            <p className="budget-hint">API requests keep recent context and compact older history. Total limits stop new requests as usage is reported; a final request can exceed the remaining allowance. Codex manages its own context and output and reports usage after completing a turn; its token allowance is a prompted target, and completed answers are retained.</p>
             <div className="profile-form-grid">
               <Field label="Maximum duration (minutes)">
                 <input

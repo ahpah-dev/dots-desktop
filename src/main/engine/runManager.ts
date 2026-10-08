@@ -281,7 +281,9 @@ export class RunManager {
       const emit = (body: RunEventBody) => {
         if (body.type === 'usage') {
           state.usage = body.usage;
-          if (dot.providerId === 'codex' && body.usage.inputTokens + body.usage.outputTokens >= dot.budget.maxTokens!) {
+          // Codex's turn.completed usage is accounting for work already finished.
+          // Aborting here kills the successful exit and mislabels its displayed answer.
+          if (dot.providerId === 'codex' && !body.turnCompleted && body.usage.inputTokens + body.usage.outputTokens >= dot.budget.maxTokens!) {
             state.reason = 'tokens'; state.controller.abort();
           }
         }

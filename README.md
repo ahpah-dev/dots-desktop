@@ -81,6 +81,7 @@ Dots stores profiles, conversations, run events, settings, and memory locally. W
 
 - Separate file, shell, web, and outside-workspace permissions per dot.
 - Run budgets, cancellation, approvals, and reviewable activity.
+- Codex reports token usage after a turn completes. Completed answers retain their successful status even if reported usage exceeds the prompted allowance; compatible API providers still stop starting new requests at their task limit.
 - Encrypted API credentials using Electron `safeStorage`.
 - Workspace checks and private-network filtering for built-in tools.
 - Optional loading of your Codex configuration for your own tools and integrations.

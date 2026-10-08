@@ -284,7 +284,8 @@ export type RunEventBody =
   | { type: "plan"; items: { text: string; done: boolean }[] }
   | { type: "file"; path: string; change: "add" | "update" | "delete" }
   | { type: "log"; level: "info" | "warn" | "error"; text: string }
-  | { type: "usage"; usage: Usage }
+  /** Terminal usage arrives after the provider has confirmed completion. */
+  | { type: "usage"; usage: Usage; turnCompleted?: boolean }
   | { type: "final"; text: string };
 
 export type ToolCategory =

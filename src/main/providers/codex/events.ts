@@ -69,7 +69,7 @@ export class CodexEventTranslator {
             outputTokens: (ev.usage.output_tokens ?? 0) + (ev.usage.reasoning_output_tokens ?? 0),
             cachedTokens: ev.usage.cached_input_tokens
           };
-          this.emit({ type: 'usage', usage: this.usage });
+          this.emit({ type: 'usage', usage: this.usage, turnCompleted: true });
         }
         break;
       case 'turn.failed':
