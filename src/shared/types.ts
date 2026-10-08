@@ -93,7 +93,9 @@ export interface DotAvatarConfig {
   shape: "circle" | "squircle" | "blob";
   eyes: "dot" | "happy" | "sleepy";
   glasses: "none" | "round" | "square";
-  accessory: "none" | "cap" | "sprout" | "headphones";
+  accessory: "none" | "cap" | "sprout" | "headphones" | "beanie" | "bow" | "crown" | "flower" | "antenna" | "party-hat" | "scarf" | "top-hat";
+  accessoryColor?: string;
+  glassesColor?: string;
 }
 
 export interface Permissions {

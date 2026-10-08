@@ -15,6 +15,7 @@ import type { Paths } from '../util/paths';
 import { Emitter, uid } from '../util/misc';
 import { validateSpec } from '@shared/schedule';
 import { createLogger } from '../util/logger';
+import { normalizeAvatar } from '@shared/avatar';
 
 const log = createLogger('dots');
 
@@ -174,7 +175,7 @@ export class DotStore {
       }
     }
 
-    return { ...d, name, model, permissions: perms, budget, schedule, description: d.description ?? '', instructions: d.instructions ?? '' };
+    return { ...d, avatar: d.avatar ? normalizeAvatar(d.avatar) : undefined, name, model, permissions: perms, budget, schedule, description: d.description ?? '', instructions: d.instructions ?? '' };
   }
 
   // ── memory ──

@@ -4,7 +4,7 @@
 
 **Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
-[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.5/Dots-Setup-2.0.5.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.5/Dots-2.0.5-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.5)
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.6/Dots-Setup-2.0.6.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.6/Dots-2.0.6-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.6)
 
 ![Dots Desktop conversation workspace](assets/desktop-screenshot-v2.0.1.png)
 
@@ -13,7 +13,7 @@ Dots Desktop is independent, open-source software inspired by [OpenAI Dots](http
 ## What changed in 2.0
 
 - **A complete new home:** Overview, an attention inbox, global activity, and connections bring your teammates and their work together. Search and a command palette keep navigation quick.
-- **A character of their own:** Personalize each dot's appearance and purpose, with a calm sage and cream interface, refined dark mode, and responsive layouts.
+- **A character of their own:** Choose from eleven accessories, including hats, a crown, a flower, a scarf, and headphones. Set accessory and glasses colors independently with presets or a custom color in Profile → Personalization, then save. A calm sage and cream interface, refined dark mode, and responsive layouts keep each dot at home.
 - **Live activity with a little personality:** File work, web searches, commands, and connected tools have gentle activity animations in your conversation and on your dot.
 - **A teammate on your desktop:** Minimize Dots or close it to the tray to see a draggable, always-on-top dot with live updates. Open its conversation, stop a task, switch teammates, or turn on spoken updates. Settings → Desktop also offers an always-visible mode.
 - **Conversations that stay organized:** Keep separate conversations with the same dot. Messages sent while it works queue up instead of interrupting an active task.
@@ -25,7 +25,7 @@ Dots Desktop is independent, open-source software inspired by [OpenAI Dots](http
 
 ## Getting started
 
-1. Install [Dots-Setup-2.0.5.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.5/Dots-Setup-2.0.5.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
+1. Install [Dots-Setup-2.0.6.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.6/Dots-Setup-2.0.6.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
 2. Connect a model provider in Settings.
 3. Create a dot, give it a purpose, and choose a local workspace.
 4. Start a conversation or add an ongoing responsibility. Review activity and approvals as work progresses.
@@ -98,7 +98,7 @@ Package a Windows installer and portable executable:
 npm run dist
 ```
 
-Artifacts are generated under `release/`: `Dots-Setup-2.0.5.exe` and `Dots-2.0.5-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
+Artifacts are generated under `release/`: `Dots-Setup-2.0.6.exe` and `Dots-2.0.6-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
 ## Website and demo film
 
