@@ -4,7 +4,7 @@
 
 **Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
-[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.6/Dots-Setup-2.0.6.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.6/Dots-2.0.6-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.6)
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.7/Dots-Setup-2.0.7.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.7/Dots-2.0.7-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.7)
 
 ![Dots Desktop conversation workspace](assets/desktop-screenshot-v2.0.1.png)
 
@@ -25,7 +25,7 @@ Dots Desktop is independent, open-source software inspired by [OpenAI Dots](http
 
 ## Getting started
 
-1. Install [Dots-Setup-2.0.6.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.6/Dots-Setup-2.0.6.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
+1. Install [Dots-Setup-2.0.7.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.7/Dots-Setup-2.0.7.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
 2. Connect a model provider in Settings.
 3. Create a dot, give it a purpose, and choose a local workspace.
 4. Start a conversation or add an ongoing responsibility. Review activity and approvals as work progresses.
@@ -42,7 +42,7 @@ Windows 10 or 11 (x64) is required for the published installer. The application 
 
 ### Let dots talk to each other
 
-Open each participating dot’s **Profile → Permissions**, enable **Talk to other dots**, and save. The option is also available when creating a dot. It starts off for existing and new dots.
+**Talk to other dots** is enabled by default for new Dots. Upgrading to 2.0.7 enables it once for existing Dots too. You can turn it off in **Profile → Permissions** and save; that choice persists across restarts. The option is also available when creating a Dot.
 
 Then ask a dot to consult a teammate, for example: “Ask Researcher to check these facts, then use its answer to finish the brief.” A busy teammate queues the request. Its answer returns as a labeled turn in the original conversation, and each participant uses its own permissions, workspace, model and task budget. API providers use messaging tools; Codex requests delivery through a structured final block handled by the app.
 
@@ -98,7 +98,7 @@ Package a Windows installer and portable executable:
 npm run dist
 ```
 
-Artifacts are generated under `release/`: `Dots-Setup-2.0.6.exe` and `Dots-2.0.6-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
+Artifacts are generated under `release/`: `Dots-Setup-2.0.7.exe` and `Dots-2.0.7-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
 ## Website and demo film
 

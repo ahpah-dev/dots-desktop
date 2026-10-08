@@ -105,7 +105,7 @@ export interface Permissions {
   shell: boolean;
   /** May browse / search the web and use the network. */
   web: boolean;
-  /** Exchange messages with other Dots that have also enabled this option. */
+  /** Exchange messages with other Dots. Enabled by default; false opts out. */
   talkToDots?: boolean;
   /** Allow access outside the workspace (disables sandboxing — use with care). */
   outsideWorkspace: boolean;
@@ -150,6 +150,8 @@ export interface Dot {
   reasoningEffort?: string;
   workspacePath: string;
   permissions: Permissions;
+  /** Records the one-time upgrade from the original opt-in messaging default. */
+  talkToDotsDefaultVersion?: 1;
   budget: Budget;
   schedule: Schedule | null;
   paused: boolean;
@@ -183,7 +185,7 @@ export type DotInput = Pick<
     >
   >;
 
-export type DotPatch = Partial<Omit<Dot, "id" | "createdAt" | "updatedAt">>;
+export type DotPatch = Partial<Omit<Dot, "id" | "createdAt" | "updatedAt" | "talkToDotsDefaultVersion">>;
 
 export type DotStatus =
   "idle" | "queued" | "running" | "awaiting-approval" | "paused";
@@ -374,7 +376,7 @@ export const DEFAULT_PERMISSIONS: Permissions = {
   files: "write",
   shell: true,
   web: true,
-  talkToDots: false,
+  talkToDots: true,
   outsideWorkspace: false,
   approval: "never",
 };

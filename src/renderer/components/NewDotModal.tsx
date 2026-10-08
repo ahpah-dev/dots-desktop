@@ -159,7 +159,7 @@ function NewDotWizard() {
   const [files, setFiles] = useState<FileAccess>("write");
   const [shell, setShell] = useState(true);
   const [web, setWeb] = useState(true);
-  const [talkToDots, setTalkToDots] = useState(false);
+  const [talkToDots, setTalkToDots] = useState(true);
   const [creating, setCreating] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const provider = providerOptions.find((item) => item.id === providerId);
@@ -511,7 +511,7 @@ function NewDotWizard() {
                         onChange={setWeb}
                       />
                     </SettingRow>
-                    <SettingRow title="Talk to other dots" description="Send requests to enabled teammates and receive their replies.">
+                    <SettingRow title="Talk to other dots" description="Enabled by default. Send requests to teammates and receive their replies.">
                       <Toggle label="Talk to other dots" checked={talkToDots} onChange={setTalkToDots} />
                     </SettingRow>
                   </div>

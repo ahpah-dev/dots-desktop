@@ -43,7 +43,11 @@ export class DotStore {
       try {
         const dot = await readJson<Dot | null>(this.paths.dotFile(e.name), null);
         if (dot?.id) {
-          const normalized = this.normalize(dot);
+          const normalized = this.normalize(dot.talkToDotsDefaultVersion === 1 ? dot : {
+            ...dot,
+            permissions: { ...dot.permissions, talkToDots: true },
+            talkToDotsDefaultVersion: 1,
+          });
           this.dots.set(dot.id, normalized);
           const savedNotes = await readJson<MemoryNote[] | null>(this.paths.memoryNotesFile(dot.id), null);
           if (savedNotes) this.notes.set(dot.id, savedNotes);
@@ -53,7 +57,7 @@ export class DotStore {
             this.notes.set(dot.id, this.importMemory(dot.id, legacy));
             await writeJson(this.paths.memoryNotesFile(dot.id), this.notes.get(dot.id));
           }
-          if (dot.model !== normalized.model) {
+          if (dot.model !== normalized.model || dot.talkToDotsDefaultVersion !== 1) {
             await this.save(normalized);
           }
         }
@@ -92,6 +96,7 @@ export class DotStore {
       reasoningEffort: input.reasoningEffort,
       workspacePath,
       permissions: input.permissions,
+      talkToDotsDefaultVersion: 1,
       budget: input.budget ?? DEFAULT_BUDGET,
       schedule: input.schedule ?? null,
       paused: false,
@@ -142,7 +147,7 @@ export class DotStore {
 
   private normalize(d: Dot): Dot {
     const perms: Permissions = { ...DEFAULT_PERMISSIONS, ...d.permissions };
-    perms.talkToDots = perms.talkToDots === true;
+    perms.talkToDots = perms.talkToDots !== false;
     if (perms.rules) {
       if (!Array.isArray(perms.rules) || perms.rules.length > 50) throw new Error('Use up to 50 custom permission rules.');
       perms.rules = perms.rules.map((rule) => {

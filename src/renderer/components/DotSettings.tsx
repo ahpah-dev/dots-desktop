@@ -63,12 +63,12 @@ function draftFor(dot: DotSummary | null) {
     reasoningEffort: dot?.reasoningEffort || "low",
     notify: dot?.notify ?? true,
     permissions: dot?.permissions
-      ? { ...dot.permissions, talkToDots: dot.permissions.talkToDots === true, rules: [...(dot.permissions.rules || [])] }
+      ? { ...dot.permissions, talkToDots: dot.permissions.talkToDots !== false, rules: [...(dot.permissions.rules || [])] }
       : {
           files: "write" as const,
           shell: true,
           web: true,
-          talkToDots: false,
+          talkToDots: true,
           outsideWorkspace: false,
           approval: "ask" as const,
           rules: [] as PermissionRule[],
@@ -467,7 +467,7 @@ export function DotSettings({ dotId }: { dotId: string }) {
             </SettingRow>
             <SettingRow
               title="Talk to other dots"
-              description="Ask teammates for help and receive their answers in the conversation. Enable this on each participating dot, then ask yours to consult a teammate by name. Each dot uses its own permissions and task budget."
+              description="Enabled by default. Ask your dot to consult a teammate by name and receive the answer here. Each dot uses its own permissions and task budget. Turn this off to stop this dot from exchanging messages."
             >
               <Toggle label="Talk to other dots" checked={draft.permissions.talkToDots} onChange={(value) => permission("talkToDots", value)} />
             </SettingRow>

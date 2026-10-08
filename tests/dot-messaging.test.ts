@@ -78,7 +78,7 @@ describe('Dot teammate messages', () => {
     expect(reloaded.get(reply.id)?.dotMessage).toEqual(reply.dotMessage);
   });
 
-  it('requires both participants to opt in and rejects self, paused and oversized requests', async () => {
+  it('honors disabled messaging and rejects self, paused and oversized requests', async () => {
     let f: Awaited<ReturnType<typeof setup>>;
     f = await setup(async ctx => {
       await expect(ctx.sendDotMessage!(ctx.dot.id, 'hello')).rejects.toThrow('another Dot');
@@ -96,8 +96,8 @@ describe('Dot teammate messages', () => {
     await until(() => f.manager.activeCount() === 0);
     expect(f.runs.get(root.id)?.status).toBe('succeeded');
     expect(f.runs.listForDot(f.b.id)).toHaveLength(0);
-    expect(toolsFor(DEFAULT_PERMISSIONS).map(t => t.name)).not.toContain('send_dot_message');
-    expect(toolsFor({ ...DEFAULT_PERMISSIONS, talkToDots: true }).map(t => t.name)).toContain('send_dot_message');
+    expect(toolsFor({ ...DEFAULT_PERMISSIONS, talkToDots: false }).map(t => t.name)).not.toContain('send_dot_message');
+    expect(toolsFor(DEFAULT_PERMISSIONS).map(t => t.name)).toContain('send_dot_message');
   });
 
   it('bounds a provider that tries to create endless exchanges', async () => {
@@ -120,7 +120,7 @@ describe('Dot teammate messages', () => {
     expect(limits.some(text => text.includes('limit'))).toBe(true);
   });
 
-  it('rechecks opt-in before queued delivery instead of invoking a revoked recipient', async () => {
+  it('rechecks messaging permissions before queued delivery instead of invoking a revoked recipient', async () => {
     let f: Awaited<ReturnType<typeof setup>>;
     let recipientInvoked = false;
     f = await setup(async ctx => {
