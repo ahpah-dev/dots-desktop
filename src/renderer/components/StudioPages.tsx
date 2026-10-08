@@ -181,7 +181,6 @@ export function Overview() {
           </button>
         </div>
         <button className="team-entry" onClick={() => setView("teamwork")}><span><strong>Put your dots on the same team.</strong><small>Plan assignments, work in parallel, and bring the results together.</small></span><ArrowUpRight size={20} /></button>
-        <button className="team-entry" onClick={() => setView("teamwork")}><span><strong>Put your dots on the same team.</strong><small>Plan assignments, work in parallel, and bring the results together.</small></span><ArrowUpRight size={20} /></button>
         <div className="overview-summary">
           <div>
             <span className="summary-icon">
