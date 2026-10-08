@@ -258,7 +258,7 @@ try {
   await page
     .getByRole("button", { name: "Model & computer", exact: true })
     .click();
-  await page.getByRole("button", { name: /Economy Short context/ }).click();
+  await page.getByRole("button", { name: /Economy Take the direct approach/ }).click();
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await until(() =>
     page.evaluate(
@@ -274,7 +274,7 @@ try {
     ),
   );
   check(
-    "Economy limits persist",
+    "Economy work style and limits persist",
     (
       await page.evaluate(
         (id) =>
@@ -283,8 +283,13 @@ try {
             .then((value) => value.dots.find((dot) => dot.id === id).budget),
         dots[0].id,
       )
-    ).maxOutputTokens === 1024,
+    ).maxOutputTokens === 1024 && await page.evaluate(id => window.dots.api.getBootstrap().then(value => value.dots.find(dot => dot.id === id).budget.workStyle === "economy"), dots[0].id),
   );
+  await page.getByLabel("Context per request", { exact: true }).fill("8000");
+  check("Custom limits keep Economy selected", await page.getByRole("button", { name: /Economy Take the direct approach/ }).getAttribute("aria-pressed") === "true");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await until(() => page.evaluate(id => window.dots.api.getBootstrap().then(value => { const budget = value.dots.find(dot => dot.id === id).budget; return budget.workStyle === "economy" && budget.maxContextTokens === 8000; }), dots[0].id));
+  check("Custom context and independent work style persist");
   await page.getByRole("button", { name: "Teamwork", exact: true }).click();
   await page
     .getByLabel("Goal", { exact: true })
@@ -413,16 +418,17 @@ try {
   const wizard = page.getByRole("dialog", { name: "Meet your new dot", exact: true });
   await wizard.getByLabel("Name", { exact: true }).fill("Preset QA");
   await wizard.getByRole("button", { name: "Continue", exact: true }).click();
-  await wizard.getByLabel("Token style", { exact: true }).selectOption("economy");
+  await wizard.getByLabel("Work style", { exact: true }).selectOption("economy");
   await wizard.getByRole("button", { name: "Connect another provider", exact: true }).click();
   await settings.waitFor();
   check("New-dot shortcut opens provider settings", await settings.getByRole("button", { name: "Model providers", exact: true }).getAttribute("class") === "is-active");
   await page.keyboard.press("Escape");
   await settings.waitFor({ state: "hidden" });
-  check("Closing provider setup preserves the dot draft", await wizard.isVisible() && await wizard.getByLabel("Token style", { exact: true }).inputValue() === "economy");
+  check("Closing provider setup preserves the dot draft", await wizard.isVisible() && await wizard.getByLabel("Work style", { exact: true }).inputValue() === "economy");
   await wizard.getByRole("button", { name: "Create Preset QA", exact: true }).click();
   await wizard.waitFor({ state: "hidden" });
-  check("New-dot token preset persists", await page.evaluate(() => window.dots.api.getBootstrap().then(value => value.dots.find(dot => dot.name === "Preset QA")?.budget.maxContextTokens === 6000)));
+  check("New-dot work style and limits persist", await page.evaluate(() => window.dots.api.getBootstrap().then(value => { const budget = value.dots.find(dot => dot.name === "Preset QA")?.budget; return budget?.maxContextTokens === 6000 && budget.workStyle === "economy"; })));
+  check("Team members receive their own behavioral workflows", calls.some(call => call.messages[0].content.includes("Work style: Economy")) && calls.some(call => call.messages[0].content.includes("Work style: Balanced")));
   check("No renderer errors", errors.length === 0);
   await writeFile(
     join(output, "teamwork-results.json"),

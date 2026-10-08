@@ -138,7 +138,11 @@ export interface Schedule {
   continueSession: boolean;
 }
 
+export type WorkStyle = 'economy' | 'balanced' | 'thorough';
+
 export interface Budget {
+  /** Behavioral work depth, independent of manually adjusted resource limits. */
+  workStyle?: WorkStyle;
   /** Hard wall-clock limit per run. */
   maxMinutes: number;
   /** Max tool-calling iterations (OpenAI-compatible provider). */

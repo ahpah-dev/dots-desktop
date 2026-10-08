@@ -715,8 +715,9 @@ export function DotSettings({ dotId }: { dotId: string }) {
               </div>
             </div>
           </PanelSection>
-          <PanelSection title="Limits per task" description="Spend less context on routine work, or give complex tasks room to think.">
-            <div className="token-presets">{TOKEN_PRESETS.map(preset => <button key={preset.id} className={`token-preset ${draft.budget.maxContextTokens === preset.budget.maxContextTokens ? 'selected' : ''}`} aria-pressed={draft.budget.maxContextTokens === preset.budget.maxContextTokens} onClick={() => update("budget", normalizeBudget({ ...draft.budget, ...preset.budget }))}><strong>{preset.label}</strong><small>{preset.description}</small></button>)}</div>
+          <PanelSection title="Work style & limits" description="Choose how much your dot investigates and verifies. Each style gives the agent a concrete workflow and suggested resource limits.">
+            <div className="token-presets">{TOKEN_PRESETS.map(preset => <button key={preset.id} className={`token-preset ${draft.budget.workStyle === preset.id ? 'selected' : ''}`} aria-pressed={draft.budget.workStyle === preset.id} onClick={() => update("budget", normalizeBudget({ ...draft.budget, ...preset.budget }))}><strong>{preset.label}</strong><small>{preset.description}</small></button>)}</div>
+            <p className="budget-hint">All providers receive the selected workflow, including smaller models. Editing limits below keeps your work style. Your requested scope always takes priority.</p>
             <div className="profile-form-grid token-fields">{([
               ['maxContextTokens', 'Context per request', 1024, 128000],
               ['maxOutputTokens', 'Output per response', 128, 32000],

@@ -429,7 +429,7 @@ function NewDotWizard() {
                   ))}
                 </select>
               </Field>
-              <Field label="Token style" hint="Economy is useful for free tiers. Adjust limits later in the dot profile."><select value={tokenPreset} onChange={event => setTokenPreset(event.target.value)}>{TOKEN_PRESETS.map(preset => <option key={preset.id} value={preset.id}>{preset.label}</option>)}</select></Field>
+              <Field label="Work style" hint={TOKEN_PRESETS.find(preset => preset.id === tokenPreset)?.description}><select value={tokenPreset} onChange={event => setTokenPreset(event.target.value)}>{TOKEN_PRESETS.map(preset => <option key={preset.id} value={preset.id}>{preset.label}</option>)}</select></Field>
               <button className="btn-ghost" onClick={() => setShowSettingsModal(true, "providers")}>
                 Connect another provider <ArrowRight size={13} />
               </button>

@@ -7,6 +7,7 @@ import { toolsFor } from '../../tools/registry';
 import type { ToolContext } from '../../tools/types';
 import { authorizeTool } from '../../tools/permissions';
 import { clip, errorMessage } from '../../util/misc';
+import { buildWorkInstructions, buildWorkProgress } from '../../engine/workStyle';
 
 const HISTORY_USER_TURNS = 8;
 const HISTORY_MAX_CHARS = 160_000;
@@ -63,7 +64,7 @@ export class OpenAICompatibleProvider implements AgentProvider {
 
     const history = ctx.newSession ? [] : ((await ctx.thread.read()).messages as ChatMessage[]);
     const persisted: ChatMessage[] = [...history, { role: 'user', content: ctx.prompt }];
-    const system: ChatMessage = { role: 'system', content: `${ctx.context}\n\n${TOOL_GUIDE}\n- Prefer concise, useful answers and targeted tools. Avoid repeating context. This task has a ${budget.maxTokens} token allowance.` };
+    const instructions = `${ctx.context}\n\n${TOOL_GUIDE}\n\n${buildWorkInstructions(budget)}`;
     await ctx.thread.write(persisted);
 
     const toolCtx: ToolContext = {
@@ -83,10 +84,13 @@ export class OpenAICompatibleProvider implements AgentProvider {
 
     for (let step = 1; step <= maxSteps + 1; step++) {
       if (ctx.signal.aborted) throw new CancelledError();
-      const lastStep = step > maxSteps;
       const remaining = budget.maxTokens! - total.inputTokens - total.outputTokens;
       const maxOutput = Math.min(budget.maxOutputTokens!, Math.floor(remaining / 3));
       if (maxOutput < 128) throw new ProviderError('Stopped at the token budget. Review the completed activity or continue with a larger budget.');
+      // Reserve room to report progress before a normal tool request uses the last allowance.
+      const requestEstimate = estimateTokens(JSON.stringify([{ role: 'system', content: instructions }, ...persisted])) + estimateTokens(JSON.stringify(toolDefs));
+      const lastStep = step > maxSteps || (step > 1 && remaining < Math.min(budget.maxContextTokens!, requestEstimate) + maxOutput * 2);
+      const system: ChatMessage = { role: 'system', content: `${instructions}\n\n${buildWorkProgress(budget, step, remaining, lastStep)}` };
       const extraTokens = toolDefs.length && !lastStep ? estimateTokens(JSON.stringify(toolDefs)) : 0;
       const compact = compactMessages(system, persisted, Math.min(budget.maxContextTokens!, remaining - maxOutput), extraTokens);
       if (compact.removed) ctx.emit({ type: 'log', level: 'info', text: `Compacted ${compact.removed} older messages to keep this request within its context budget.` });
@@ -137,7 +141,7 @@ export class OpenAICompatibleProvider implements AgentProvider {
       if (!assistant.tool_calls) {
         finalMessage = result.content;
         persisted.push(assistant);
-        if (lastStep) ctx.emit({ type: 'log', level: 'warn', text: `Stopped after reaching the step limit (${maxSteps}).` });
+        if (lastStep) ctx.emit({ type: 'log', level: 'warn', text: `Wrapped up at the ${step > maxSteps ? 'step' : 'token'} allowance with a final progress report.` });
         break;
       }
 

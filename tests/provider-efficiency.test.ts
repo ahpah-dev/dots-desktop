@@ -13,7 +13,8 @@ import {
   type Dot,
   type RunEventBody,
 } from "@shared/types";
-import { normalizeBudget, estimateTokens } from "@shared/budget";
+import { normalizeBudget, estimateTokens, TOKEN_PRESETS } from "@shared/budget";
+import { buildCodexPrompt } from "../src/main/providers/codex/provider";
 import { compactMessages } from "../src/main/providers/openai/efficiency";
 import {
   listModelDetails,
@@ -190,6 +191,56 @@ describe("context efficiency", () => {
   });
 });
 describe("compatible providers", () => {
+  it.each(TOKEN_PRESETS)("sends the $label workflow on every small-model tool round, independently of limits", async (preset) => {
+    const calls: any[] = [];
+    const baseUrl = await fixture((_, res, body) => {
+      calls.push(body);
+      json(res, {
+        choices: [{ message: calls.length === 1 ? {
+          content: null,
+          tool_calls: [{ id: "inspect", type: "function", function: { name: "list_files", arguments: "{}" } }],
+        } : { content: "Verified result" }, finish_reason: calls.length === 1 ? "tool_calls" : "stop" }],
+        usage: { prompt_tokens: 100, completion_tokens: 30 },
+      });
+    });
+    const f = await context([{ role: "user", content: "Previous task" }, { role: "assistant", content: "Previous style" }]);
+    f.ctx.dot.model = "small-local-model";
+    // Deliberately identical caps: the instruction change must not depend on model or allowance.
+    f.ctx.dot.budget = normalizeBudget({ ...DEFAULT_BUDGET, workStyle: preset.id });
+    expect((await provider(baseUrl).run(f.ctx)).finalMessage).toBe("Verified result");
+    expect(calls).toHaveLength(2);
+    for (const [index, call] of calls.entries()) {
+      expect(call.model).toBe("small-local-model");
+      expect(call.reasoning_effort).toBeUndefined();
+      expect(call.max_tokens).toBe(2048);
+      expect(call.messages[0].content).toContain(`Work style: ${preset.label}`);
+      expect(call.messages[0].content).toContain("Always meet the user's explicit scope and depth");
+      expect(call.messages[0].content).toContain(`Tool rounds used: ${index}/60`);
+      const codex = buildCodexPrompt(f.ctx);
+      expect(codex).toContain(`Work style: ${preset.label}`);
+      expect(codex).toContain(f.ctx.prompt);
+    }
+    const instructions = calls[0].messages[0].content;
+    expect(instructions).toContain(preset.id === "economy" ? "one focused check" : preset.id === "balanced" ? "likely failure cases" : "acceptance checks");
+  });
+  it("requests an honest final report before reaching the token ceiling instead of starting more tools", async () => {
+    const calls: any[] = [];
+    const baseUrl = await fixture((_, res, body) => {
+      calls.push(body);
+      json(res, {
+        choices: [{ message: calls.length === 1 ? { content: null, tool_calls: [{ id: "inspect", type: "function", function: { name: "list_files", arguments: "{}" } }] } : { content: "Inspected the workspace. The remaining edit is unfinished." }, finish_reason: calls.length === 1 ? "tool_calls" : "stop" }],
+        usage: { prompt_tokens: calls.length === 1 ? 45000 : 100, completion_tokens: 20 },
+      });
+    });
+    const f = await context();
+    f.ctx.dot.budget = normalizeBudget({ ...DEFAULT_BUDGET, workStyle: "economy" });
+    const result = await provider(baseUrl).run(f.ctx);
+    expect(calls).toHaveLength(2);
+    expect(calls[0].tools.length).toBeGreaterThan(0);
+    expect(calls[1].tools).toBeUndefined();
+    expect(calls[1].messages[0].content).toContain("Finish now with the verified result and any unfinished requirements");
+    expect(result.finalMessage).toContain("unfinished");
+  });
   it("discovers real endpoint metadata and makes bounded keyless requests with cached usage", async () => {
     const calls: any[] = [];
     const baseUrl = await fixture((req, res, body) => {

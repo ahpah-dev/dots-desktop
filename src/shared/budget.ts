@@ -1,11 +1,12 @@
-import { DEFAULT_BUDGET, type Budget } from "./types";
+import { DEFAULT_BUDGET, type Budget, type WorkStyle } from "./types";
 
 export const TOKEN_PRESETS = [
   {
     id: "economy",
     label: "Economy",
-    description: "Short context and concise replies. Good for free tiers.",
+    description: "Take the direct approach and make one focused check.",
     budget: {
+      workStyle: "economy",
       maxSteps: 20,
       maxContextTokens: 6000,
       maxOutputTokens: 1024,
@@ -15,8 +16,9 @@ export const TOKEN_PRESETS = [
   {
     id: "balanced",
     label: "Balanced",
-    description: "A useful amount of context for everyday work.",
+    description: "Cover the main requirements and likely failure cases.",
     budget: {
+      workStyle: "balanced",
       maxSteps: 60,
       maxContextTokens: 12_000,
       maxOutputTokens: 2048,
@@ -26,8 +28,9 @@ export const TOKEN_PRESETS = [
   {
     id: "thorough",
     label: "Thorough",
-    description: "More room for complex work and longer answers.",
+    description: "Investigate alternatives, edge cases, and verify deeply.",
     budget: {
+      workStyle: "thorough",
       maxSteps: 100,
       maxContextTokens: 32_000,
       maxOutputTokens: 4096,
@@ -46,8 +49,17 @@ const bounded = (
     ? Math.max(min, Math.min(max, Math.floor(value!)))
     : fallback;
 
+/** Keep legacy preset choices, then save the style separately from editable limits. */
+export function getWorkStyle(input?: Partial<Budget>): WorkStyle {
+  if (input?.workStyle === "economy" || input?.workStyle === "balanced" || input?.workStyle === "thorough") return input.workStyle;
+  if (input?.maxContextTokens && input.maxContextTokens <= 6000) return "economy";
+  if (input?.maxContextTokens && input.maxContextTokens >= 32_000) return "thorough";
+  return "balanced";
+}
+
 export function normalizeBudget(input?: Partial<Budget>): Budget {
   return {
+    workStyle: getWorkStyle(input),
     maxMinutes: bounded(input?.maxMinutes, 1, 1440, DEFAULT_BUDGET.maxMinutes),
     maxSteps: bounded(input?.maxSteps, 1, 500, DEFAULT_BUDGET.maxSteps),
     maxContextTokens: bounded(

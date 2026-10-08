@@ -12,8 +12,14 @@ import type { CodexAuthService } from './auth';
 import { killTree, spawnCodex } from './locator';
 import { CodexEventTranslator, humanizeCodexError } from './events';
 import { createLogger } from '../../util/logger';
+import { buildWorkInstructions } from '../../engine/workStyle';
 
 const log = createLogger('codex');
+
+/** Included on fresh and resumed turns so changed work styles take effect immediately. */
+export function buildCodexPrompt(ctx: Pick<RunContext, 'context' | 'dot' | 'prompt'>): string {
+  return `${ctx.context}\n\n${buildWorkInstructions(ctx.dot.budget)}\n\n---\n# Your task\n${ctx.prompt}\n`;
+}
 
 /** Translate a Dot's permissions into Codex CLI configuration overrides. */
 export function buildCodexConfigArgs(dot: Dot, model: string | undefined, useUserConfig: boolean): string[] {
@@ -114,7 +120,7 @@ export class CodexProvider implements AgentProvider {
         stderrTail = (stderrTail + String(d)).slice(-4000);
       });
       child.stdin?.on('error', () => undefined);
-      child.stdin?.end(`${ctx.context}\n\n---\n# Your task\n${ctx.prompt}\n`);
+      child.stdin?.end(buildCodexPrompt(ctx));
 
       const done = (fn: () => void) => {
         if (settled) return;
