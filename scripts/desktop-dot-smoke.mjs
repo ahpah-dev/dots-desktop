@@ -31,6 +31,7 @@ try {
   await widget.waitForSelector('.widget-bubble');
   await until(async()=>(await windows()).some(w=>w.widget&&w.visible));
   check('Minimizing reveals an always-on-top dot without stealing focus',(await windows()).some(w=>w.widget&&w.visible&&w.top&&!w.focused));
+  check('Inactive companion can receive the first button click',await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('widget.html')).isFocusable()));
   check('Widget has only its restricted bridge',await widget.evaluate(()=>!!window.desktopDot&&typeof window.dots==='undefined'&&typeof require==='undefined'));
   check('Invalid desktop control actions are rejected',await widget.evaluate(async()=>{try{await window.desktopDot.control('delete-files');return false;}catch{return true;}}));
   await until(async()=>(await widget.evaluate(()=>window.desktopDot.getState())).activity==='shell');
@@ -40,9 +41,16 @@ try {
   check('Main conversation shows the active command and completed file action',await page.evaluate(()=>!!document.querySelector('.work-event.is-working .activity-shell')&&!!document.querySelector('.work-event .activity-file')));
   await mkdir(resolve('artifacts/qa'),{recursive:true});
   await widget.screenshot({path:resolve('artifacts/qa/desktop-dot-live.png')});
+  await app.evaluate(({BrowserWindow})=>{
+    const w=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('widget.html'));
+    const setFocusable=w.setFocusable.bind(w);
+    global.__desktopQaFocusChanges=[];
+    w.setFocusable=value=>{global.__desktopQaFocusChanges.push(value);setFocusable(value);};
+  });
   await widget.getByRole('button',{name:'Open Dots'}).click();
   await until(async()=>(await windows()).some(w=>!w.widget&&w.visible&&!w.minimized)&&(await windows()).some(w=>w.widget&&!w.visible));
   check('Open Dots restores the correct conversation',(await page.locator('.workspace-breadcrumb').textContent()).includes('Desktop QA')&&(await page.locator('.conversation-context-title').textContent()).includes('Verify live desktop'));
+  check('First click opens directly without changing widget focus during the gesture',await app.evaluate(()=>global.__desktopQaFocusChanges.length===0));
   await until(()=>widget.evaluate(()=>document.documentElement.classList.contains('desktop-dot-hidden')));
   check('Hidden companion pauses all animation',await widget.evaluate(()=>getComputedStyle(document.querySelector('.dot-mascot-motion')).animationPlayState==='paused'&&getComputedStyle(document.querySelector('.activity-glyph svg')).animationPlayState==='paused'));
   await until(()=>page.evaluate(async id=>(await window.dots.api.listRuns(id))[0]?.status==='succeeded',dot.id));
@@ -122,6 +130,8 @@ try {
   await widget.getByRole('button',{name:'Stop current task'}).click();
   await until(()=>page.evaluate(async id=>(await window.dots.api.listRuns(id))[0].status==='cancelled',dot.id));
   await widget.getByRole('button',{name:'Open Dots'}).click();
+  await until(async()=>(await windows()).some(w=>!w.widget&&w.visible&&!w.minimized&&w.focused));
+  check('Open Dots brings the tray-hidden app to the foreground');
   check('No renderer errors',errors.length===0);
   await page.evaluate(()=>window.dots.api.updateSettings({runInBackground:false,desktopDotMode:'always'}));
   const closed=app.waitForEvent('close',{timeout:15000});

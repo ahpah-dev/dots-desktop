@@ -116,6 +116,8 @@ function ActivityRow({ run }: { run: Run }) {
             ? "Scheduled work"
             : run.trigger === "followup"
               ? "Follow-up"
+              : run.trigger === "dot-message"
+                ? `From ${run.dotMessage?.sourceDotName ?? "a teammate"}`
               : "Conversation"}{" "}
           <span>·</span> {relativeTime(run.createdAt)}
         </small>

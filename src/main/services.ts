@@ -275,7 +275,7 @@ export class Services implements DotsApi {
       patch = { ...patch, workspacePath };
     }
     // Revoking access must stop an in-flight provider that captured the previous permission set.
-    const permissionState = (permissions: Dot['permissions']) => JSON.stringify([permissions.files, permissions.shell, permissions.web, permissions.outsideWorkspace, permissions.approval, permissions.rules ?? []]);
+    const permissionState = (permissions: Dot['permissions']) => JSON.stringify([permissions.files, permissions.shell, permissions.web, permissions.talkToDots === true, permissions.outsideWorkspace, permissions.approval, permissions.rules ?? []]);
     if (patch.permissions && permissionState(patch.permissions) !== permissionState(current.permissions) && this.manager.isBusy(id)) await this.manager.cancelForDot(id, 'user');
     const dot = await this.dots.update(id, patch);
     const refreshed = patch.schedule !== undefined || patch.paused !== undefined ? await this.scheduler.refresh(dot) : dot;

@@ -41,6 +41,8 @@ const readable: Record<string, string> = {
   web_fetch: "Reading a webpage",
   remember: "Remembering this",
   schedule_followup: "Scheduling a follow-up",
+  list_dots: "Finding teammates",
+  send_dot_message: "Messaging a teammate",
 };
 function consolidate(events: RunEvent[]): RunEvent[] {
   const result: RunEvent[] = [];
@@ -326,7 +328,7 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
           expanded[key] ?? (e.type === "tool" && e.status === "error");
         return (
           <div
-            className={`work-event ${e.type === "tool" && e.status === "error" ? "error" : ""} ${e.type === "tool" && e.status === "running" && run.status === "running" ? "is-working" : ""}`}
+            className={`work-event ${isOpen ? "is-expanded" : ""} ${e.type === "tool" && e.status === "error" ? "error" : ""} ${e.type === "tool" && e.status === "running" && run.status === "running" ? "is-working" : ""}`}
             key={key}
           >
             <button
@@ -335,7 +337,7 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
               onClick={() => setExpanded((p) => ({ ...p, [key]: !isOpen }))}
             >
               {e.type === "tool" ? <ActivityGlyph kind={toolActivity(e).kind} active={e.status === "running" && run.status === "running"}/> : <Brain size={14} />}
-              <span>
+              <span className="work-event-label">
                 {e.type === "tool"
                   ? (readable[e.name] ?? e.name)
                   : "Thinking through the next step"}
@@ -493,8 +495,8 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
           <div className="conversation-messages">
             {turns.map(({ run, events }) => (
               <React.Fragment key={run.id}>
-                <div className="user-message">
-                  <span>You</span>
+                <div className={`user-message ${run.dotMessage ? "teammate-message" : ""}`}>
+                  <span>{run.dotMessage ? `${run.dotMessage.kind === "reply" ? "Reply" : "Message"} from ${run.dotMessage.sourceDotName}` : "You"}</span>
                   {editingId === run.id ? (
                     <div className="message-editor">
                       <textarea aria-label="Edit your message" autoFocus value={editText}

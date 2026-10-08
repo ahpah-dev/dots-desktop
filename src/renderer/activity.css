@@ -8,9 +8,9 @@
 .activity-glyph.is-active.activity-shell b{display:block;width:4px;height:2px;right:6px;bottom:6px;background:currentColor;animation:activity-cursor 1.2s steps(1) infinite}
 .activity-glyph.is-active:is(.activity-memory,.activity-mcp,.activity-other,.activity-thinking,.activity-queued) svg{animation:activity-think 2.2s ease-in-out infinite}
 .activity-glyph.activity-done{animation:activity-finish .35s ease-out 1}
-.work-event.is-working{border-color:var(--border-medium);background:var(--bg-selected)}
-.work-event.is-working .work-event-toggle>span:not(.activity-glyph):first-of-type{color:var(--text-main)}
-.live-activity{display:flex;align-items:center;gap:10px;padding:10px 14px;margin:0 14px 12px;border:1px solid var(--border-subtle);border-radius:12px;color:var(--text-muted);font-size:12px;background:var(--bg-card);animation:activity-finish .3s ease-out 1}
+.work-event.is-working{border-color:color-mix(in srgb,var(--accent-primary) 25%,var(--border-subtle));background:var(--bg-card)}
+.work-event.is-working .work-event-label{color:var(--text-main)}
+.live-activity{display:inline-flex;align-self:center;max-width:calc(100% - 28px);align-items:center;gap:8px;padding:6px 10px 6px 6px;margin:0 14px 12px;border:1px solid var(--border-subtle);border-radius:12px;color:var(--text-muted);font-size:11px;background:var(--bg-card);animation:activity-finish .3s ease-out 1}
 .live-activity strong{font-weight:500;color:var(--text-main)}
 .live-activity>span:last-child{margin-left:auto;color:var(--text-dim);font-size:10px}
 @keyframes activity-write{0%,100%{transform:translate(0,0) rotate(0)}35%{transform:translate(1px,-1px) rotate(-7deg)}70%{transform:translate(-1px,1px) rotate(4deg)}}

@@ -7,7 +7,7 @@ import { chooseDesktopDot, clampDesktopBounds, desktopActivityState } from './de
 import { createLogger } from './util/logger';
 
 const log = createLogger('desktop-dot');
-const actions: DesktopDotAction[] = ['open','stop','hide','next','auto','toggle-voice','focus'];
+const actions: DesktopDotAction[] = ['open','stop','hide','next','auto','toggle-voice'];
 // The companion needs status only, never the tool's arguments or output.
 const activityEvent = ({ type,id,category,name,status,runId,dotId,seq,ts }: ToolEvent): ToolEvent => ({ type,id,category,name,status,runId,dotId,seq,ts });
 
@@ -62,7 +62,9 @@ export class DesktopDot {
       const visible = settings.desktopDotEnabled && !!this.services.dots.list().length && (settings.desktopDotMode === 'always' || !this.mainVisible());
       if (visible && !this.window) this.create();
       if (!this.window || this.window.isDestroyed()) return;
-      if (visible && this.loaded && !this.window.isVisible()) { this.window.setFocusable(false); this.window.showInactive(); }
+      // Stay inactive when appearing, but allow a normal first click on the controls.
+      // Changing Windows activation styles during pointerdown can cancel the click.
+      if (visible && this.loaded && !this.window.isVisible()) this.window.showInactive();
       else if (!visible) this.window.hide();
       if (this.loaded && (visible || this.lastSentVisible !== visible)) {
         this.window.webContents.send(DESKTOP_DOT_STATE_CHANNEL,this.state());
@@ -75,7 +77,7 @@ export class DesktopDot {
     const position = this.services.settings.get().desktopDotPosition;
     const initial = { x: position?.x ?? area.x + area.width - 382, y: position?.y ?? area.y + area.height - 214, width: 360, height: 192 };
     const bounds = clampDesktopBounds(initial,screen.getDisplayMatching(initial).workArea);
-    this.window = new BrowserWindow({ ...bounds, title:'Your desktop dot', show:false, frame:false, transparent:true, resizable:false, maximizable:false, minimizable:false, fullscreenable:false, alwaysOnTop:true, skipTaskbar:true, hasShadow:false, focusable:false,
+    this.window = new BrowserWindow({ ...bounds, title:'Your desktop dot', show:false, frame:false, transparent:true, resizable:false, maximizable:false, minimizable:false, fullscreenable:false, alwaysOnTop:true, skipTaskbar:true, hasShadow:false, focusable:true,
       webPreferences:{preload:join(__dirname,'..','preload','desktopDot.js'),contextIsolation:true,sandbox:true,nodeIntegration:false,spellcheck:false,backgroundThrottling:false,autoplayPolicy:'no-user-gesture-required'} });
     this.window.setAlwaysOnTop(true,'floating');
     this.window.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:false});
@@ -106,7 +108,6 @@ export class DesktopDot {
   private async control(action: DesktopDotAction, runId?: string): Promise<void> {
     const state=this.state();
     switch(action) {
-      case 'focus': this.window?.setFocusable(true); this.window?.focus(); break;
       case 'open': this.openMain({type:'navigate',dotId:state.dot?.id,runId:state.runId}); break;
       case 'stop': if (state.canStop && state.runId && state.runId===runId) await this.services.cancelRun(state.runId); break;
       case 'hide': await this.services.updateSettings({desktopDotEnabled:false}); break;

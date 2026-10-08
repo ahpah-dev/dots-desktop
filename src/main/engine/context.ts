@@ -52,7 +52,7 @@ export function buildContext({ dot, memory, recentRuns, trigger, tasks = [], fol
       `- Operating system: ${process.platform}`,
       `- Your workspace (working directory): ${dot.workspacePath}`,
       `- Permissions: ${describePermissions(dot)}`,
-      `- This task was started ${trigger === 'schedule' ? 'by your schedule' : trigger === 'followup' ? 'by a persistent wakeup' : 'by the user'}.`
+      `- This task was started ${trigger === 'schedule' ? 'by your schedule' : trigger === 'followup' ? 'by a persistent wakeup' : trigger === 'dot-message' ? 'by a teammate message' : 'by the user'}.`
     ].join('\n'),
     [
       '## Rules',
@@ -102,4 +102,18 @@ export function extractFollowups(text: string): { text: string; followups: { pro
     return '';
   });
   return { text: cleaned.trim(), followups };
+}
+
+/** Codex requests the same host messaging capability using a final structured block. */
+export function extractDotMessages(text: string): { text: string; messages: { dotId: string; message: string }[] } {
+  const messages: { dotId: string; message: string }[] = [];
+  const cleaned = text.replace(/<dot_message>\s*([\s\S]*?)\s*<\/dot_message>/g, (block, body: string) => {
+    try {
+      const value = JSON.parse(body);
+      if (typeof value?.dot_id !== 'string' || !value.dot_id.trim() || typeof value.message !== 'string' || !value.message.trim() || value.message.length > 8000 || messages.length >= 3) return block;
+      messages.push({ dotId: value.dot_id.trim(), message: value.message.trim() });
+      return '';
+    } catch { return block; }
+  });
+  return { text: cleaned.trim(), messages };
 }

@@ -3,6 +3,7 @@ import { editFile, listFiles, readFile, searchFiles, writeFile } from './files';
 import { runCommand } from './shell';
 import { browsePage, webFetch, webSearch } from './web';
 import { ToolError, str, type Tool } from './types';
+import { listDotsTool, sendDotMessageTool } from './teammates';
 
 export const rememberTool: Tool = {
   name: 'remember',
@@ -37,13 +38,16 @@ export const scheduleFollowupTool: Tool = {
 
 /** Every tool that exists. Register new tools here. */
 export const ALL_TOOLS: Tool[] = [
-  listFiles, readFile, searchFiles, writeFile, editFile, runCommand, webSearch, webFetch, browsePage, rememberTool, scheduleFollowupTool
+  listFiles, readFile, searchFiles, writeFile, editFile, runCommand, webSearch, webFetch, browsePage, rememberTool, scheduleFollowupTool, listDotsTool, sendDotMessageTool
 ];
 
 /** Select the tools a Dot is allowed to use, based on its permissions. */
 export function toolsFor(p: Permissions): Tool[] {
   return ALL_TOOLS.filter((t) => {
     switch (t.name) {
+      case 'list_dots':
+      case 'send_dot_message':
+        return p.talkToDots === true;
       case 'write_file':
       case 'edit_file':
         return p.files === 'write';

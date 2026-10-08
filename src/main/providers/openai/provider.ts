@@ -69,7 +69,9 @@ export class OpenAICompatibleProvider implements AgentProvider {
       signal: ctx.signal,
       requestApproval: ctx.requestApproval,
       remember: ctx.remember,
-      scheduleFollowup: ctx.scheduleFollowup
+      scheduleFollowup: ctx.scheduleFollowup,
+      listTeammates: ctx.listTeammates,
+      sendDotMessage: ctx.sendDotMessage
     };
 
     const total: Usage = { inputTokens: 0, outputTokens: 0 };

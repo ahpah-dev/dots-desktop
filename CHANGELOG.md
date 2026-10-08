@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.5 — October 8, 2026
+
+- Added an opt-in **Talk to other dots** permission. Enabled teammates can exchange requests and return labeled replies to the original conversation, using their own models, workspaces, permissions, and task budgets.
+- Teammate requests queue behind existing work and function with a single execution slot. Requests, replies, and sender details persist across app restarts; failed teammate work returns a clear explanation.
+- Supports messaging tools for compatible API providers and structured message requests from Codex. Automatic exchanges have request and hop limits, and cancelling the originating run cancels its pending teammate work.
+- Redesigned tool activity into compact, content-sized cards with subtle green icons and readable expanded details, in light and dark themes.
+- Fixed the desktop companion’s **Open Dots** button by preserving normal first-click behavior while showing the companion without taking focus. Reopening works from minimized and tray-hidden states.
+
 ## 2.0.4 — October 7, 2026
 
 - File work, web searches, shell commands, memory updates, and connected tools have their own gentle activity animations in the conversation and dot profile.

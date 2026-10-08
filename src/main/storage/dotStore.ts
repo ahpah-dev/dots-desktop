@@ -141,6 +141,7 @@ export class DotStore {
 
   private normalize(d: Dot): Dot {
     const perms: Permissions = { ...DEFAULT_PERMISSIONS, ...d.permissions };
+    perms.talkToDots = perms.talkToDots === true;
     if (perms.rules) {
       if (!Array.isArray(perms.rules) || perms.rules.length > 50) throw new Error('Use up to 50 custom permission rules.');
       perms.rules = perms.rules.map((rule) => {

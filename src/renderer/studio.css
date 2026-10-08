@@ -1279,6 +1279,16 @@ textarea {
   display: block;
   margin-bottom: 7px;
 }
+.user-message.teammate-message {
+  align-self: flex-start;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 3px 16px 16px 16px;
+}
+.teammate-message > span {
+  color: var(--accent-primary);
+}
 .user-message p {
   white-space: pre-wrap;
   line-height: 1.8;
@@ -1348,26 +1358,55 @@ textarea {
   margin-left: 5px;
 }
 .work-event {
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
   border: 1px solid var(--border-subtle);
-  border-radius: 9px;
+  border-radius: 12px;
   background: var(--bg-card);
   overflow: hidden;
 }
+.work-event.is-expanded {
+  width: min(560px, 100%);
+}
 .work-event-toggle {
   display: flex;
+  align-items: center;
   justify-content: flex-start;
-  gap: 9px;
+  gap: 8px;
   font-size: 11px;
-  padding: 11px 13px;
+  padding: 7px 10px 7px 8px;
   width: 100%;
   background: transparent;
   color: var(--text-muted);
   border: 0;
   border-radius: 0;
 }
-.work-event-toggle > span:first-of-type {
+.work-event-toggle > .work-event-label {
   flex: 1;
+  min-width: 0;
   text-align: left;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.work-event-toggle > .activity-glyph {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+.work-event-toggle > svg {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+.work-event-toggle:hover {
+  background: var(--bg-card-hover);
+}
+.work-event-toggle:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+.work-event.error .work-event-toggle > svg {
+  color: var(--accent-danger);
 }
 .work-event-toggle > svg:first-child {
   color: var(--accent-primary);

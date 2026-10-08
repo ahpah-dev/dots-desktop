@@ -4,7 +4,7 @@
 
 **Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
-[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.4/Dots-Setup-2.0.4.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.4/Dots-2.0.4-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.4)
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.5/Dots-Setup-2.0.5.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.5/Dots-2.0.5-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.0.5)
 
 ![Dots Desktop conversation workspace](assets/desktop-screenshot-v2.0.1.png)
 
@@ -25,7 +25,7 @@ Dots Desktop is independent, open-source software inspired by [OpenAI Dots](http
 
 ## Getting started
 
-1. Install [Dots-Setup-2.0.4.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.4/Dots-Setup-2.0.4.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
+1. Install [Dots-Setup-2.0.5.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.0.5/Dots-Setup-2.0.5.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
 2. Connect a model provider in Settings.
 3. Create a dot, give it a purpose, and choose a local workspace.
 4. Start a conversation or add an ongoing responsibility. Review activity and approvals as work progresses.
@@ -39,6 +39,14 @@ Windows 10 or 11 (x64) is required for the published installer. The application 
 **OpenAI-compatible API:** Add the endpoint, model, and optional API key in Settings. Keys are encrypted with Electron's operating-system credential storage. Compatible providers can include hosted APIs or local model servers; tool support depends on the model and endpoint.
 
 ## How work runs
+
+### Let dots talk to each other
+
+Open each participating dot’s **Profile → Permissions**, enable **Talk to other dots**, and save. The option is also available when creating a dot. It starts off for existing and new dots.
+
+Then ask a dot to consult a teammate, for example: “Ask Researcher to check these facts, then use its answer to finish the brief.” A busy teammate queues the request. Its answer returns as a labeled turn in the original conversation, and each participant uses its own permissions, workspace, model and task budget. API providers use messaging tools; Codex requests delivery through a structured final block handled by the app.
+
+Automatic exchanges are limited to three requests per run, eight requests per exchange and four message hops including replies. Stopping the originating run cancels its pending teammate work. Only enabled, unpaused teammates can receive new requests.
 
 Each dot has its own instructions, workspace, model, budget, and memory. Dots provides local file and shell tools, web search and fetch, background schedules, persistent run history, and human approval controls. Different dots can work concurrently within the configured limit; jobs for the same dot run one at a time so they do not mutate its workspace together. Finished results can be read aloud when system speech synthesis is available.
 
@@ -90,7 +98,7 @@ Package a Windows installer and portable executable:
 npm run dist
 ```
 
-Artifacts are generated under `release/`: `Dots-Setup-2.0.4.exe` and `Dots-2.0.4-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
+Artifacts are generated under `release/`: `Dots-Setup-2.0.5.exe` and `Dots-2.0.5-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
 ## Website and demo film
 

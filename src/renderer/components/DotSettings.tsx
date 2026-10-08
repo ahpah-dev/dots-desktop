@@ -46,6 +46,8 @@ const RULE_TOOLS = [
   ["browse_page", "Browse websites"],
   ["remember", "Memory"],
   ["schedule_followup", "Schedule follow-up"],
+  ["list_dots", "Find teammates"],
+  ["send_dot_message", "Message teammates"],
 ];
 
 function draftFor(dot: DotSummary | null) {
@@ -61,11 +63,12 @@ function draftFor(dot: DotSummary | null) {
     reasoningEffort: dot?.reasoningEffort || "low",
     notify: dot?.notify ?? true,
     permissions: dot?.permissions
-      ? { ...dot.permissions, rules: [...(dot.permissions.rules || [])] }
+      ? { ...dot.permissions, talkToDots: dot.permissions.talkToDots === true, rules: [...(dot.permissions.rules || [])] }
       : {
           files: "write" as const,
           shell: true,
           web: true,
+          talkToDots: false,
           outsideWorkspace: false,
           approval: "ask" as const,
           rules: [] as PermissionRule[],
@@ -403,6 +406,13 @@ export function DotSettings({ dotId }: { dotId: string }) {
               <div className="profile-connection">
                 <MessageSquare size={18} />
                 <div>
+                  <strong>Other dots</strong>
+                  <p>{draft.permissions.talkToDots ? "Can send requests to enabled teammates and receive their replies in the conversation." : "Enable Talk to other dots in Permissions to work with teammates."}</p>
+                </div>
+              </div>
+              <div className="profile-connection">
+                <MessageSquare size={18} />
+                <div>
                   <strong>Slack, Teams & calls</strong>
                   <p>
                     Not connected. This local app does not provide hosted
@@ -454,6 +464,12 @@ export function DotSettings({ dotId }: { dotId: string }) {
                 checked={draft.permissions.web}
                 onChange={(value) => permission("web", value)}
               />
+            </SettingRow>
+            <SettingRow
+              title="Talk to other dots"
+              description="Ask teammates for help and receive their answers in the conversation. Enable this on each participating dot, then ask yours to consult a teammate by name. Each dot uses its own permissions and task budget."
+            >
+              <Toggle label="Talk to other dots" checked={draft.permissions.talkToDots} onChange={(value) => permission("talkToDots", value)} />
             </SettingRow>
             <SettingRow
               title="File access outside the workspace"

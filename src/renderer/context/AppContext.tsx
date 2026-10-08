@@ -107,6 +107,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const activeDotRef = useRef(activeDotId);
   const runRef = useRef(selectedRunId);
+  const conversationRef = useRef<string | undefined>(undefined);
   const runsRequestRef = useRef(0);
   const runUpdateVersionRef = useRef(0);
   const pushedRunsRef = useRef(
@@ -114,6 +115,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   );
   activeDotRef.current = activeDotId;
   runRef.current = selectedRunId;
+  conversationRef.current = runs.find(run => run.id === selectedRunId)?.conversationId;
   const openDot = useCallback((id: string, runId?: string) => {
     setActiveDotId(id);
     if (runId) setSelectedRunId(runId);
@@ -297,10 +299,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
               ? prev.map((r) => (r.id === event.run.id ? event.run : r))
               : [event.run, ...prev];
           });
-          // If active dot is this run's dot, select it if none selected or if it's currently selected
+          // Follow a teammate reply only while the user is viewing that conversation.
           if (activeDotRef.current === event.run.dotId) {
             setSelectedRunId((cur) =>
-              !cur ? event.run.id : cur === event.run.id ? cur : cur,
+              !cur || (event.run.dotMessage?.kind === "reply" && event.run.status === "running" && event.run.conversationId === conversationRef.current) ? event.run.id : cur,
             );
           }
           break;

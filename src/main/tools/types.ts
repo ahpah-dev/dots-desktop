@@ -8,6 +8,8 @@ export interface ToolContext {
   requestApproval(prompt: ApprovalPrompt): Promise<boolean>;
   remember(note: string): Promise<void>;
   scheduleFollowup?(prompt: string, dueAt: number): Promise<string>;
+  listTeammates?(): Promise<{ id: string; name: string; description: string; busy: boolean }[]>;
+  sendDotMessage?(dotId: string, message: string): Promise<string>;
   actionApproved?: boolean;
 }
 

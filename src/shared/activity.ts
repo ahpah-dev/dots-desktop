@@ -5,6 +5,8 @@ export type ToolEvent = Extract<RunEvent, { type: 'tool' }>;
 
 export function toolActivity(tool: Pick<ToolEvent, 'name' | 'category'>): { kind: ActivityKind; label: string; caption: string } {
   const name = tool.name.toLowerCase();
+  if (name === 'list_dots') return { kind: 'other', label: 'Finding teammates', caption: "I'm finding a teammate to help." };
+  if (name === 'send_dot_message') return { kind: 'other', label: 'Talking to a teammate', caption: "I'm asking another dot for help." };
   if (/web.?search/.test(name)) return { kind: 'web', label: 'Searching the web', caption: "I'm searching the web for you." };
   if (tool.category === 'file') {
     const reading = /read|list/.test(name);
@@ -48,7 +50,7 @@ export interface DesktopDotState {
   theme: 'light' | 'dark';
 }
 
-export type DesktopDotAction = 'open' | 'stop' | 'hide' | 'next' | 'auto' | 'toggle-voice' | 'focus';
+export type DesktopDotAction = 'open' | 'stop' | 'hide' | 'next' | 'auto' | 'toggle-voice';
 export const DESKTOP_DOT_STATE_CHANNEL = 'desktop-dot:state';
 export const DESKTOP_DOT_GET_CHANNEL = 'desktop-dot:get';
 export const DESKTOP_DOT_CONTROL_CHANNEL = 'desktop-dot:control';

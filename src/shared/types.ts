@@ -103,6 +103,8 @@ export interface Permissions {
   shell: boolean;
   /** May browse / search the web and use the network. */
   web: boolean;
+  /** Exchange messages with other Dots that have also enabled this option. */
+  talkToDots?: boolean;
   /** Allow access outside the workspace (disables sandboxing — use with care). */
   outsideWorkspace: boolean;
   /** Ask before risky actions (shell, writes). Only enforceable for non-Codex providers. */
@@ -192,7 +194,7 @@ export interface DotSummary extends Dot {
 
 // ───────────────────────────── Runs ─────────────────────────────
 
-export type RunTrigger = "manual" | "schedule" | "followup";
+export type RunTrigger = "manual" | "schedule" | "followup" | "dot-message";
 export type RunStatus =
   "queued" | "running" | "succeeded" | "failed" | "cancelled" | "interrupted";
 
@@ -216,6 +218,15 @@ export interface Run {
   prefixRunIds?: string[];
   taskId?: string;
   followupId?: string;
+  /** Provenance of a teammate request or automatic reply. */
+  dotMessage?: {
+    sourceDotId: string;
+    sourceDotName: string;
+    sourceRunId: string;
+    rootRunId: string;
+    depth: number;
+    kind: "request" | "reply";
+  };
   status: RunStatus;
   createdAt: number;
   startedAt?: number;
@@ -361,6 +372,7 @@ export const DEFAULT_PERMISSIONS: Permissions = {
   files: "write",
   shell: true,
   web: true,
+  talkToDots: false,
   outsideWorkspace: false,
   approval: "never",
 };
