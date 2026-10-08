@@ -283,7 +283,7 @@ export class RunManager {
           state.usage = body.usage;
           // Codex's turn.completed usage is accounting for work already finished.
           // Aborting here kills the successful exit and mislabels its displayed answer.
-          if (dot.providerId === 'codex' && !body.turnCompleted && body.usage.inputTokens + body.usage.outputTokens >= dot.budget.maxTokens!) {
+          if (dot.providerId === 'codex' && dot.budget.enforceLimits && !body.turnCompleted && body.usage.inputTokens + body.usage.outputTokens >= dot.budget.maxTokens!) {
             state.reason = 'tokens'; state.controller.abort();
           }
         }

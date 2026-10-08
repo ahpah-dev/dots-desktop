@@ -15,7 +15,7 @@ import {
 } from "@shared/types";
 import { normalizeBudget, estimateTokens, TOKEN_PRESETS } from "@shared/budget";
 import { buildCodexPrompt } from "../src/main/providers/codex/provider";
-import { compactMessages } from "../src/main/providers/openai/efficiency";
+import { compactMessages, compactAdaptiveMessages } from "../src/main/providers/openai/efficiency";
 import {
   listModelDetails,
   type ChatMessage,
@@ -72,6 +72,7 @@ async function context(history: ChatMessage[] = []) {
     permissions: { ...DEFAULT_PERMISSIONS, shell: false, web: false },
     budget: {
       ...DEFAULT_BUDGET,
+      enforceLimits: true,
       maxContextTokens: 6000,
       maxOutputTokens: 1024,
     },
@@ -129,6 +130,14 @@ const provider = (baseUrl: string, fallbackModels: string[] = []) =>
   );
 
 describe("context efficiency", () => {
+  it("expands an automatic context target instead of rejecting the current tool arguments", () => {
+    const system: ChatMessage = { role:'system', content:'Instructions' };
+    const history: ChatMessage[] = [{ role:'user', content:'Write the file' }, { role:'assistant', content:null, tool_calls:[{id:'write',type:'function',function:{name:'write_file',arguments:JSON.stringify({path:'large.txt',content:'x'.repeat(14000)})}}] }, {role:'tool',tool_call_id:'write',content:'Wrote the file.'}];
+    const result = compactAdaptiveMessages(system, history, 1024);
+    expect(result.messages[2].tool_calls).toEqual(history[1].tool_calls);
+    expect(result.messages[1].content).toBe('Write the file');
+    expect(result.messages.at(-1)?.tool_call_id).toBe('write');
+  });
   it("drops older complete turns without orphaning tool results or changing the current request", () => {
     const system: ChatMessage = { role: "system", content: "Instructions" };
     const old: ChatMessage[] = [
@@ -191,6 +200,50 @@ describe("context efficiency", () => {
   });
 });
 describe("compatible providers", () => {
+  it("writes, appends, and verifies a large file past old token/tool caps in automatic mode", async () => {
+    const content = "A complete file line.\n".repeat(700), tail = "Appended final section.\n";
+    const calls: any[] = [];
+    const baseUrl = await fixture((_, res, body) => {
+      calls.push(body);
+      const actions = [
+        { name: 'list_files', args: {} },
+        { name: 'write_file', args: { path: 'deliverable.txt', content } },
+        { name: 'write_file', args: { path: 'deliverable.txt', content: tail, append: true } },
+        { name: 'read_file', args: { path: 'deliverable.txt' } },
+      ];
+      const action = actions[calls.length - 1];
+      json(res, { choices: [{ message: action ? { content: null, tool_calls: [{ id: `t${calls.length}`, type:'function', function: { name: action.name, arguments: JSON.stringify(action.args) } }] } : { content: 'File written and verified.' }, finish_reason: action ? 'tool_calls' : 'stop' }], usage: { prompt_tokens: 160000, completion_tokens: 1000 } });
+    });
+    const f = await context();
+    f.ctx.dot.budget = normalizeBudget({ maxMinutes:30, maxSteps:1, maxTokens:1024, maxContextTokens:1024, maxOutputTokens:128, workStyle:'economy' });
+    f.ctx.prompt = 'Write the actual file and verify it.';
+    const result = await provider(baseUrl).run(f.ctx);
+    expect(result.finalMessage).toBe('File written and verified.');
+    expect(calls).toHaveLength(5);
+    expect(await fs.readFile(join(f.ctx.dot.workspacePath, 'deliverable.txt'), 'utf8')).toBe(content + tail);
+    expect(result.usage?.inputTokens).toBe(800000);
+    for (const call of calls) {
+      expect(call.max_tokens).toBeUndefined(); expect(call.max_completion_tokens).toBeUndefined();
+      expect(call.tools.some((tool: any) => tool.function.name === 'write_file')).toBe(true);
+      expect(call.messages[0].content).not.toContain('Finish now');
+    }
+    expect(f.events.filter(event => event.type === 'tool' && event.status === 'error')).toHaveLength(0);
+  });
+  it("can compact further on a real provider context rejection without dropping tools or the current request", async () => {
+    const calls: any[] = [];
+    const baseUrl = await fixture((_, res, body) => {
+      calls.push(body);
+      if (calls.length === 1) { res.writeHead(400); res.end(JSON.stringify({ error: { message: 'maximum context length exceeded' } })); }
+      else json(res, { choices: [{ message: { content:'Fits provider context.' }, finish_reason:'stop' }] });
+    });
+    const f = await context(Array.from({length: 5}, (_, index) => [{ role:'user' as const, content:`Old ${index}` }, { role:'assistant' as const, content:'x'.repeat(4000) }]).flat());
+    f.ctx.dot.budget = normalizeBudget({ ...DEFAULT_BUDGET, enforceLimits:false });
+    expect((await provider(baseUrl).run(f.ctx)).finalMessage).toBe('Fits provider context.');
+    expect(calls).toHaveLength(2);
+    expect(JSON.stringify(calls[1].messages).length).toBeLessThan(JSON.stringify(calls[0].messages).length);
+    expect(calls[1].messages.findLast((message: any) => message.role === 'user').content).toBe(f.ctx.prompt);
+    expect(calls[1].tools).toEqual(calls[0].tools);
+  });
   it.each(TOKEN_PRESETS)("sends the $label workflow on every small-model tool round, independently of limits", async (preset) => {
     const calls: any[] = [];
     const baseUrl = await fixture((_, res, body) => {
@@ -206,7 +259,7 @@ describe("compatible providers", () => {
     const f = await context([{ role: "user", content: "Previous task" }, { role: "assistant", content: "Previous style" }]);
     f.ctx.dot.model = "small-local-model";
     // Deliberately identical caps: the instruction change must not depend on model or allowance.
-    f.ctx.dot.budget = normalizeBudget({ ...DEFAULT_BUDGET, workStyle: preset.id });
+    f.ctx.dot.budget = normalizeBudget({ ...DEFAULT_BUDGET, enforceLimits: true, workStyle: preset.id });
     expect((await provider(baseUrl).run(f.ctx)).finalMessage).toBe("Verified result");
     expect(calls).toHaveLength(2);
     for (const [index, call] of calls.entries()) {
@@ -233,7 +286,7 @@ describe("compatible providers", () => {
       });
     });
     const f = await context();
-    f.ctx.dot.budget = normalizeBudget({ ...DEFAULT_BUDGET, workStyle: "economy" });
+    f.ctx.dot.budget = normalizeBudget({ ...DEFAULT_BUDGET, enforceLimits: true, workStyle: "economy" });
     const result = await provider(baseUrl).run(f.ctx);
     expect(calls).toHaveLength(2);
     expect(calls[0].tools.length).toBeGreaterThan(0);

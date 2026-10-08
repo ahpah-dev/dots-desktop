@@ -13,6 +13,9 @@ describe('persisted work styles', () => {
       expect(buildWorkInstructions(custom)).toContain(`Work style: ${preset.label}`);
     }
     expect(normalizeBudget().workStyle).toBe('balanced');
+    expect(normalizeBudget().enforceLimits).toBe(false);
+    expect(normalizeBudget({ maxSteps: 1, maxTokens: 1024 }).enforceLimits).toBe(false);
+    expect(normalizeBudget({ enforceLimits: true }).enforceLimits).toBe(true);
     expect(normalizeBudget({ workStyle: 'invalid' as any, maxContextTokens: 6000 }).workStyle).toBe('economy');
   });
 });

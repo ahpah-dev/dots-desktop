@@ -715,15 +715,16 @@ export function DotSettings({ dotId }: { dotId: string }) {
               </div>
             </div>
           </PanelSection>
-          <PanelSection title="Work style & limits" description="Choose how much your dot investigates and verifies. Each style gives the agent a concrete workflow and suggested resource limits.">
+          <PanelSection title="Work style & limits" description="Choose how much your dot investigates and verifies. Automatic runs keep working until the task is complete.">
             <div className="token-presets">{TOKEN_PRESETS.map(preset => <button key={preset.id} className={`token-preset ${draft.budget.workStyle === preset.id ? 'selected' : ''}`} aria-pressed={draft.budget.workStyle === preset.id} onClick={() => update("budget", normalizeBudget({ ...draft.budget, ...preset.budget }))}><strong>{preset.label}</strong><small>{preset.description}</small></button>)}</div>
             <p className="budget-hint">All providers receive the selected workflow, including smaller models. Editing limits below keeps your work style. Your requested scope always takes priority.</p>
+            <SettingRow title="Enforce custom token & tool limits" description="Off by default. Turn this on only when you want Dots to stop at the caps below."><Toggle label="Enforce custom token & tool limits" checked={!!draft.budget.enforceLimits} onChange={value => update("budget", { ...draft.budget, enforceLimits: value })} /></SettingRow>
             <div className="profile-form-grid token-fields">{([
               ['maxContextTokens', 'Context per request', 1024, 128000],
               ['maxOutputTokens', 'Output per response', 128, 32000],
               ['maxTokens', 'Total tokens per task', 1024, 2000000],
-            ] as const).map(([key, label, min, max]) => <Field key={key} label={label}><input type="number" min={min} max={max} value={draft.budget[key]} onChange={event => update("budget", { ...draft.budget, [key]: Number(event.target.value) })} /></Field>)}</div>
-            <p className="budget-hint">API requests keep recent context and compact older history. Total limits stop new requests as usage is reported; a final request can exceed the remaining allowance. Codex manages its own context and output and reports usage after completing a turn; its token allowance is a prompted target, and completed answers are retained.</p>
+            ] as const).map(([key, label, min, max]) => <Field key={key} label={label}><input type="number" disabled={!draft.budget.enforceLimits} min={min} max={max} value={draft.budget[key]} onChange={event => update("budget", { ...draft.budget, [key]: Number(event.target.value) })} /></Field>)}</div>
+            <p className="budget-hint">Automatic mode compacts older activity, expands context when needed, and uses the provider’s response length. Work style guides effort without cutting off tools. Custom caps apply when enabled; Codex manages its own context and output. The time limit, cancellation, permissions, and provider limits still apply.</p>
             <div className="profile-form-grid">
               <Field label="Maximum duration (minutes)">
                 <input
@@ -747,6 +748,7 @@ export function DotSettings({ dotId }: { dotId: string }) {
                   type="number"
                   min={1}
                   max={500}
+                  disabled={!draft.budget.enforceLimits}
                   value={draft.budget.maxSteps}
                   onChange={(event) =>
                     update("budget", {

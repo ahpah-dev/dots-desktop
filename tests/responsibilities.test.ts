@@ -71,7 +71,7 @@ describe('durable responsibilities, memories and wakeups', () => {
       expect(ctx.signal.aborted).toBe(false);
       return { finalMessage: translator.finalMessage, usage: translator.usage };
     }));
-    await f.dots.update(f.dot.id, { providerId: 'codex', budget: { maxMinutes: 30, maxSteps: 60, maxTokens: 50000 } });
+    await f.dots.update(f.dot.id, { providerId: 'codex', budget: { maxMinutes: 30, maxSteps: 60, maxTokens: 50000, enforceLimits: true } });
     const run = await f.manager.start(f.dot.id, 'Complete a task', { trigger: 'manual' });
     await until(() => !f.manager.isBusy(f.dot.id));
     expect(f.runs.get(run.id)).toMatchObject({ status: 'succeeded', finalMessage: 'Completed and verified.', usage });
@@ -88,7 +88,7 @@ describe('durable responsibilities, memories and wakeups', () => {
       expect(ctx.signal.aborted).toBe(true);
       throw new CancelledError();
     }));
-    await f.dots.update(f.dot.id, { providerId: 'codex' });
+    await f.dots.update(f.dot.id, { providerId: 'codex', budget: { maxMinutes: 30, maxSteps: 60, enforceLimits: true } });
     const run = await f.manager.start(f.dot.id, 'Continue working', { trigger: 'manual' });
     await until(() => !f.manager.isBusy(f.dot.id));
     expect(f.runs.get(run.id)).toMatchObject({ status: 'failed', error: 'Stopped after reaching the task token budget.' });

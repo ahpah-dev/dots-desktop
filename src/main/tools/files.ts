@@ -99,21 +99,22 @@ export const readFile: Tool = {
 
 export const writeFile: Tool = {
   name: 'write_file',
-  description: 'Create or overwrite a text file (parent folders are created). Prefer edit_file for small changes.',
+  description: 'Create or overwrite a text file (parent folders are created). For large files, write smaller chunks and use append:true for later chunks. Prefer edit_file for small changes.',
   category: 'file',
-  parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] },
-  describe: (a) => `Write ${a.path}`,
+  parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' }, append: { type: 'boolean', description: 'Add this chunk to the end instead of replacing the file. Default false.' } }, required: ['path', 'content'] },
+  describe: (a) => `${a.append === true ? 'Append to' : 'Write'} ${a.path}`,
   async run(args, ctx) {
     if (ctx.permissions.files !== 'write') throw new ToolError('This Dot has read-only file access.');
     const file = resolvePath(ctx, str(args, 'path'));
     const content = str(args, 'content');
     if (ctx.permissions.approval === 'ask') {
-      const ok = await ctx.requestApproval({ kind: 'write', summary: `Write ${args.path}`, detail: clip(content, 1500) });
+      const ok = await ctx.requestApproval({ kind: 'write', summary: `${args.append === true ? 'Append to' : 'Write'} ${args.path}`, detail: clip(content, 1500) });
       if (!ok) throw new ToolError('The user declined this action.');
     }
     await fs.mkdir(dirname(file), { recursive: true });
-    await fs.writeFile(file, content, 'utf8');
-    return `Wrote ${content.length} characters to ${args.path}.`;
+    if (args.append === true) await fs.appendFile(file, content, 'utf8');
+    else await fs.writeFile(file, content, 'utf8');
+    return `${args.append === true ? 'Appended' : 'Wrote'} ${content.length} characters to ${args.path}.`;
   }
 };
 

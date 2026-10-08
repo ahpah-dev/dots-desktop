@@ -32,7 +32,10 @@ export function buildWorkInstructions(input: Budget): string {
     ...workflows[style],
     'Take one clear next action at a time. Read each tool result before deciding what to do next. Never claim a check passed without evidence.',
     'Always meet the user\'s explicit scope and depth. A simple task may need no tools; a complex task still needs all requested deliverables in Economy. Work style does not change your permissions.',
-    `Resource ceilings: ${budget.maxSteps} tool rounds, ${budget.maxMinutes} minutes, ${budget.maxTokens} total tokens. These are ceilings, not targets to fill. Before exhausting them, finish the most important required work and report any unfinished items honestly. Keep the final report useful and concise in every style.`,
+    budget.enforceLimits
+      ? `Resource ceilings: ${budget.maxSteps} tool rounds, ${budget.maxMinutes} minutes, ${budget.maxTokens} total tokens. These are ceilings, not targets to fill. Before exhausting them, finish the most important required work and report any unfinished items honestly.`
+      : `Complete the requested deliverables and verification. There is no preset token or tool-step quota to fill or stop at. Your time limit is ${budget.maxMinutes} minutes. For file tasks, create or edit the actual file using available tools before reporting completion; a description or plan is not the deliverable.`,
+    'Keep the final report useful and concise in every style.',
   ].join('\n');
 }
 
@@ -40,7 +43,9 @@ export function buildWorkProgress(input: Budget, step: number, remainingTokens: 
   const style = getWorkStyle(input);
   const reviewAfter = { economy: 5, balanced: 12, thorough: 24 }[style];
   return [
-    `## Current work checkpoint\nTool rounds used: ${step - 1}/${input.maxSteps}. Remaining token allowance: ${Math.max(0, remainingTokens)}.`,
+    input.enforceLimits
+      ? `## Current work checkpoint\nTool rounds used: ${step - 1}/${input.maxSteps}. Remaining token allowance: ${Math.max(0, remainingTokens)}.`
+      : `## Current work checkpoint\nTool rounds used: ${step - 1}. Continue until the requested deliverables and required checks are complete.`,
     finishing ? 'Finish now with the verified result and any unfinished requirements. No further tools are available; do not claim pending work is complete.'
       : step > reviewAfter ? `Review your ${style} stopping criteria now. If they are met, finish. Otherwise take only the next action needed to meet a requested requirement or required check.`
       : 'Take the next action in your selected workflow; finish as soon as its stopping criteria are met.',

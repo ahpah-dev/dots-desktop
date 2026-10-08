@@ -41,7 +41,7 @@ try {
   const auth = await page.evaluate(() => window.dots.api.refreshAuth());
   assert.ok(auth.loggedIn, JSON.stringify(auth));
   await until(() => page.evaluate(executable => window.dots.api.getBootstrap().then(value => value.settings.codexPathOverride === executable && value.auth.loggedIn), executable));
-  const dot = await page.evaluate(() => window.dots.api.createDot({ name: 'Completion QA', description: '', color: '#78b7a0', emoji: 'x', instructions: '', providerId: 'codex', model: 'qa-model', permissions: { files:'read', shell:false, web:false, outsideWorkspace:false, approval:'never', talkToDots:false }, budget: { maxMinutes:30, maxSteps:20, maxTokens:1024, workStyle:'economy' }, notify:false }));
+  const dot = await page.evaluate(() => window.dots.api.createDot({ name: 'Completion QA', description: '', color: '#78b7a0', emoji: 'x', instructions: '', providerId: 'codex', model: 'qa-model', permissions: { files:'read', shell:false, web:false, outsideWorkspace:false, approval:'never', talkToDots:false }, budget: { maxMinutes:30, maxSteps:20, maxTokens:1024, workStyle:'economy', enforceLimits:true }, notify:false }));
   await page.locator('.sidebar-dot').filter({ hasText: 'Completion QA' }).click();
   await page.locator('textarea').fill('Return a completed answer.');
   await page.locator('textarea').press('Enter');

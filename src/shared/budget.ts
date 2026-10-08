@@ -59,6 +59,7 @@ export function getWorkStyle(input?: Partial<Budget>): WorkStyle {
 
 export function normalizeBudget(input?: Partial<Budget>): Budget {
   return {
+    enforceLimits: input?.enforceLimits === true,
     workStyle: getWorkStyle(input),
     maxMinutes: bounded(input?.maxMinutes, 1, 1440, DEFAULT_BUDGET.maxMinutes),
     maxSteps: bounded(input?.maxSteps, 1, 500, DEFAULT_BUDGET.maxSteps),

@@ -141,6 +141,8 @@ export interface Schedule {
 export type WorkStyle = 'economy' | 'balanced' | 'thorough';
 
 export interface Budget {
+  /** Explicit opt-in to Dots' token, context, output, and tool-step caps. */
+  enforceLimits?: boolean;
   /** Behavioral work depth, independent of manually adjusted resource limits. */
   workStyle?: WorkStyle;
   /** Hard wall-clock limit per run. */

@@ -2,7 +2,7 @@ import type { ModelInfo, ProviderProfile, Usage } from '@shared/types';
 import { normalizeBudget, estimateTokens } from '@shared/budget';
 import { CancelledError, ProviderError, type AgentProvider, type ProviderResult, type RunContext } from '../types';
 import { chatCompletion, listModelDetails, type ChatMessage } from './chat';
-import { compactMessages } from './efficiency';
+import { compactMessages, compactAdaptiveMessages } from './efficiency';
 import { toolsFor } from '../../tools/registry';
 import type { ToolContext } from '../../tools/types';
 import { authorizeTool } from '../../tools/permissions';
@@ -80,23 +80,27 @@ export class OpenAICompatibleProvider implements AgentProvider {
 
     const total: Usage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
     let finalMessage = '';
-    const maxSteps = ctx.dot.budget.maxSteps;
+    const strict = budget.enforceLimits === true;
+    // Automatic runs remain cancellable and time-bounded; this guards pathological loops.
+    const maxSteps = strict ? budget.maxSteps : 500;
 
     for (let step = 1; step <= maxSteps + 1; step++) {
       if (ctx.signal.aborted) throw new CancelledError();
-      const remaining = budget.maxTokens! - total.inputTokens - total.outputTokens;
-      const maxOutput = Math.min(budget.maxOutputTokens!, Math.floor(remaining / 3));
-      if (maxOutput < 128) throw new ProviderError('Stopped at the token budget. Review the completed activity or continue with a larger budget.');
+      const remaining = strict ? budget.maxTokens! - total.inputTokens - total.outputTokens : Infinity;
+      const maxOutput = strict ? Math.min(budget.maxOutputTokens!, Math.floor(remaining / 3)) : undefined;
+      if (strict && maxOutput! < 128) throw new ProviderError('Stopped at the token budget. Review the completed activity or continue with a larger budget.');
       // Reserve room to report progress before a normal tool request uses the last allowance.
       const requestEstimate = estimateTokens(JSON.stringify([{ role: 'system', content: instructions }, ...persisted])) + estimateTokens(JSON.stringify(toolDefs));
-      const lastStep = step > maxSteps || (step > 1 && remaining < Math.min(budget.maxContextTokens!, requestEstimate) + maxOutput * 2);
+      const lastStep = step > maxSteps || (strict && step > 1 && remaining < Math.min(budget.maxContextTokens!, requestEstimate) + maxOutput! * 2);
       const system: ChatMessage = { role: 'system', content: `${instructions}\n\n${buildWorkProgress(budget, step, remaining, lastStep)}` };
       const extraTokens = toolDefs.length && !lastStep ? estimateTokens(JSON.stringify(toolDefs)) : 0;
-      const compact = compactMessages(system, persisted, Math.min(budget.maxContextTokens!, remaining - maxOutput), extraTokens);
+      const compact = strict
+        ? compactMessages(system, persisted, Math.min(budget.maxContextTokens!, remaining - maxOutput!), extraTokens)
+        : compactAdaptiveMessages(system, persisted, budget.maxContextTokens!, extraTokens);
       if (compact.removed) ctx.emit({ type: 'log', level: 'info', text: `Compacted ${compact.removed} older messages to keep this request within its context budget.` });
       const requestBody = {
         model, messages: compact.messages,
-        ...(isOpenAI ? { max_completion_tokens: maxOutput } : { max_tokens: maxOutput }),
+        ...(strict ? (isOpenAI ? { max_completion_tokens: maxOutput } : { max_tokens: maxOutput }) : {}),
         ...(toolDefs.length && !lastStep ? { tools: toolDefs, tool_choice: 'auto' } : {}),
         ...(isOpenAI && ctx.dot.reasoningEffort ? { reasoning_effort: ctx.dot.reasoningEffort } : {}),
         ...(usageSupported ? { stream_options: { include_usage: true } } : {}),
@@ -119,9 +123,21 @@ export class OpenAICompatibleProvider implements AgentProvider {
         body: { ...requestBody, model }
       });
       let result;
+      let contextRetries = 0;
       for (;;) {
         try { result = await request(); break; }
         catch (error) {
+          if (!strict && !ctx.signal.aborted && error instanceof ProviderError && contextRetries < 2 && /context_length_exceeded|(?:maximum|exceed|limit).*context|context.*(?:length|window|exceed)|too many tokens/i.test(error.message)) {
+            const smaller = Math.floor((estimateTokens(JSON.stringify(requestBody.messages)) + extraTokens) * .65);
+            try {
+              const reduced = compactMessages(system, persisted, smaller, extraTokens);
+              if (JSON.stringify(reduced.messages) === JSON.stringify(requestBody.messages)) throw error;
+              requestBody.messages = reduced.messages;
+            } catch { throw error; }
+            contextRetries++;
+            ctx.emit({ type: 'log', level: 'info', text: 'The provider needs a smaller context. Compacting older activity and retrying with tools preserved.' });
+            continue;
+          }
           if (ctx.signal.aborted || !(error instanceof ProviderError) || !/\((429|5\d\d)\)/.test(error.message) || !fallbackModels.length) throw error;
           model = fallbackModels.shift()!;
           ctx.emit({ type: 'log', level: 'warn', text: `Trying your fallback model: ${model}.` });
@@ -141,7 +157,7 @@ export class OpenAICompatibleProvider implements AgentProvider {
       if (!assistant.tool_calls) {
         finalMessage = result.content;
         persisted.push(assistant);
-        if (lastStep) ctx.emit({ type: 'log', level: 'warn', text: `Wrapped up at the ${step > maxSteps ? 'step' : 'token'} allowance with a final progress report.` });
+        if (lastStep) ctx.emit({ type: 'log', level: 'warn', text: strict ? `Wrapped up at the ${step > maxSteps ? 'step' : 'token'} allowance with a final progress report.` : 'Stopped after the 500-round loop safeguard. Review the completed activity before continuing.' });
         break;
       }
 
@@ -172,7 +188,7 @@ export class OpenAICompatibleProvider implements AgentProvider {
     try {
       args = call.function.arguments?.trim() ? JSON.parse(call.function.arguments) : {};
     } catch {
-      const msg = 'Error: the tool arguments were not valid JSON.';
+      const msg = 'Error: the tool arguments were not valid JSON. If a large write was cut off, retry with a smaller first chunk, then use write_file with append:true for later chunks.';
       ctx.emit({ type: 'tool', id: call.id, category: 'other', name: call.function.name, status: 'error', output: msg });
       return msg;
     }
@@ -204,6 +220,7 @@ const TOOL_GUIDE = `## Working style
 - You can call tools to inspect and change your workspace, run commands, browse the web and save memory.
 - Work autonomously: plan briefly, use tools, verify your work, then give a concise final summary of what you did and found.
 - If a tool returns an error, read it and adapt instead of repeating the same call.
+- For a file task, use write_file or edit_file to create the actual deliverable and verify it. For large files, write smaller chunks and use write_file with append:true for subsequent chunks. Do not replace the requested file with a plan or a description.
 - Be economical: don't read huge files fully when searching will do.`;
 
 /** Keep the most recent turns, never splitting an assistant tool-call from its tool results. */

@@ -285,6 +285,8 @@ try {
       )
     ).maxOutputTokens === 1024 && await page.evaluate(id => window.dots.api.getBootstrap().then(value => value.dots.find(dot => dot.id === id).budget.workStyle === "economy"), dots[0].id),
   );
+  check("Custom token and tool limits are off by default", await page.getByRole("switch", { name: "Enforce custom token & tool limits" }).getAttribute("aria-checked") === "false");
+  await page.getByRole("switch", { name: "Enforce custom token & tool limits" }).click();
   await page.getByLabel("Context per request", { exact: true }).fill("8000");
   check("Custom limits keep Economy selected", await page.getByRole("button", { name: /Economy Take the direct approach/ }).getAttribute("aria-pressed") === "true");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();

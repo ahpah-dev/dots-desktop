@@ -3,6 +3,18 @@ import type { ChatMessage } from "./chat";
 import { ProviderError } from "../types";
 import { clip } from "../../util/misc";
 
+/** A compaction target is a preference in automatic mode, never a reason to reject a valid tool turn. */
+export function compactAdaptiveMessages(system: ChatMessage, history: ChatMessage[], target: number, extraTokens = 0) {
+  let limit = target;
+  for (;;) {
+    try { return compactMessages(system, history, limit, extraTokens); }
+    catch (error) {
+      if (!(error instanceof ProviderError) || limit >= 128_000) throw error;
+      limit = Math.min(128_000, limit * 2);
+    }
+  }
+}
+
 /** Compact complete turns/tool groups, without a second, billable summarization request. */
 export function compactMessages(
   system: ChatMessage,
