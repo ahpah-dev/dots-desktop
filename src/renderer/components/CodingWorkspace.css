@@ -1,4 +1,5 @@
 .build-body .dot-primary { flex: 0 0 40%; min-width: 310px; }
+.header-project-toggle[aria-expanded=true] { color: var(--accent-primary); background: var(--bg-selected); }
 .build-body .conversation-welcome { padding: 28px 20px; }
 .build-body .conversation-welcome h1 { font-size: 26px; }
 .build-body .conversation-suggestions { display: none; }

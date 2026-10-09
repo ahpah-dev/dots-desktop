@@ -83,7 +83,7 @@ export function CodingWorkspace({ dotId, onAttach }: { dotId: string; onAttach: 
   const visible = files.filter(file => file.path.toLowerCase().includes(query.toLowerCase()) && (!changedOnly || changed.has(relativeFile(file.path).toLowerCase())));
   const lines = content.split('\n');
   const staticReady = /\.html?$/i.test(selected);
-  return <aside className="coding-workspace" aria-label="Coding workspace">
+  return <aside className="coding-workspace" id={`project-panel-${dotId}`} aria-label="Coding workspace">
     <header className="build-heading"><div><Code2 size={17} /><strong>Your project</strong></div><div>
       <button className="icon-button" aria-label="Refresh project" onClick={() => void refresh()}><RefreshCw size={15} /></button>
       <button className="icon-button" aria-label="Open project folder" onClick={() => window.dots.api.openPath(root).catch(reason => showToast(reason.message, 'error'))}><FolderOpen size={16} /></button>

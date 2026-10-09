@@ -15,6 +15,7 @@ import {
   Plus,
   Plug,
   Code2,
+  PanelRightClose,
 } from "lucide-react";
 import { useApp, type TabType } from "../context/AppContext";
 import { RunTimeline } from "./RunTimeline";
@@ -30,6 +31,7 @@ import { activeTool, toolActivity } from "@shared/activity";
 import { CodingWorkspace } from "./CodingWorkspace";
 
 export const DotView: React.FC = () => {
+  const [projectPanels, setProjectPanels] = useState<Record<string, boolean>>({});
   const [fileReference, setFileReference] = useState<{ dotId: string; path: string; nonce: number }>();
   const clearReference = useCallback(() => setFileReference(undefined), []);
   const {
@@ -64,9 +66,13 @@ export const DotView: React.FC = () => {
       );
     }
   };
+  const projectOpen = projectPanels[activeDot.id] === true;
+  const openProject = () => {
+    setProjectPanels(current => ({ ...current, [activeDot.id]: true }));
+    setActiveTab("tasks");
+  };
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: "tasks", label: "Conversation", icon: <MessageSquare size={15} /> },
-    { id: "build", label: "Build", icon: <Code2 size={15} /> },
     {
       id: "responsibilities",
       label: "Responsibilities",
@@ -94,6 +100,13 @@ export const DotView: React.FC = () => {
           <span>/</span>
           <strong>{activeDot.name}</strong>
           <div className="header-spacer" />
+          {activeTab === "tasks" && <button
+            className="btn-ghost header-project-toggle"
+            aria-label={projectOpen ? "Close project panel" : "Open project panel"}
+            aria-expanded={projectOpen}
+            aria-controls={`project-panel-${activeDot.id}`}
+            onClick={() => setProjectPanels(current => ({ ...current, [activeDot.id]: !projectOpen }))}
+          >{projectOpen ? <PanelRightClose size={15} /> : <Code2 size={15} />} Project</button>}
           <button className="btn-ghost" onClick={togglePause}>
             {activeDot.paused ? <Play size={14} /> : <Pause size={14} />}{" "}
             {activeDot.paused ? "Resume dot" : "Pause dot"}
@@ -113,11 +126,11 @@ export const DotView: React.FC = () => {
           ))}
         </div>
       </header>
-      <div className={`dot-body ${activeTab === "build" ? "build-body" : ""}`}>
-        <div className="dot-primary" key={activeDot.id}>
-          {(activeTab === "tasks" || activeTab === "build") && (
+      <div className={`dot-body ${activeTab === "tasks" && projectOpen ? "build-body" : ""}`}>
+        <div className="dot-primary" key={`conversation-${activeDot.id}`}>
+          {activeTab === "tasks" && (
             <div className="conversation-layout">
-              <RunTimeline dotId={activeDot.id} coding={activeTab === "build"} fileReference={fileReference?.dotId === activeDot.id ? fileReference : undefined} onReferenceHandled={clearReference} />
+              <RunTimeline dotId={activeDot.id} coding={projectOpen} onOpenProject={openProject} fileReference={fileReference?.dotId === activeDot.id ? fileReference : undefined} onReferenceHandled={clearReference} />
               <RunHistory />
             </div>
           )}
@@ -129,8 +142,8 @@ export const DotView: React.FC = () => {
           {activeTab === "schedule" && <DotSchedule dotId={activeDot.id} />}
           {activeTab === "settings" && <DotSettings dotId={activeDot.id} />}
         </div>
-        {activeTab === "build" && <CodingWorkspace key={activeDot.id} dotId={activeDot.id} onAttach={path => setFileReference({ dotId: activeDot.id, path, nonce: Date.now() })} />}
-        {activeTab === "tasks" && (
+        {activeTab === "tasks" && projectOpen && <CodingWorkspace key={`project-${activeDot.id}`} dotId={activeDot.id} onAttach={path => setFileReference({ dotId: activeDot.id, path, nonce: Date.now() })} />}
+        {activeTab === "tasks" && !projectOpen && (
           <aside className="dot-profile-rail">
             <div className="profile-mascot">
               <DotAvatar dot={activeDot} size={116} animated activity={activity?.kind} />

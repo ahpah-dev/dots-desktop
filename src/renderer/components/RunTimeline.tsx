@@ -77,7 +77,7 @@ function consolidate(events: RunEvent[]): RunEvent[] {
   return result;
 }
 
-export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; fileReference?: { path: string; nonce: number }; onReferenceHandled?: () => void }> = ({ dotId, coding = false, fileReference, onReferenceHandled }) => {
+export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProject?: () => void; fileReference?: { path: string; nonce: number }; onReferenceHandled?: () => void }> = ({ dotId, coding = false, onOpenProject, fileReference, onReferenceHandled }) => {
   const {
     activeDot,
     runs,
@@ -623,7 +623,7 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; fileRefere
                 className="icon-button"
                 title="Browse workspace files"
                 aria-label="Browse workspace files"
-                onClick={() => setActiveTab("build")}
+                onClick={() => onOpenProject ? onOpenProject() : setActiveTab("files")}
               >
                 <Folder size={17} />
               </button>

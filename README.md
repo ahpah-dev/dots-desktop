@@ -4,7 +4,7 @@
 
 **Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
-[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.2.0/Dots-Setup-2.2.0.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.2.0/Dots-2.2.0-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.2.0)
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.2.1/Dots-Setup-2.2.1.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.2.1/Dots-2.2.1-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.2.1)
 
 ![Dots Desktop conversation workspace](assets/desktop-screenshot-v2.0.1.png)
 
@@ -12,7 +12,7 @@ Dots Desktop is independent, open-source software inspired by [OpenAI Dots](http
 
 ## New in 2.2
 
-Open a Dot's **Build** tab to keep its conversation beside the project. Search files, inspect UTF-8 source with line numbers, filter files changed in the selected turn, and reference a file in your next message without copying stale contents into the prompt. Draft messages and references survive switching sections and reloading the window. The viewer is read only; ask your Dot to make edits or use your own editor.
+Each Dot has one **Conversation** tab. Open the optional **Project** panel from its header or the composer's folder button to keep the project beside that conversation. The panel starts closed and can be opened or closed separately for each Dot without losing your draft. Search files, inspect UTF-8 source with line numbers, filter files changed in the selected turn, and reference a file in your next message without copying stale contents into the prompt. Draft messages and references survive switching sections and reloading the window. The viewer is read only; ask your Dot to make edits or use your own editor.
 
 **Preview** runs a selected HTML file with relative local CSS, JavaScript, module imports, and assets. Switch between desktop and mobile widths or reload after changes. Static previews use a read-only loopback server and an isolated iframe; generated code cannot access Dots IPC or the app's DOM. Hidden paths and links outside the workspace are not served. For framework apps, start the project's dev server and connect its explicit localhost URL with **Dev server**. That server must remain running; embedding does not start it. Some apps require a normal browser for cookies or APIs that disallow opaque origins.
 
@@ -129,7 +129,7 @@ Package a Windows installer and portable executable:
 npm run dist
 ```
 
-Artifacts are generated under `release/`: `Dots-Setup-2.2.0.exe` and `Dots-2.2.0-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
+Artifacts are generated under `release/`: `Dots-Setup-2.2.1.exe` and `Dots-2.2.1-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
 ## Website and demo film
 

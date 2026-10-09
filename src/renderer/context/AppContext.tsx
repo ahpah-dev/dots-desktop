@@ -29,7 +29,7 @@ declare global {
 }
 
 export type TabType =
-  "tasks" | "build" | "responsibilities" | "memory" | "files" | "schedule" | "settings";
+  "tasks" | "responsibilities" | "memory" | "files" | "schedule" | "settings";
 export type ViewType = "home" | "dot" | "activity" | "inbox" | "connections" | "teamwork";
 
 interface Toast {
