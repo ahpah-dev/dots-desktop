@@ -1,7 +1,8 @@
 import type { ModelInfo, ProviderProfile, Usage } from '@shared/types';
 import { normalizeBudget, estimateTokens } from '@shared/budget';
 import { CancelledError, ProviderError, type AgentProvider, type ProviderResult, type RunContext } from '../types';
-import { chatCompletion, listModelDetails, type ChatMessage } from './chat';
+import { chatCompletion, type ChatMessage } from './chat';
+import { discoverProviderModels } from './routerModels';
 import { compactMessages, compactAdaptiveMessages } from './efficiency';
 import { toolsFor } from '../../tools/registry';
 import type { ToolContext } from '../../tools/types';
@@ -34,17 +35,13 @@ export class OpenAICompatibleProvider implements AgentProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
-    try {
-      const models = await listModelDetails(this.profile.baseUrl, await this.key(), AbortSignal.timeout(25_000));
-      return models.map(model => ({ ...model, isDefault: model.id === this.profile.defaultModel }));
-    } catch {
-      return [{ id: this.profile.defaultModel, label: this.profile.defaultModel, isDefault: true }];
-    }
+    const models = await discoverProviderModels(this.profile, await this.key(), AbortSignal.timeout(25_000));
+    return models.map(model => ({ ...model, isDefault: model.id === this.profile.defaultModel }));
   }
 
   async test(): Promise<{ ok: boolean; message: string }> {
     try {
-      const models = await listModelDetails(this.profile.baseUrl, await this.key(), AbortSignal.timeout(25_000));
+      const models = await discoverProviderModels(this.profile, await this.key(), AbortSignal.timeout(25_000));
       return { ok: models.length > 0, message: models.length ? `Connected. ${models.length} models available.${models.some(model => model.id === this.profile.defaultModel) ? '' : ' The default model was not listed; discover models to choose an available one.'}` : 'Connected, but no models are available. Load or enable a model first.' };
     } catch (err) {
       return { ok: false, message: errorMessage(err) };

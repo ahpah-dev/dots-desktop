@@ -93,6 +93,7 @@ export function DotSettings({ dotId }: { dotId: string }) {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelError, setModelError] = useState("");
+  const [modelRefresh, setModelRefresh] = useState(0);
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteWorkspace, setDeleteWorkspace] = useState(false);
@@ -130,7 +131,7 @@ export function DotSettings({ dotId }: { dotId: string }) {
     return () => {
       current = false;
     };
-  }, [draft.providerId]);
+  }, [draft.providerId, modelRefresh]);
   const update = <K extends keyof typeof draft>(
     key: K,
     value: (typeof draft)[K],
@@ -633,6 +634,7 @@ export function DotSettings({ dotId }: { dotId: string }) {
                           <option key={item.id} value={item.id}>
                             {item.label}
                             {item.isDefault ? " · Default" : ""}
+                            {item.available === false ? " · Enable in 9router" : ""}
                           </option>
                         ))}
                       </optgroup>
@@ -644,6 +646,9 @@ export function DotSettings({ dotId }: { dotId: string }) {
                         </option>
                       )}
                   </select>
+                  <button className="btn-ghost" type="button" disabled={loadingModels} onClick={() => setModelRefresh(value => value + 1)}>
+                    Refresh models{models.length ? ` · ${models.length}` : ""}
+                  </button>
                 </Field>
                 <Field
                   label="Custom model ID"

@@ -61,9 +61,9 @@ export async function listModelDetails(baseUrl: string, apiKey: string, signal: 
   if (!Array.isArray(j.data)) throw new ProviderError('The endpoint did not return a compatible model list. Check its API base URL.');
   return j.data.filter((model: any) => typeof model.id === 'string').map((model: any) => ({
     id: model.id, label: model.name || model.id,
-    contextWindow: typeof model.context_length === 'number' ? model.context_length : undefined,
-    supportsTools: Array.isArray(model.supported_parameters) ? model.supported_parameters.includes('tools') : undefined,
-    free: model.id === 'openrouter/free' || model.id.endsWith(':free') || (model.pricing?.prompt !== undefined && model.pricing?.completion !== undefined && Number(model.pricing.prompt) === 0 && Number(model.pricing.completion) === 0),
+    contextWindow: typeof model.context_length === 'number' ? model.context_length : typeof model.capabilities?.contextWindow === 'number' ? model.capabilities.contextWindow : undefined,
+    supportsTools: typeof model.capabilities?.tools === 'boolean' ? model.capabilities.tools : Array.isArray(model.supported_parameters) ? model.supported_parameters.includes('tools') : undefined,
+    free: typeof model.free === 'boolean' ? model.free : /(?:[:/-]free)$/.test(model.id) || (model.pricing?.prompt !== undefined && model.pricing?.completion !== undefined && Number(model.pricing.prompt) === 0 && Number(model.pricing.completion) === 0),
   })).sort((a: ModelInfo, b: ModelInfo) => a.id.localeCompare(b.id));
 }
 export async function listModelIds(baseUrl: string, apiKey: string, signal: AbortSignal): Promise<string[]> {

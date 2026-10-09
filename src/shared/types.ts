@@ -53,6 +53,8 @@ export interface ModelInfo {
   contextWindow?: number;
   supportsTools?: boolean;
   free?: boolean;
+  /** Router catalog entry that still needs enabling or connecting in the router. */
+  available?: boolean;
 }
 
 // ───────────────────────────── Authentication ─────────────────────────────

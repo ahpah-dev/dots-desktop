@@ -33,6 +33,9 @@ export function ProviderSetup({
     setModels([]);
     setResult(undefined);
     setTesting(false);
+    setSearch("");
+    setFreeOnly(false);
+    setToolsOnly(false);
     return () => {
       request.current++;
     };
@@ -241,7 +244,7 @@ export function ProviderSetup({
             <small>{visible.length} models</small>
           </div>
           <div className="discovered-models">
-            {visible.slice(0, 60).map((model) => (
+            {visible.map((model) => (
               <button
                 key={model.id}
                 aria-pressed={value.defaultModel === model.id}
@@ -249,6 +252,7 @@ export function ProviderSetup({
                 onClick={() => update({ defaultModel: model.id })}
               >
                 <span>
+                  {model.available === false ? "Enable in 9router · " : ""}
                   <strong>{model.label}</strong>
                   <small>{model.id}</small>
                 </span>
@@ -266,9 +270,6 @@ export function ProviderSetup({
               <p>No matching models. Try changing the filters.</p>
             )}
           </div>
-          {visible.length > 60 && (
-            <small>Showing the first 60. Search to narrow the list.</small>
-          )}
           <small>
             Free labels come from provider metadata. Account limits still apply.
             Connection tests list models; they do not generate a billable

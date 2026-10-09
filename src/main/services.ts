@@ -33,7 +33,7 @@ import type { DotsApi, RunOptions } from '@shared/api';
 import { CredentialStore, type SecretCipher } from './storage/credentialStore';
 import { DotStore } from './storage/dotStore';
 import { ProviderStore, normalizeBaseUrl } from './storage/providerStore';
-import { listModelDetails } from './providers/openai/chat';
+import { discoverProviderModels } from './providers/openai/routerModels';
 import { RunStore } from './storage/runStore';
 import { SettingsStore, defaultSettings } from './storage/settingsStore';
 import { WorkStore } from './storage/workStore';
@@ -245,7 +245,7 @@ export class Services implements DotsApi {
       return await this.registry.get(providerId).listModels();
     } catch (err) {
       log.warn('listModels failed', errorMessage(err));
-      return [];
+      throw err;
     }
   }
 
@@ -257,9 +257,10 @@ export class Services implements DotsApi {
       let key = input.apiKey?.trim() || '';
       if (!key && saved && saved.baseUrl === baseUrl) key = await this.providerStore.getApiKey(saved.id) || '';
       if (!key && input.requiresKey !== false) throw new Error('Paste an API key before testing. A saved key can only be reused with its original endpoint.');
-      const models = await listModelDetails(baseUrl, key, AbortSignal.timeout(20_000));
+      const models = await discoverProviderModels({ ...input, baseUrl }, key, AbortSignal.timeout(25_000));
       if (!models.length) return { ok: false, message: 'Connected, but no models were returned. Load a model in your local server or check this endpoint.', models };
-      return { ok: true, message: `Connected. Found ${models.length} models. Choose a model with tool support for file and command tasks.`, models };
+      const needsSetup = models.filter(model => model.available === false).length;
+      return { ok: true, message: `Connected. Found ${models.length} models.${needsSetup ? ` ${models.length - needsSetup} ready; ${needsSetup} need enabling in 9router.` : ''} Choose a model with tool support for file and command tasks.`, models };
     } catch (error) { return { ok: false, message: errorMessage(error), models: [] }; }
   }
 

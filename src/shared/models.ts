@@ -171,6 +171,20 @@ export interface ModelGroup {
 }
 
 export function groupModels(models: ModelInfo[]): ModelGroup[] {
+  if (models.some(model => model.available !== undefined)) {
+    const names: Record<string, string> = { oc: "OpenCode Free", ocg: "OpenCode Go", ocz: "OpenCode Zen", nvidia: "NVIDIA NIM" };
+    const groups = new Map<string, ModelInfo[]>();
+    for (const model of models) {
+      const prefix = model.id.includes("/") ? model.id.split("/")[0] : "Router combos";
+      const label = names[prefix] || prefix;
+      const group = groups.get(label) || [];
+      group.push(model);
+      groups.set(label, group);
+    }
+    return [...groups].sort(([a], [b]) => a.localeCompare(b)).map(([label, entries]) => ({
+      label, models: entries.sort((a, b) => Number(b.available !== false) - Number(a.available !== false) || a.label.localeCompare(b.label)),
+    }));
+  }
   const gpt6: ModelInfo[] = [];
   const gpt5: ModelInfo[] = [];
   const oSeries: ModelInfo[] = [];

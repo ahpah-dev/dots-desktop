@@ -159,6 +159,8 @@ function NewDotWizard() {
   const [tokenPreset, setTokenPreset] = useState("balanced");
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState("");
+  const [modelRefresh, setModelRefresh] = useState(0);
   const [files, setFiles] = useState<FileAccess>("write");
   const [shell, setShell] = useState(true);
   const [web, setWeb] = useState(true);
@@ -183,19 +185,20 @@ function NewDotWizard() {
     let current = true;
     setLoadingModels(true);
     setModels([]);
+    setModelError("");
     window.dots.api
       .listModels(providerId)
       .then((result) => {
         if (current) setModels(result);
       })
-      .catch(() => undefined)
+      .catch((error: unknown) => { if (current) setModelError(errorMessage(error, "Could not load models. You can enter a model ID.")); })
       .finally(() => {
         if (current) setLoadingModels(false);
       });
     return () => {
       current = false;
     };
-  }, [providerId]);
+  }, [providerId, modelRefresh]);
   const selectTemplate = (template: (typeof TEMPLATES)[number]) => {
     setTemplateId(template.id);
     setName(template.name);
@@ -472,6 +475,7 @@ function NewDotWizard() {
                             {group.models.map((item) => (
                               <option key={item.id} value={item.id}>
                                 {item.label}
+                                {item.available === false ? " · Enable in 9router" : ""}
                               </option>
                             ))}
                           </optgroup>
@@ -481,6 +485,9 @@ function NewDotWizard() {
                             <option value={model}>{model} · Custom</option>
                           )}
                       </select>
+                      <button className="btn-ghost" type="button" disabled={loadingModels} onClick={() => setModelRefresh(value => value + 1)}>
+                        Refresh models{models.length ? ` · ${models.length}` : ""}
+                      </button>
                     </Field>
                     <Field label="Custom model ID">
                       <input
@@ -492,6 +499,7 @@ function NewDotWizard() {
                       />
                     </Field>
                   </div>
+                  {modelError && <p className="settings-error">{modelError}</p>}
                   <div>
                     <SettingRow title="Workspace files">
                       <select

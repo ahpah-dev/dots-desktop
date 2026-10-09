@@ -13,6 +13,17 @@ export interface ProviderPreset {
 
 export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
+    id: "9router",
+    name: "9router",
+    description: "Your local router, including OpenCode free models.",
+    baseUrl: "http://localhost:20128/v1",
+    defaultModel: "",
+    badge: "Local router",
+    docsUrl: "https://github.com/decolua/9router",
+    requiresKey: false,
+    note: "Start 9router, then discover models. Dots also reads the installed router’s full catalog. Models marked Enable in 9router need a connection or model setting there. Add your router key if API authentication is enabled.",
+  },
+  {
     id: "nvidia",
     name: "NVIDIA NIM",
     description: "Try models from the NVIDIA API catalog.",

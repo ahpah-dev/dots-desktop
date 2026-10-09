@@ -133,8 +133,8 @@ try {
     .getByRole("button", { name: "Add provider", exact: true })
     .click();
   check(
-    "Eight guided provider presets",
-    (await settings.locator(".provider-preset").count()) === 8,
+    "Nine guided provider presets",
+    (await settings.locator(".provider-preset").count()) === 9,
   );
   await settings
     .getByRole("button", { name: /NVIDIA NIM Trial access/ })
