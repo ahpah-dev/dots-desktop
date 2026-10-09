@@ -24,12 +24,22 @@ import {
   Folder,
   Plus,
   Pencil,
+  Code2,
+  Paperclip,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { DotAvatar } from "./DotAvatar";
 import { ActivityGlyph } from "./ActivityGlyph";
 import { toolActivity } from "@shared/activity";
 import type { Run, RunEvent } from "@shared/types";
+import { CODING_ACTIONS, type CodingIntent } from "@shared/coding";
+
+function savedDraft(dotId: string): { prompt: string; references: string[]; intent: CodingIntent } {
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(`dots:draft:${dotId}`) || '{}');
+    return { prompt: typeof draft.prompt === 'string' ? draft.prompt : '', references: Array.isArray(draft.references) ? draft.references.filter((path: unknown) => typeof path === 'string').slice(0, 20) : [], intent: CODING_ACTIONS.some(action => action.id === draft.intent) ? draft.intent : 'build' };
+  } catch { return { prompt: '', references: [], intent: 'build' }; }
+}
 
 const readable: Record<string, string> = {
   run_command: "Running a command",
@@ -67,7 +77,7 @@ function consolidate(events: RunEvent[]): RunEvent[] {
   return result;
 }
 
-export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
+export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; fileReference?: { path: string; nonce: number }; onReferenceHandled?: () => void }> = ({ dotId, coding = false, fileReference, onReferenceHandled }) => {
   const {
     activeDot,
     runs,
@@ -79,7 +89,20 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
     refreshRuns,
     setActiveTab,
   } = useApp();
-  const [prompt, setPrompt] = useState("");
+  const [draft] = useState(() => savedDraft(dotId));
+  const [prompt, setPrompt] = useState(draft.prompt);
+  const [references, setReferences] = useState<string[]>(draft.references);
+  const [intent, setIntent] = useState<CodingIntent>(draft.intent);
+  const lastReference = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    try { sessionStorage.setItem(`dots:draft:${dotId}`, JSON.stringify({ prompt, references, intent })); } catch { /* Drafts still work when storage is unavailable. */ }
+  }, [dotId, prompt, references, intent]);
+  useEffect(() => {
+    if (!fileReference || lastReference.current === fileReference.nonce) return;
+    lastReference.current = fileReference.nonce;
+    setReferences(current => current.includes(fileReference.path) ? current : [...current, fileReference.path].slice(-20));
+    onReferenceHandled?.();
+  }, [fileReference, onReferenceHandled]);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -155,16 +178,19 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [wakeEditor]);
-  const send = async (text = prompt) => {
+  const send = async (text = prompt, retryProject?: Run['project']) => {
     if (!text.trim() || submitting || activeDot?.paused) return;
     try {
       setSubmitting(true);
+      const project = retryProject ?? (coding || references.length ? { files: references, intent: coding ? intent : undefined } : undefined);
       const run = selected
-        ? await window.dots.api.continueRun(selected.id, text.trim())
+        ? await window.dots.api.continueRun(selected.id, text.trim(), { project })
         : await window.dots.api.startRun(dotId, text.trim(), {
             newSession: true,
+            project,
           });
       setPrompt("");
+      setReferences([]);
       setSelectedRunId(run.id);
       await refreshRuns();
       if (busy)
@@ -452,12 +478,10 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
         {!selected ? (
           <div className="conversation-welcome">
             <DotAvatar dot={activeDot ?? undefined} size={92} animated />
-            <span className="eyebrow">YOUR DOT, YOUR NEXT CHAPTER</span>
-            <h1>What shall we take care of?</h1>
+            <span className="eyebrow">{coding ? 'MAKE SOMETHING YOU WANT TO USE' : 'YOUR DOT, YOUR NEXT CHAPTER'}</span>
+            <h1>{coding ? 'What do you want to build?' : 'What shall we take care of?'}</h1>
             <p>
-              I'm {activeDot?.name}. Give me something to work on,
-              <br />
-              and we'll keep building from there.
+              {coding ? 'Describe your idea. I’ll inspect the project, write the code, and check the result.' : <>I'm {activeDot?.name}. Give me something to work on,<br />and we'll keep building from there.</>}
             </p>
             <div className="conversation-suggestions">
               {[
@@ -512,6 +536,7 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
                       </div>
                     </div>
                   ) : <p>{run.prompt}</p>}
+                  {!!run.project?.files.length && <div className="message-file-references">{run.project.files.map(path => <span key={path} title={path}><Paperclip size={11} />{path}</span>)}</div>}
                   {run.trigger === "manual" && editingId !== run.id && (
                     <div className="message-actions">
                       <button disabled={submitting || busy || activeDot?.paused} title={busy ? "Wait for work to finish or stop it first" : "Edit and resend from this message"}
@@ -535,7 +560,7 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
                       <p>{run.error}</p>
                       <button
                         className="text-button"
-                        onClick={() => send(run.prompt)}
+                        onClick={() => send(run.prompt, run.project)}
                       >
                         <RotateCcw size={13} /> Try again
                       </button>
@@ -566,7 +591,9 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
         )}
       </div>
       <div className="composer-wrap">
+        {coding && <div className="coding-actions" aria-label="Coding actions">{CODING_ACTIONS.map(action => <button key={action.id} aria-pressed={intent === action.id} onClick={() => { setIntent(action.id); if (!prompt.trim() || CODING_ACTIONS.some(item => item.draft && item.draft === prompt)) setPrompt(action.draft); textarea.current?.focus(); }}><Code2 size={12} />{action.label}</button>)}</div>}
         <div className="composer">
+          {!!references.length && <div className="composer-references" aria-label="Referenced files">{references.map(path => <button key={path} title={`Remove reference: ${path}`} aria-label={`Remove reference: ${path}`} onClick={() => setReferences(current => current.filter(item => item !== path))}><Paperclip size={12} /><span>{path}</span><X size={12} /></button>)}</div>}
           <textarea
             ref={textarea}
             aria-label={`Message ${activeDot?.name}`}
@@ -585,7 +612,7 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
             placeholder={
               activeDot?.paused
                 ? "Resume your dot to continue"
-                : `Message ${activeDot?.name ?? "your dot"}…`
+                : coding ? 'Describe an app, a change, or something to fix…' : `Message ${activeDot?.name ?? "your dot"}…`
             }
             rows={2}
             disabled={submitting || activeDot?.paused}
@@ -596,7 +623,7 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
                 className="icon-button"
                 title="Browse workspace files"
                 aria-label="Browse workspace files"
-                onClick={() => setActiveTab("files")}
+                onClick={() => setActiveTab("build")}
               >
                 <Folder size={17} />
               </button>
@@ -632,7 +659,7 @@ export const RunTimeline: React.FC<{ dotId: string }> = ({ dotId }) => {
           <span>
             {busy
               ? "Your next message will queue after the current task."
-              : "Your dot keeps its memory between conversations."}
+              : coding ? 'Files stay in your workspace. References use their current contents.' : "Your dot keeps its memory between conversations."}
           </span>
           <span>Enter to send · Shift Enter for a new line</span>
         </div>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
   MessageSquare,
   Brain,
@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Plus,
   Plug,
+  Code2,
 } from "lucide-react";
 import { useApp, type TabType } from "../context/AppContext";
 import { RunTimeline } from "./RunTimeline";
@@ -26,8 +27,11 @@ import { DotAvatar } from "./DotAvatar";
 import { Responsibilities } from "./Responsibilities";
 import { ActivityGlyph } from "./ActivityGlyph";
 import { activeTool, toolActivity } from "@shared/activity";
+import { CodingWorkspace } from "./CodingWorkspace";
 
 export const DotView: React.FC = () => {
+  const [fileReference, setFileReference] = useState<{ dotId: string; path: string; nonce: number }>();
+  const clearReference = useCallback(() => setFileReference(undefined), []);
   const {
     activeDot,
     activeTab,
@@ -62,6 +66,7 @@ export const DotView: React.FC = () => {
   };
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: "tasks", label: "Conversation", icon: <MessageSquare size={15} /> },
+    { id: "build", label: "Build", icon: <Code2 size={15} /> },
     {
       id: "responsibilities",
       label: "Responsibilities",
@@ -108,11 +113,11 @@ export const DotView: React.FC = () => {
           ))}
         </div>
       </header>
-      <div className="dot-body">
+      <div className={`dot-body ${activeTab === "build" ? "build-body" : ""}`}>
         <div className="dot-primary" key={activeDot.id}>
-          {activeTab === "tasks" && (
+          {(activeTab === "tasks" || activeTab === "build") && (
             <div className="conversation-layout">
-              <RunTimeline dotId={activeDot.id} />
+              <RunTimeline dotId={activeDot.id} coding={activeTab === "build"} fileReference={fileReference?.dotId === activeDot.id ? fileReference : undefined} onReferenceHandled={clearReference} />
               <RunHistory />
             </div>
           )}
@@ -124,6 +129,7 @@ export const DotView: React.FC = () => {
           {activeTab === "schedule" && <DotSchedule dotId={activeDot.id} />}
           {activeTab === "settings" && <DotSettings dotId={activeDot.id} />}
         </div>
+        {activeTab === "build" && <CodingWorkspace key={activeDot.id} dotId={activeDot.id} onAttach={path => setFileReference({ dotId: activeDot.id, path, nonce: Date.now() })} />}
         {activeTab === "tasks" && (
           <aside className="dot-profile-rail">
             <div className="profile-mascot">

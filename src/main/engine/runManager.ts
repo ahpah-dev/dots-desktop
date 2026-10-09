@@ -11,6 +11,7 @@ import { buildContext, extractMemoryUpdates, extractFollowups, extractDotMessage
 import { Emitter, errorMessage, uid, clip } from '../util/misc';
 import { createLogger } from '../util/logger';
 import { matchingRule } from '../tools/permissions';
+import { codingPrompt } from '@shared/coding';
 
 const log = createLogger('engine');
 
@@ -21,6 +22,7 @@ interface Active {
 }
 
 export interface StartOptions {
+  project?: Run['project'];
   trigger: Run['trigger'];
   newSession?: boolean;
   conversationId?: string;
@@ -78,6 +80,8 @@ export class RunManager {
     const dot = this.dots.require(dotId);
     const text = prompt.trim();
     if (!text) throw new Error('Describe what the Dot should do.');
+    const project = opts.project;
+    if (project && (!Array.isArray(project.files) || project.files.length > 20 || project.files.some(file => typeof file !== 'string' || file.length > 2048) || (project.intent !== undefined && !['build', 'fix', 'polish', 'test'].includes(project.intent)))) throw new Error('Invalid project references.');
     if (dot.paused) throw new Error('This Dot is paused. Resume it first.');
     if (this.queue.filter((id) => this.runs.get(id)?.dotId === dotId).length >= 25) throw new Error('This Dot already has 25 tasks queued.');
 
@@ -87,7 +91,7 @@ export class RunManager {
     const run = await this.runs.create({ dotId, trigger: opts.trigger, prompt: text, newSession: !!opts.newSession,
       conversationId, parentRunId: opts.parentRunId, prefixRunIds: opts.prefixRunIds ??
         (!opts.newSession ? this.runs.listForDot(dotId, 200).find((r) => r.conversationId === conversationId)?.prefixRunIds : undefined),
-      taskId: opts.taskId, followupId: opts.followupId, dotMessage: opts.dotMessage, team: opts.team, title: opts.title,
+      taskId: opts.taskId, followupId: opts.followupId, dotMessage: opts.dotMessage, team: opts.team, title: opts.title, project,
       budget: opts.budget ? normalizeBudget({ ...dot.budget, ...opts.budget }) : undefined });
     this.runs.addEvent(run, { type: 'user', text });
     this.runs.addEvent(run, { type: 'status', status: 'queued' });
@@ -115,11 +119,11 @@ export class RunManager {
     await this.dots.writeConversation(dot.id, conversationId, {
       threadId: null, providerId: dot.providerId, workspacePath: dot.workspacePath, updatedAt: Date.now(),
       messages: prefix.flatMap((r) => [
-        { role: 'user', content: r.prompt },
+        { role: 'user', content: codingPrompt(r.prompt, r.project?.files ?? [], r.project?.intent) },
         ...(r.finalMessage ? [{ role: 'assistant', content: r.finalMessage }] : [])
       ])
     });
-    return this.start(dot.id, text, { trigger: 'manual', conversationId, parentRunId: target.id, prefixRunIds: prefix.map((r) => r.id) });
+    return this.start(dot.id, text, { trigger: 'manual', conversationId, parentRunId: target.id, prefixRunIds: prefix.map((r) => r.id), project: target.project });
   }
 
   private pump(): void {
@@ -308,7 +312,7 @@ export class RunManager {
       const ctx: RunContext = {
         run: current,
         dot,
-        prompt: run.prompt,
+        prompt: codingPrompt(run.prompt, run.project?.files ?? [], run.project?.intent),
         context: buildContext({ dot, memory, recentRuns: run.team ? [] : recent, trigger: run.trigger,
           tasks: run.team ? [] : this.work?.listTasks(dot.id), followups: run.team ? [] : this.work?.listFollowups(dot.id) }) + '\n\n' + collaborationContext + incomingContext +
           (dot.providerId === 'codex' && !threadId && conversation.messages.length

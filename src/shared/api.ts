@@ -26,6 +26,7 @@ import type {
 } from "./types";
 
 export interface RunOptions {
+  project?: Run['project'];
   /** Start a fresh conversation instead of continuing the previous one. */
   newSession?: boolean;
   /** Continue the selected conversation. Overrides the Dot's latest conversation. */
@@ -72,7 +73,7 @@ export interface DotsApi {
 
   // runs
   startRun(dotId: string, prompt: string, options?: RunOptions): Promise<Run>;
-  continueRun(runId: string, prompt: string): Promise<Run>;
+  continueRun(runId: string, prompt: string, options?: Pick<RunOptions, 'project'>): Promise<Run>;
   reviseMessage(runId: string, prompt?: string): Promise<Run>;
   cancelRun(runId: string): Promise<void>;
   listRuns(dotId: string, limit?: number): Promise<Run[]>;
@@ -106,6 +107,8 @@ export interface DotsApi {
   listWorkspaceFiles(
     dotId: string,
   ): Promise<{ path: string; size: number; isDir: boolean; mtime: number }[]>;
+  readWorkspaceFile(dotId: string, path: string): Promise<{ path: string; content: string; size: number }>;
+  startWorkspacePreview(dotId: string, path: string): Promise<{ url: string }>;
   quitApp(): Promise<void>;
 }
 
@@ -190,5 +193,7 @@ export const API_METHODS: DotsApiMethod[] = [
   "openPath",
   "openExternal",
   "listWorkspaceFiles",
+  "readWorkspaceFile",
+  "startWorkspacePreview",
   "quitApp",
 ];

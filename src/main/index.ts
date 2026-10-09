@@ -346,10 +346,12 @@ async function bootstrap(): Promise<void> {
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
   if (!DEV_URL) {
     session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
+      // The app shell keeps its strict policy. Sandboxed previews keep their own server policy.
+      if (!details.url.startsWith('file://')) { cb({ responseHeaders: details.responseHeaders }); return; }
       cb({
         responseHeaders: {
           ...details.responseHeaders,
-          'Content-Security-Policy': ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"]
+          'Content-Security-Policy': ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-src http://127.0.0.1:* http://localhost:* http://[::1]:*; object-src 'none'; base-uri 'none'; form-action 'none'"]
         }
       });
     });

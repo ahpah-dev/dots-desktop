@@ -1,16 +1,24 @@
 <p align="center"><img src="assets/logo.svg" width="88" height="88" alt="Dots Desktop logo"></p>
 
-# Dots Desktop 2.1
+# Dots Desktop 2.2
 
 **Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
-[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.1.0/Dots-Setup-2.1.0.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.1.0/Dots-2.1.0-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.1.0)
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.2.0/Dots-Setup-2.2.0.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.2.0/Dots-2.2.0-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.2.0)
 
 ![Dots Desktop conversation workspace](assets/desktop-screenshot-v2.0.1.png)
 
 Dots Desktop is independent, open-source software inspired by [OpenAI Dots](https://learn.chatgpt.com/docs/dots). It runs locally and connects to your Codex installation or an OpenAI-compatible provider. It is not affiliated with OpenAI and does not include OpenAI's hosted Dots service. See the [capability comparison](docs/DOTS_PARITY.md) for the scope and remaining gaps.
 
-## New in 2.1
+## New in 2.2
+
+Open a Dot's **Build** tab to keep its conversation beside the project. Search files, inspect UTF-8 source with line numbers, filter files changed in the selected turn, and reference a file in your next message without copying stale contents into the prompt. Draft messages and references survive switching sections and reloading the window. The viewer is read only; ask your Dot to make edits or use your own editor.
+
+**Preview** runs a selected HTML file with relative local CSS, JavaScript, module imports, and assets. Switch between desktop and mobile widths or reload after changes. Static previews use a read-only loopback server and an isolated iframe; generated code cannot access Dots IPC or the app's DOM. Hidden paths and links outside the workspace are not served. For framework apps, start the project's dev server and connect its explicit localhost URL with **Dev server**. That server must remain running; embedding does not start it. Some apps require a normal browser for cookies or APIs that disallow opaque origins.
+
+**Build / Fix / Polish / Test** shortcuts help start the next request. All providers now receive an inspect → implement → check → repair workflow for software tasks, including guidance for smaller models and the selected work style. Economy still asks for a working change and a relevant check. **Commands & checks** shows actual shell results, including failures; a successful command is not a guarantee that every feature was tested. Automatic tools and provider response lengths remain the default.
+
+## Included from 2.1
 
 - **Teamwork:** choose two to eight Dots, write one goal, and edit their assignments. Work in parallel, pass results along a sequence, or add a review step. Each Dot uses its own model, workspace, permissions, and token limits; the lead combines their answers. The coordinator handles dependencies, bounded concurrency, cancellation, and durable results. Resume unfinished assignments after interruption without repeating completed work.
 - **Work style and token efficiency:** Economy directs a focused approach and one main check; Balanced covers requirements and likely failure cases; Thorough investigates alternatives, edge cases, and acceptance checks. Every API model and Codex turn receives concrete workflow and stopping instructions, including team assignments. The style persists separately from custom token limits. Automatic mode is the default, including for existing Dots: API requests retain tools past preset token or step counts, use provider response lengths, and expand the compaction target when the current task needs more context. Optional custom caps can be enabled in Profile. Large files can be written in chunks with append support. Time limits and cancellation remain available. Explicit team tasks retain their shared allowance. Older API history and long tool outputs are compacted while keeping the current request and valid tool-call/result pairs. Conversation and team views show input, output, cached, and estimated usage. Models can vary in instruction following; these workflows do not guarantee a fixed amount of work or replace explicit user requirements.
@@ -121,7 +129,7 @@ Package a Windows installer and portable executable:
 npm run dist
 ```
 
-Artifacts are generated under `release/`: `Dots-Setup-2.1.0.exe` and `Dots-2.1.0-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
+Artifacts are generated under `release/`: `Dots-Setup-2.2.0.exe` and `Dots-2.2.0-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
 ## Website and demo film
 

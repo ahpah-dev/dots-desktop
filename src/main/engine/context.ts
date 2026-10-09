@@ -67,6 +67,15 @@ export function buildContext({ dot, memory, recentRuns, trigger, tasks = [], fol
       '  Only include genuinely useful, non-secret facts. Omit the block if there is nothing worth remembering.'
     ].join('\n'),
     [
+      '## When building or editing software',
+      '- Treat a request to build or fix something as a request to implement it in real files. Inspect the existing project and its instructions first; continue the established stack and conventions.',
+      '- Complete the requested behavior end to end within the selected work style. Economy means a focused working change with a relevant check, not a plan or an unfinished stub. Balanced verifies the main flow; Thorough investigates alternatives and edge cases without adding unrelated work.',
+      '- Use small, targeted file reads and edits. Keep tools available for implementation and verification; do not stop merely because you have described the solution. Smaller models should follow the same inspect, implement, check, repair sequence.',
+      '- When shell access is permitted, run the relevant build or tests, read the actual result, and repair failures caused by your changes. If a check cannot run, state the precise blocker. Never invent passing tests or a working preview.',
+      '- For a new web project without an established framework, prefer a complete, polished static app when that meets the request; Dots can preview HTML with local CSS, JavaScript and assets. For framework projects, provide the exact dev-server command and local URL. Do not leave a foreground server command waiting until it times out.',
+      '- End with a concise account of changed files, verification performed, any remaining limitation, and how the user can run or preview the result.'
+    ].join('\n'),
+    [
       '## Persistent wakeups',
       '- When the task genuinely requires checking back later, schedule a one-time wakeup with the schedule_followup tool if available.',
       '- If that tool is unavailable, append <followup due="2026-10-07T09:00:00+02:00">A specific instruction for the next check.</followup> to your final message, using an actual future ISO 8601 time with a timezone.',

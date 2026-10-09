@@ -233,6 +233,8 @@ export interface Usage {
 }
 
 export interface Run {
+  /** Coding context stays separate from the user's editable message. */
+  project?: { intent?: 'build' | 'fix' | 'polish' | 'test'; files: string[] };
   id: string;
   dotId: string;
   trigger: RunTrigger;

@@ -61,6 +61,23 @@ function provider(run: AgentProvider['run']): AgentProvider {
 }
 
 describe('durable responsibilities, memories and wakeups', () => {
+  it('persists project context separately and preserves file references when a coding message is edited', async () => {
+    const prompts: string[] = [];
+    const f = await setup(provider(async ctx => { prompts.push(ctx.prompt); return { finalMessage: 'Implemented and checked.' }; }));
+    const project = { intent: 'fix' as const, files: ['src/app.ts'] };
+    const run = await f.manager.start(f.dot.id, 'Fix the button.', { trigger: 'manual', newSession: true, project });
+    await until(() => f.runs.get(run.id)?.status === 'succeeded' && !f.manager.isBusy(f.dot.id));
+    expect(f.runs.get(run.id)?.prompt).toBe('Fix the button.');
+    expect(prompts[0]).toContain('Workspace file references');
+    expect(prompts[0]).toContain('src/app.ts');
+    const revised = await f.manager.reviseMessage(run.id, 'Fix the button and its label.');
+    await until(() => f.runs.get(revised.id)?.status === 'succeeded');
+    expect(revised.project).toEqual(project);
+    expect(revised.prompt).toBe('Fix the button and its label.');
+    expect(prompts[1]).toContain('src/app.ts');
+    const reloaded = new RunStore(f.paths); await reloaded.init([f.dot.id]);
+    expect(reloaded.get(revised.id)?.project).toEqual(project);
+  });
   it.each([50000, 90000])('retains a confirmed Codex answer when final usage reaches %i tokens', async (inputTokens) => {
     const usage = { inputTokens, outputTokens: 700, cachedTokens: 40000 };
     const f = await setup(provider(async (ctx) => {

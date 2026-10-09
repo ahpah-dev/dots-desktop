@@ -64,6 +64,9 @@ Hope this helps!`;
     expect(ctx).toContain('Always use TypeScript.');
     expect(ctx).toContain('- Remember to run lint');
     expect(ctx).toContain('C:\\Work\\Test');
+    expect(ctx).toContain('implement it in real files');
+    expect(ctx).toContain('Economy means a focused working change');
+    expect(ctx).toContain('Never invent passing tests');
   });
 });
 

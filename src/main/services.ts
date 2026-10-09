@@ -47,6 +47,7 @@ import { Paths, slugify } from './util/paths';
 import { exists } from './util/jsonStore';
 import { createLogger } from './util/logger';
 import { errorMessage } from './util/misc';
+import { readWorkspaceText, WorkspacePreviews } from './workspaceView';
 
 const log = createLogger('services');
 
@@ -67,6 +68,7 @@ export interface Host {
 }
 
 export class Services implements DotsApi {
+  readonly previews = new WorkspacePreviews();
   readonly paths: Paths;
   readonly settings: SettingsStore;
   readonly creds: CredentialStore;
@@ -138,6 +140,7 @@ export class Services implements DotsApi {
   }
 
   async shutdown(): Promise<void> {
+    this.previews.close();
     this.scheduler.stop();
     await this.teams.shutdown();
     await this.manager.shutdown();
@@ -308,6 +311,7 @@ export class Services implements DotsApi {
     const permissionState = (permissions: Dot['permissions']) => JSON.stringify([permissions.files, permissions.shell, permissions.web, permissions.talkToDots === true, permissions.outsideWorkspace, permissions.approval, permissions.rules ?? []]);
     if (patch.permissions && permissionState(patch.permissions) !== permissionState(current.permissions) && this.manager.isBusy(id)) await this.manager.cancelForDot(id, 'user');
     const dot = await this.dots.update(id, patch);
+    if (dot.workspacePath !== current.workspacePath) this.previews.stop(id);
     const refreshed = patch.schedule !== undefined || patch.paused !== undefined ? await this.scheduler.refresh(dot) : dot;
     const summary = this.summarize(refreshed);
     this.host.push({ type: 'dot', dot: summary });
@@ -315,6 +319,7 @@ export class Services implements DotsApi {
   }
 
   async deleteDot(id: string, deleteWorkspace: boolean): Promise<void> {
+    this.previews.stop(id);
     const dot = this.dots.require(id);
     await this.manager.cancelForDot(id, 'user');
     for (let i = 0; i < 50 && this.manager.isBusy(id); i++) await new Promise((r) => setTimeout(r, 100));
@@ -367,15 +372,15 @@ export class Services implements DotsApi {
   async startRun(dotId: string, prompt: string, options?: RunOptions): Promise<Run> {
     const dot = this.dots.require(dotId);
     if (options?.conversationId && !this.runs.listForDot(dotId, Number.MAX_SAFE_INTEGER).some((r) => r.conversationId === options.conversationId)) throw new Error('That conversation does not belong to this Dot.');
-    const run = await this.manager.start(dotId, prompt, { trigger: 'manual', newSession: options?.newSession, conversationId: options?.conversationId });
+    const run = await this.manager.start(dotId, prompt, { trigger: 'manual', newSession: options?.newSession, conversationId: options?.conversationId, project: options?.project });
     log.info(`Started run ${run.id} for "${dot.name}"`);
     return run;
   }
 
-  async continueRun(runId: string, prompt: string): Promise<Run> {
+  async continueRun(runId: string, prompt: string, options?: Pick<RunOptions, 'project'>): Promise<Run> {
     const previous = this.runs.get(runId);
     if (!previous) throw new Error('That conversation no longer exists.');
-    return this.manager.start(previous.dotId, prompt, { trigger: 'manual', conversationId: previous.conversationId ?? `legacy-${previous.dotId}`, parentRunId: previous.id, taskId: previous.taskId });
+    return this.manager.start(previous.dotId, prompt, { trigger: 'manual', conversationId: previous.conversationId ?? `legacy-${previous.dotId}`, parentRunId: previous.id, taskId: previous.taskId, project: options?.project });
   }
 
   cancelRun(runId: string): Promise<void> {
@@ -497,12 +502,13 @@ export class Services implements DotsApi {
   async listWorkspaceFiles(dotId: string): Promise<{ path: string; size: number; isDir: boolean; mtime: number }[]> {
     const dot = this.dots.require(dotId);
     const out: { path: string; size: number; isDir: boolean; mtime: number }[] = [];
-    const skip = new Set(['node_modules', '.git', '__pycache__', '.venv']);
+    const skip = new Set(['node_modules', '.git', '__pycache__', '.venv', 'vendor', '.next']);
     const walk = async (dir: string, depth: number) => {
-      if (out.length >= 400 || depth > 3) return;
+      if (out.length >= 1000 || depth > 8) return;
       const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
       for (const e of entries) {
-        if (out.length >= 400) return;
+        if (out.length >= 1000) return;
+        if (e.isSymbolicLink()) continue;
         if (e.isDirectory() && skip.has(e.name)) continue;
         const full = join(dir, e.name);
         const st = await fs.stat(full).catch(() => null);
@@ -517,5 +523,13 @@ export class Services implements DotsApi {
 
   async quitApp(): Promise<void> {
     this.host.quit();
+  }
+
+  readWorkspaceFile(dotId: string, path: string): Promise<{ path: string; content: string; size: number }> {
+    return readWorkspaceText(this.dots.require(dotId).workspacePath, path);
+  }
+
+  startWorkspacePreview(dotId: string, path: string): Promise<{ url: string }> {
+    return this.previews.start(dotId, this.dots.require(dotId).workspacePath, path);
   }
 }
