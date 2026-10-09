@@ -1,16 +1,24 @@
 <p align="center"><img src="assets/logo.svg" width="88" height="88" alt="Dots Desktop logo"></p>
 
-# Dots Desktop 2.2
+# Dots Desktop 2.3
 
 **Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
-[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.2.1/Dots-Setup-2.2.1.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.2.1/Dots-2.2.1-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.2.1)
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.3.0/Dots-Setup-2.3.0.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.3.0/Dots-2.3.0-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.3.0)
 
-![Dots Desktop conversation workspace](assets/desktop-screenshot-v2.0.1.png)
+![Dots Desktop overview](assets/desktop-screenshot-v2.3.0.png)
 
 Dots Desktop is independent, open-source software inspired by [OpenAI Dots](https://learn.chatgpt.com/docs/dots). It runs locally and connects to your Codex installation or an OpenAI-compatible provider. It is not affiliated with OpenAI and does not include OpenAI's hosted Dots service. See the [capability comparison](docs/DOTS_PARITY.md) for the scope and remaining gaps.
 
-## New in 2.2
+## New in 2.3
+
+A clearer home across Overview, conversations, Teamwork, Connections, and settings. Search your Dots, filter working teammates or those needing you, and see consistent paused and task states. Neutral light and dark themes, compact cards, readable activity, and quieter backgrounds keep attention on the work. Connection checks show their progress and result beside the provider.
+
+Long conversations start with the latest twelve earlier turns; load earlier messages without losing your reading position, or jump back to the latest result. Conversation history searches every message and filters tasks needing attention. Drafts flush when switching sections or reloading. Completed answers use rich Markdown; live text streams without repeatedly parsing the whole answer.
+
+The optional Project pane is resizable with the mouse or keyboard and remembers its width for each Dot. Large file lists and source files render only visible rows. Copy the entire file, navigate files with the keyboard, and change conversations without resetting an unchanged interactive preview. Workspace scans batch filesystem reads, share concurrent requests, and refresh after tools finish. Streamed text updates only its subscribers; durable events arrive in batches and flush immediately when a task ends. Copy buttons for answers, notes, team results, and files now work through the desktop clipboard.
+
+## Included from 2.2
 
 Each Dot has one **Conversation** tab. Open the optional **Project** panel from its header or the composer's folder button to keep the project beside that conversation. The panel starts closed and can be opened or closed separately for each Dot without losing your draft. Search files, inspect UTF-8 source with line numbers, filter files changed in the selected turn, and reference a file in your next message without copying stale contents into the prompt. Draft messages and references survive switching sections and reloading the window. The viewer is read only; ask your Dot to make edits or use your own editor.
 
@@ -42,7 +50,7 @@ Token counts use provider usage when available, otherwise a UTF-8 based estimate
 ## Desktop features
 
 - **A complete new home:** Overview, an attention inbox, global activity, and connections bring your teammates and their work together. Search and a command palette keep navigation quick.
-- **A character of their own:** Choose from eleven accessories, including hats, a crown, a flower, a scarf, and headphones. Set accessory and glasses colors independently with presets or a custom color in Profile → Personalization, then save. A calm sage and cream interface, refined dark mode, and responsive layouts keep each dot at home.
+- **A character of their own:** Choose from twelve accessory options, including no accessory, hats, a crown, a flower, a scarf, and headphones. Set accessory and glasses colors independently with presets or a custom color in Profile → Personalization, then save. Neutral ivory and charcoal themes, restrained green accents, and responsive layouts keep each dot at home.
 - **Live activity with a little personality:** File work, web searches, commands, and connected tools have gentle activity animations in your conversation and on your dot.
 - **A teammate on your desktop:** Minimize Dots or close it to the tray to see a draggable, always-on-top dot with live updates. Open its conversation, stop a task, switch teammates, or turn on spoken updates. Settings → Desktop also offers an always-visible mode.
 - **Conversations that stay organized:** Keep separate conversations with the same dot. Messages sent while it works queue up instead of interrupting an active task.
@@ -54,7 +62,7 @@ Token counts use provider usage when available, otherwise a UTF-8 based estimate
 
 ## Getting started
 
-1. Install [Dots-Setup-2.1.0.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.1.0/Dots-Setup-2.1.0.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
+1. Install [Dots-Setup-2.3.0.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.3.0/Dots-Setup-2.3.0.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
 2. Connect a model provider in Settings.
 3. Create a dot, give it a purpose, and choose a local workspace.
 4. Start a conversation or add an ongoing responsibility. Review activity and approvals as work progresses.
@@ -129,7 +137,7 @@ Package a Windows installer and portable executable:
 npm run dist
 ```
 
-Artifacts are generated under `release/`: `Dots-Setup-2.2.1.exe` and `Dots-2.2.1-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
+Artifacts are generated under `release/`: `Dots-Setup-2.3.0.exe` and `Dots-2.3.0-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
 ## Website and demo film
 

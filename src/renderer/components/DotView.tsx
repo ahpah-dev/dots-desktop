@@ -17,7 +17,7 @@ import {
   Code2,
   PanelRightClose,
 } from "lucide-react";
-import { useApp, type TabType } from "../context/AppContext";
+import { useApp, useRunEvents, type TabType } from "../context/AppContext";
 import { RunTimeline } from "./RunTimeline";
 import { RunHistory } from "./RunHistory";
 import { DotMemory } from "./DotMemory";
@@ -29,8 +29,10 @@ import { Responsibilities } from "./Responsibilities";
 import { ActivityGlyph } from "./ActivityGlyph";
 import { activeTool, toolActivity } from "@shared/activity";
 import { CodingWorkspace } from "./CodingWorkspace";
+import { ProjectDivider } from "./ProjectDivider";
 
 export const DotView: React.FC = () => {
+  const activeRunEvents = useRunEvents();
   const [projectPanels, setProjectPanels] = useState<Record<string, boolean>>({});
   const [fileReference, setFileReference] = useState<{ dotId: string; path: string; nonce: number }>();
   const clearReference = useCallback(() => setFileReference(undefined), []);
@@ -43,7 +45,6 @@ export const DotView: React.FC = () => {
     settings,
     setSelectedRunId,
     selectedRunId,
-    activeRunEvents,
   } = useApp();
   if (!activeDot)
     return (
@@ -142,6 +143,7 @@ export const DotView: React.FC = () => {
           {activeTab === "schedule" && <DotSchedule dotId={activeDot.id} />}
           {activeTab === "settings" && <DotSettings dotId={activeDot.id} />}
         </div>
+        {activeTab === "tasks" && projectOpen && <ProjectDivider key={`project-divider-${activeDot.id}`} dotId={activeDot.id} />}
         {activeTab === "tasks" && projectOpen && <CodingWorkspace key={`project-${activeDot.id}`} dotId={activeDot.id} onAttach={path => setFileReference({ dotId: activeDot.id, path, nonce: Date.now() })} />}
         {activeTab === "tasks" && !projectOpen && (
           <aside className="dot-profile-rail">

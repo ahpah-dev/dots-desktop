@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { basename, isAbsolute, join, resolve, sep } from 'node:path';
+import { isAbsolute, join, resolve, sep } from 'node:path';
 import {
   CODEX_PROVIDER_ID,
   DEFAULT_BUDGET,
@@ -48,6 +48,8 @@ import { exists } from './util/jsonStore';
 import { createLogger } from './util/logger';
 import { errorMessage } from './util/misc';
 import { readWorkspaceText, WorkspacePreviews } from './workspaceView';
+import { WorkspaceFileIndex, type WorkspaceEntry } from './workspaceFiles';
+import { validateClipboardText } from './util/clipboardText';
 
 const log = createLogger('services');
 
@@ -60,6 +62,7 @@ export interface Host {
   push(event: PushEvent): void;
   openExternal(url: string): Promise<void>;
   openPath(path: string): Promise<string>;
+  writeClipboardText(text: string): void;
   pickFolder(initial?: string): Promise<string | null>;
   applySettings(settings: AppSettings): void;
   notifyRun(run: Run, dot: Dot): void;
@@ -69,6 +72,7 @@ export interface Host {
 
 export class Services implements DotsApi {
   readonly previews = new WorkspacePreviews();
+  readonly workspaceFiles = new WorkspaceFileIndex();
   readonly paths: Paths;
   readonly settings: SettingsStore;
   readonly creds: CredentialStore;
@@ -119,10 +123,14 @@ export class Services implements DotsApi {
     });
     this.dots.memoryChanged.on((dotId) => this.host.push({ type: 'memory', dotId, notes: this.dots.listMemoryNotes(dotId) }));
     this.runs.runChanged.on((run) => {
+      if (['succeeded', 'failed', 'cancelled', 'interrupted'].includes(run.status)) this.workspaceFiles.invalidate(run.dotId);
       this.host.push({ type: 'run', run });
       this.pushDot(run.dotId);
     });
-    this.runs.eventAdded.on((event) => this.host.push({ type: 'run-event', event }));
+    this.runs.eventAdded.on((event) => {
+      if (event.type === 'file') this.workspaceFiles.invalidate(event.dotId);
+      this.host.push({ type: 'run-event', event });
+    });
     this.manager.activityChanged.on((id) => this.pushDot(id));
     this.manager.finished.on((run) => {
       const dot = this.dots.get(run.dotId);
@@ -311,7 +319,7 @@ export class Services implements DotsApi {
     const permissionState = (permissions: Dot['permissions']) => JSON.stringify([permissions.files, permissions.shell, permissions.web, permissions.talkToDots === true, permissions.outsideWorkspace, permissions.approval, permissions.rules ?? []]);
     if (patch.permissions && permissionState(patch.permissions) !== permissionState(current.permissions) && this.manager.isBusy(id)) await this.manager.cancelForDot(id, 'user');
     const dot = await this.dots.update(id, patch);
-    if (dot.workspacePath !== current.workspacePath) this.previews.stop(id);
+    if (dot.workspacePath !== current.workspacePath) { this.previews.stop(id); this.workspaceFiles.invalidate(id); }
     const refreshed = patch.schedule !== undefined || patch.paused !== undefined ? await this.scheduler.refresh(dot) : dot;
     const summary = this.summarize(refreshed);
     this.host.push({ type: 'dot', dot: summary });
@@ -320,6 +328,7 @@ export class Services implements DotsApi {
 
   async deleteDot(id: string, deleteWorkspace: boolean): Promise<void> {
     this.previews.stop(id);
+    this.workspaceFiles.invalidate(id);
     const dot = this.dots.require(id);
     await this.manager.cancelForDot(id, 'user');
     for (let i = 0; i < 50 && this.manager.isBusy(id); i++) await new Promise((r) => setTimeout(r, 100));
@@ -499,30 +508,16 @@ export class Services implements DotsApi {
     await this.host.openExternal(url);
   }
 
-  async listWorkspaceFiles(dotId: string): Promise<{ path: string; size: number; isDir: boolean; mtime: number }[]> {
-    const dot = this.dots.require(dotId);
-    const out: { path: string; size: number; isDir: boolean; mtime: number }[] = [];
-    const skip = new Set(['node_modules', '.git', '__pycache__', '.venv', 'vendor', '.next']);
-    const walk = async (dir: string, depth: number) => {
-      if (out.length >= 1000 || depth > 8) return;
-      const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
-      for (const e of entries) {
-        if (out.length >= 1000) return;
-        if (e.isSymbolicLink()) continue;
-        if (e.isDirectory() && skip.has(e.name)) continue;
-        const full = join(dir, e.name);
-        const st = await fs.stat(full).catch(() => null);
-        if (!st) continue;
-        out.push({ path: full.slice(dot.workspacePath.length + 1) || basename(full), size: st.size, isDir: e.isDirectory(), mtime: st.mtimeMs });
-        if (e.isDirectory()) await walk(full, depth + 1);
-      }
-    };
-    await walk(dot.workspacePath, 0);
-    return out.sort((a, b) => b.mtime - a.mtime);
+  listWorkspaceFiles(dotId: string, options?: { refresh?: boolean }): Promise<WorkspaceEntry[]> {
+    return this.workspaceFiles.list(dotId, this.dots.require(dotId).workspacePath, options?.refresh);
   }
 
   async quitApp(): Promise<void> {
     this.host.quit();
+  }
+
+  async writeClipboardText(text: string): Promise<void> {
+    this.host.writeClipboardText(validateClipboardText(text));
   }
 
   readWorkspaceFile(dotId: string, path: string): Promise<{ path: string; content: string; size: number }> {

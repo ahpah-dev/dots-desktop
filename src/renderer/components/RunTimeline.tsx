@@ -1,36 +1,25 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from "react";
 import {
   ArrowUp,
-  Terminal,
-  FileCode,
   Globe,
-  Search,
-  Brain,
-  CheckCircle2,
   XCircle,
   Clock,
   Square,
-  Copy,
-  Check,
   ChevronDown,
-  ChevronRight,
   RotateCcw,
   Target,
-  Layers,
-  Volume2,
   X,
   Folder,
-  Plus,
   Pencil,
   Code2,
   Paperclip,
 } from "lucide-react";
-import { useApp } from "../context/AppContext";
+import { useApp, useRunEvents, useStreamingDraft } from "../context/AppContext";
 import { DotAvatar } from "./DotAvatar";
-import { ActivityGlyph } from "./ActivityGlyph";
-import { toolActivity } from "@shared/activity";
+import { ConversationEvents, TOOL_LABELS } from "./ConversationEvents";
+import { earlierConversationTurns } from "@shared/conversation";
+import { activeTool } from '@shared/activity';
+import "./Conversation.css";
 import type { Run, RunEvent } from "@shared/types";
 import { CODING_ACTIONS, type CodingIntent } from "@shared/coding";
 
@@ -41,62 +30,37 @@ function savedDraft(dotId: string): { prompt: string; references: string[]; inte
   } catch { return { prompt: '', references: [], intent: 'build' }; }
 }
 
-const readable: Record<string, string> = {
-  run_command: "Running a command",
-  read_file: "Reading a file",
-  write_file: "Writing a file",
-  edit_file: "Editing a file",
-  search_files: "Searching files",
-  web_search: "Searching the web",
-  web_fetch: "Reading a webpage",
-  remember: "Remembering this",
-  schedule_followup: "Scheduling a follow-up",
-  list_dots: "Finding teammates",
-  send_dot_message: "Messaging a teammate",
-};
-function consolidate(events: RunEvent[]): RunEvent[] {
-  const result: RunEvent[] = [];
-  const toolIndices = new Map<string, number>();
-  const final = events.find((e) => e.type === "final");
-  for (const e of events) {
-    if (
-      e.type === "message" &&
-      final?.type === "final" &&
-      e.text === final.text
-    )
-      continue;
-    if (e.type === "tool") {
-      const idx = toolIndices.get(e.id);
-      if (idx !== undefined) result[idx] = e;
-      else {
-        toolIndices.set(e.id, result.length);
-        result.push(e);
-      }
-    } else result.push(e);
-  }
-  return result;
-}
-
 export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProject?: () => void; fileReference?: { path: string; nonce: number }; onReferenceHandled?: () => void }> = ({ dotId, coding = false, onOpenProject, fileReference, onReferenceHandled }) => {
   const {
     activeDot,
     runs,
     selectedRunId,
     setSelectedRunId,
-    activeRunEvents,
-    streamingDraft,
     showToast,
     refreshRuns,
     setActiveTab,
   } = useApp();
+  const activeRunEvents = useRunEvents();
+  const streamingDraft = useStreamingDraft();
+  const currentTool = useMemo(() => activeTool(activeRunEvents), [activeRunEvents]);
   const [draft] = useState(() => savedDraft(dotId));
   const [prompt, setPrompt] = useState(draft.prompt);
   const [references, setReferences] = useState<string[]>(draft.references);
   const [intent, setIntent] = useState<CodingIntent>(draft.intent);
   const lastReference = useRef<number | undefined>(undefined);
+  const currentDraft = useRef({ prompt, references, intent });
+  currentDraft.current = { prompt, references, intent };
+  const persistDraft = useCallback(() => {
+    try { sessionStorage.setItem(`dots:draft:${dotId}`, JSON.stringify(currentDraft.current)); } catch { /* Drafts still work when storage is unavailable. */ }
+  }, [dotId]);
   useEffect(() => {
-    try { sessionStorage.setItem(`dots:draft:${dotId}`, JSON.stringify({ prompt, references, intent })); } catch { /* Drafts still work when storage is unavailable. */ }
-  }, [dotId, prompt, references, intent]);
+    const timer = setTimeout(persistDraft, 150);
+    return () => clearTimeout(timer);
+  }, [prompt, references, intent, persistDraft]);
+  useEffect(() => {
+    window.addEventListener('beforeunload', persistDraft);
+    return () => { window.removeEventListener('beforeunload', persistDraft); persistDraft(); };
+  }, [persistDraft]);
   useEffect(() => {
     if (!fileReference || lastReference.current === fileReference.nonce) return;
     lastReference.current = fileReference.nonce;
@@ -104,15 +68,12 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
     onReferenceHandled?.();
   }, [fileReference, onReferenceHandled]);
   const [submitting, setSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [older, setOlder] = useState<{ run: Run; events: RunEvent[] }[]>([]);
   const [wakeEditor, setWakeEditor] = useState(false);
   const [wakePrompt, setWakePrompt] = useState("");
   const [wakeMinutes, setWakeMinutes] = useState(60);
-  const [speaking, setSpeaking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -122,54 +83,69 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
     activeDot?.status === "queued" ||
     activeDot?.status === "awaiting-approval";
   const conversationId = selected?.conversationId;
-  const previous = useMemo(
-    () =>
-      conversationId
-        ? runs
-            .filter(
-              (r) =>
-                (r.conversationId === conversationId || selected?.prefixRunIds?.includes(r.id)) &&
-                r.id !== selectedRunId &&
-                r.createdAt <= (selected?.createdAt ?? 0),
-            )
-            .sort((a, b) => a.createdAt - b.createdAt)
-        : [],
-    [runs, conversationId, selectedRunId, selected?.createdAt, selected?.prefixRunIds],
-  );
-  const previousIds = previous.map((r) => r.id).join("|");
+  const previous = useMemo(() => earlierConversationTurns(runs, selected), [runs, selected]);
+  const historyKey = conversationId || selectedRunId || '';
+  const [historyWindow, setHistoryWindow] = useState({ key: historyKey, count: 12 });
+  const historyCount = historyWindow.key === historyKey ? historyWindow.count : 12;
+  const visiblePrevious = previous.slice(-historyCount);
+  const previousIds = visiblePrevious.map(run => `${run.id}:${run.status}:${run.endedAt || ''}`).join('|');
+  const completedEvents = useRef(new Map<string, RunEvent[]>());
+  const scrollAnchor = useRef<{ id: string; top: number } | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [following, setFollowing] = useState(true);
+  const [newActivity, setNewActivity] = useState(false);
   useEffect(() => {
     let alive = true;
-    setOlder([]);
-    Promise.all(
-      previous.map(async (run) => ({
-        run,
-        events: await window.dots.api.getRunEvents(run.id),
-      })),
-    )
-      .then((turns) => {
-        if (alive) setOlder(turns);
-      })
-      .catch((e) => {
-        if (alive) showToast(e.message, "error");
-      });
-    return () => {
-      alive = false;
-    };
+    const cache = completedEvents.current;
+    const wanted = new Set(visiblePrevious.map(run => run.id));
+    setOlder(current => current.filter(turn => wanted.has(turn.run.id)));
+    if (!visiblePrevious.length) { setLoadingHistory(false); return; }
+    setLoadingHistory(true);
+    Promise.all(visiblePrevious.map(async run => {
+      const key = `${run.id}:${run.status}:${run.endedAt || ''}`;
+      const events = cache.get(key) ?? await window.dots.api.getRunEvents(run.id);
+      if (!['running', 'queued'].includes(run.status)) cache.set(key, events);
+      return { run, events };
+    })).then(turns => { if (alive) { setOlder(turns); setLoadingHistory(false); } })
+      .catch(error => { if (alive) { scrollAnchor.current = null; setLoadingHistory(false); showToast(error.message, 'error'); } });
+    return () => { alive = false; };
   }, [previousIds, showToast]);
+  useLayoutEffect(() => {
+    if (loadingHistory || !scrollAnchor.current || !scrollRef.current) return;
+    const anchor = scrollAnchor.current;
+    const element = Array.from(scrollRef.current.querySelectorAll<HTMLElement>('[data-turn-id]')).find(turn => turn.dataset.turnId === anchor.id);
+    if (element) scrollRef.current.scrollTop += element.getBoundingClientRect().top - anchor.top;
+    scrollAnchor.current = null;
+  }, [older, loadingHistory]);
   useEffect(() => {
     nearBottom.current = true;
+    setFollowing(true);
+    setNewActivity(false);
+    scrollAnchor.current = null;
   }, [selectedRunId]);
   useEffect(() => {
     const scroller = scrollRef.current;
-    if (scroller && nearBottom.current)
-      scroller.scrollTop = scroller.scrollHeight;
+    if (scroller && nearBottom.current && !scrollAnchor.current) scroller.scrollTop = scroller.scrollHeight;
   }, [activeRunEvents, streamingDraft, older]);
-  useEffect(
-    () => () => {
-      window.speechSynthesis?.cancel();
-    },
-    [],
-  );
+  useEffect(() => {
+    if (!nearBottom.current && (activeRunEvents.length || streamingDraft)) setNewActivity(true);
+  }, [activeRunEvents, streamingDraft]);
+  const loadEarlier = () => {
+    nearBottom.current = false;
+    setFollowing(false);
+    const scroller = scrollRef.current;
+    if (scroller) {
+      const element = Array.from(scroller.querySelectorAll<HTMLElement>('[data-turn-id]')).find(turn => turn.getBoundingClientRect().bottom > scroller.getBoundingClientRect().top);
+      if (element?.dataset.turnId) scrollAnchor.current = { id: element.dataset.turnId, top: element.getBoundingClientRect().top };
+    }
+    setHistoryWindow({ key: historyKey, count: historyCount + 12 });
+  };
+  const jumpToLatest = () => {
+    nearBottom.current = true;
+    setFollowing(true);
+    setNewActivity(false);
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  };
   useEffect(() => {
     if (!wakeEditor) return;
     const close = (event: KeyboardEvent) => {
@@ -207,15 +183,6 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
       textarea.current?.focus();
     }
   };
-  const copy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      showToast("Could not copy the result", "error");
-    }
-  };
   const revise = async (run: Run, text?: string) => {
     if (submitting) return;
     setSubmitting(true);
@@ -233,7 +200,7 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
     }
   };
   useEffect(() => { setEditingId(null); }, [selectedRunId, dotId]);
-  const openLink = (href: string) => {
+  const openLink = useCallback((href: string) => {
     if (/^https?:\/\//i.test(href)) {
       void window.dots.api
         .openExternal(href)
@@ -257,180 +224,9 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
     void window.dots.api
       .openPath(target)
       .catch((e) => showToast(e.message, "error"));
-  };
-  const md = (text: string) => (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      urlTransform={(url) =>
-        /^(https?:|file:|[a-z]:[\\/]|\/|\.|#)/i.test(url) || !url.includes(":")
-          ? url
-          : ""
-      }
-      components={{
-        a: ({ href, children }) => (
-          <a
-            href={href}
-            onClick={(e) => {
-              e.preventDefault();
-              if (href) openLink(href);
-            }}
-          >
-            {children}
-          </a>
-        ),
-      }}
-    >
-      {text}
-    </ReactMarkdown>
-  );
-  const speak = (text: string) => {
-    if (speaking) {
-      window.speechSynthesis.cancel();
-      setSpeaking(false);
-      return;
-    }
-    const utterance = new SpeechSynthesisUtterance(text.replace(/[#*_`]/g, ""));
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-    setSpeaking(true);
-  };
-  const renderEvents = (events: RunEvent[], run: Run) =>
-    consolidate(events).map((e) => {
-      const key = `${run.id}-${e.seq}`;
-      if (e.type === "message" || e.type === "final")
-        return (
-          <div
-            className={`assistant-message ${e.type === "final" ? "final-message" : ""}`}
-            key={key}
-          >
-            <div className="message-author">
-              <DotAvatar dot={activeDot ?? undefined} size={25} />
-              <strong>{activeDot?.name}</strong>
-              {e.type === "final" && (
-                <span className="message-complete">
-                  <Check size={12} /> Done
-                </span>
-              )}
-            </div>
-            <div className="markdown-body">{md(e.text)}</div>
-            {e.type === "final" && (
-              <div className="result-actions">
-                <button
-                  className="icon-button"
-                  aria-label="Copy result"
-                  title="Copy result"
-                  onClick={() => copy(e.text)}
-                >
-                  {copied ? <Check size={14} /> : <Copy size={14} />}
-                </button>
-                {!!window.speechSynthesis && (
-                  <button
-                    className="icon-button"
-                    aria-label={speaking ? "Stop reading" : "Read result aloud"}
-                    title="Read aloud"
-                    onClick={() => speak(e.text)}
-                  >
-                    <Volume2 size={14} />
-                  </button>
-                )}
-                <button
-                  className="text-button"
-                  onClick={() => {
-                    setWakePrompt(
-                      "Review the previous result and check what needs attention next.",
-                    );
-                    setWakeEditor(true);
-                  }}
-                >
-                  <Clock size={13} /> Follow up later
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      if (e.type === "tool" || e.type === "reasoning") {
-        const isOpen =
-          expanded[key] ?? (e.type === "tool" && e.status === "error");
-        return (
-          <div
-            className={`work-event ${isOpen ? "is-expanded" : ""} ${e.type === "tool" && e.status === "error" ? "error" : ""} ${e.type === "tool" && e.status === "running" && run.status === "running" ? "is-working" : ""}`}
-            key={key}
-          >
-            <button
-              className="work-event-toggle"
-              aria-expanded={isOpen}
-              onClick={() => setExpanded((p) => ({ ...p, [key]: !isOpen }))}
-            >
-              {e.type === "tool" ? <ActivityGlyph kind={toolActivity(e).kind} active={e.status === "running" && run.status === "running"}/> : <Brain size={14} />}
-              <span className="work-event-label">
-                {e.type === "tool"
-                  ? (readable[e.name] ?? e.name)
-                  : "Thinking through the next step"}
-              </span>
-              {e.type === "tool" &&
-                (e.status === "ok" ? (
-                  <Check size={13} />
-                ) : e.status === "running" ? (
-                  <span className="mini-spinner" />
-                ) : (
-                  <XCircle size={13} />
-                ))}
-              {isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            </button>
-            {isOpen && (
-              <pre>
-                {e.type === "tool"
-                  ? [e.input, e.output].filter(Boolean).join("\n\n")
-                  : e.text}
-              </pre>
-            )}
-          </div>
-        );
-      }
-      if (e.type === "plan")
-        return (
-          <div className="plan-card" key={key}>
-            <span className="eyebrow">THE PLAN</span>
-            {e.items.map((i, j) => (
-              <div key={j}>
-                {i.done ? (
-                  <CheckCircle2 size={15} />
-                ) : (
-                  <span className="plan-circle" />
-                )}
-                <span>{i.text}</span>
-              </div>
-            ))}
-          </div>
-        );
-      if (e.type === "file")
-        return (
-          <button
-            key={key}
-            className="file-event"
-            onClick={() => openLink(e.path)}
-          >
-            <FileCode size={15} />
-            <span>
-              {e.change === "add"
-                ? "Created"
-                : e.change === "delete"
-                  ? "Deleted"
-                  : "Updated"}{" "}
-              <strong>{e.path}</strong>
-            </span>
-          </button>
-        );
-      if (e.type === "log" && e.level !== "info")
-        return (
-          <div key={key} className={`event-notice ${e.level}`}>
-            <AlertIcon level={e.level} />
-            {e.text}
-          </div>
-        );
-      return null;
-    });
+  }, [activeDot?.workspacePath, showToast]);
+  const openFollowup = useCallback(() => { setWakePrompt('Review the previous result and check what needs attention next.'); setWakeEditor(true); }, []);
+  const showConversationError = useCallback((message: string) => showToast(message, 'error'), [showToast]);
   const turns = [
     ...older,
     ...(selected ? [{ run: selected, events: activeRunEvents }] : []),
@@ -448,10 +244,12 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
               : selected.status === "queued"
                 ? "Queued for your dot"
                 : selected.status === "succeeded"
-                  ? "Conversation"
-                  : "Task " + selected.status}
+                  ? "Finished"
+                  : selected.status === "failed" ? "Needs attention"
+                  : selected.status === "cancelled" ? "Stopped"
+                  : "Interrupted"}
           </span>
-          <span className="conversation-context-title">{selected.title}</span>
+          <span className="conversation-context-title">{selected.status === 'running' && currentTool ? TOOL_LABELS[currentTool.name] ?? currentTool.name : selected.title}</span>
           {["running", "queued"].includes(selected.status) && (
             <button
               className="text-button danger"
@@ -466,6 +264,7 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
           )}
         </div>
       )}
+      <div className="conversation-scroll-wrap">
       <div
         className="conversation-scroll"
         ref={scrollRef}
@@ -473,6 +272,8 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
           const s = e.currentTarget;
           nearBottom.current =
             s.scrollHeight - s.scrollTop - s.clientHeight < 100;
+          setFollowing(nearBottom.current);
+          if (nearBottom.current) setNewActivity(false);
         }}
       >
         {!selected ? (
@@ -517,8 +318,12 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
           </div>
         ) : (
           <div className="conversation-messages">
+            {(previous.length > visiblePrevious.length || loadingHistory) && <div className="conversation-earlier">
+              <button className="btn-secondary" disabled={loadingHistory} onClick={loadEarlier}><Clock size={13} />{loadingHistory ? 'Loading earlier messages…' : `Load earlier messages (${previous.length - visiblePrevious.length})`}</button>
+              <span>Earlier messages are kept in this conversation.</span>
+            </div>}
             {turns.map(({ run, events }) => (
-              <React.Fragment key={run.id}>
+              <section className="conversation-turn" data-turn-id={run.id} key={run.id}>
                 <div className={`user-message ${run.dotMessage ? "teammate-message" : ""}`}>
                   <span>{run.dotMessage ? `${run.dotMessage.kind === "reply" ? "Reply" : "Message"} from ${run.dotMessage.sourceDotName}` : "You"}</span>
                   {editingId === run.id ? (
@@ -546,7 +351,7 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
                     </div>
                   )}
                 </div>
-                {renderEvents(events, run)}
+                <ConversationEvents events={events} status={run.status} dot={activeDot} onOpenLink={openLink} onFollowup={openFollowup} onError={showConversationError} />
                 {(() => {
                   const lastUsage = events.findLast(event => event.type === 'usage');
                   const usage = lastUsage?.type === 'usage' ? lastUsage.usage : run.usage;
@@ -567,7 +372,7 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
                     </div>
                   </div>
                 )}
-              </React.Fragment>
+              </section>
             ))}
             {streamingDraft && (
               <div className="assistant-message">
@@ -576,7 +381,7 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
                   <strong>{activeDot?.name}</strong>
                   <span className="mini-spinner" />
                 </div>
-                <div className="markdown-body">{md(streamingDraft)}</div>
+                <div className="markdown-body streaming-text">{streamingDraft}</div>
               </div>
             )}
             {selected.status === "running" && !streamingDraft && (
@@ -589,6 +394,8 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
             )}
           </div>
         )}
+      </div>
+      {selected && !following && <button className="conversation-jump" onClick={jumpToLatest}><ChevronDown size={14} />{newActivity ? 'New activity · Jump to latest' : 'Jump to latest'}</button>}
       </div>
       <div className="composer-wrap">
         {coding && <div className="coding-actions" aria-label="Coding actions">{CODING_ACTIONS.map(action => <button key={action.id} aria-pressed={intent === action.id} onClick={() => { setIntent(action.id); if (!prompt.trim() || CODING_ACTIONS.some(item => item.draft && item.draft === prompt)) setPrompt(action.draft); textarea.current?.focus(); }}><Code2 size={12} />{action.label}</button>)}</div>}
@@ -752,6 +559,3 @@ export const RunTimeline: React.FC<{ dotId: string; coding?: boolean; onOpenProj
     </div>
   );
 };
-function AlertIcon({ level }: { level: string }) {
-  return level === "error" ? <XCircle size={14} /> : <Clock size={14} />;
-}

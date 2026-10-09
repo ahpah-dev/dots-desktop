@@ -114,7 +114,7 @@ export function DotMemory({ dotId }: { dotId: string }) {
   };
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(
+      await window.dots.api.writeClipboardText(
         notes.map((note) => `- [${note.category}] ${note.text}`).join("\n"),
       );
       showToast("Memory copied to clipboard.", "success");

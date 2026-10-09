@@ -21,6 +21,8 @@ import {
   MessageSquare,
   Target,
   ChevronRight,
+  Users,
+  Loader2,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { DotAvatar } from "./DotAvatar";
@@ -144,9 +146,20 @@ export function Overview() {
     settings,
   } = useApp();
   const { activity, loading, error } = useActivity();
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "working" | "attention">("all");
   const dots = bootstrap?.dots ?? [];
   const working = dots.filter(
     (d) => d.status === "running" || d.status === "queued",
+  );
+  const visibleDots = dots.filter(
+    (dot) =>
+      `${dot.name} ${dot.description}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase()) &&
+      (filter === "all" ||
+        (filter === "working" && ["running", "queued"].includes(dot.status)) ||
+        (filter === "attention" && dot.status === "awaiting-approval")),
   );
   return (
     <main className="studio-page overview-page">
@@ -166,11 +179,11 @@ export function Overview() {
       <div className="page-inner">
         <div className="overview-heading">
           <div>
-            <span className="eyebrow">A LITTLE MORE POSSIBLE</span>
-            <h1>Good things are in motion.</h1>
+            <span className="eyebrow">YOUR WORKSPACE</span>
+            <h1>Your dots, at a glance.</h1>
             <p>
-              Your dots remember, follow through, and bring you back into the
-              loop.
+              Pick up a conversation, check the work, or give your team
+              something new.
             </p>
           </div>
           <button
@@ -180,9 +193,8 @@ export function Overview() {
             <Plus size={16} /> Create a dot
           </button>
         </div>
-        <button className="team-entry" onClick={() => setView("teamwork")}><span><strong>Put your dots on the same team.</strong><small>Plan assignments, work in parallel, and bring the results together.</small></span><ArrowUpRight size={20} /></button>
         <div className="overview-summary">
-          <div>
+          <button onClick={() => setView("activity")}>
             <span className="summary-icon">
               <Activity size={19} />
             </span>
@@ -190,7 +202,8 @@ export function Overview() {
               <strong>{working.length}</strong>
               <small>Working right now</small>
             </span>
-          </div>
+            <ArrowUpRight size={16} />
+          </button>
           <button onClick={() => setView("inbox")}>
             <span className="summary-icon amber">
               <Inbox size={19} />
@@ -209,7 +222,7 @@ export function Overview() {
               <strong>
                 {activity.filter((r) => r.status === "succeeded").length}
               </strong>
-              <small>Completed in recent activity</small>
+              <small>Recently completed</small>
             </span>
             <ArrowUpRight size={16} />
           </button>
@@ -218,10 +231,46 @@ export function Overview() {
           <h2>
             Your dots <span>{dots.length}</span>
           </h2>
-          <span>A teammate for every kind of work</span>
+          <span>Choose a dot to continue</span>
+        </div>
+        <div className="overview-toolbar">
+          <div className="segmented-control" role="group" aria-label="Filter your dots">
+            {([
+              ["all", "All dots"],
+              ["working", "Working"],
+              ["attention", "Needs you"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                aria-pressed={filter === value}
+                className={filter === value ? "active" : ""}
+                onClick={() => setFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label className="inline-search">
+            <Search size={15} />
+            <input
+              aria-label="Search your dots"
+              placeholder="Find a dot"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            {search && (
+              <button
+                className="icon-button"
+                aria-label="Clear dot search"
+                onClick={() => setSearch("")}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </label>
         </div>
         <div className="dot-card-grid">
-          {dots.map((dot) => (
+          {visibleDots.map((dot) => (
             <button
               className="overview-dot-card"
               key={dot.id}
@@ -232,13 +281,19 @@ export function Overview() {
                   className="card-avatar-well"
                   style={{ "--dot-color": dot.color } as React.CSSProperties}
                 >
-                  <DotAvatar dot={dot} size={78} animated />
+                  <DotAvatar
+                    dot={dot}
+                    size={58}
+                    animated={!dot.paused && dot.status === "running"}
+                  />
                 </div>
                 <ArrowUpRight size={17} />
               </div>
               <div className="dot-card-title">
                 <h3>{dot.name}</h3>
-                <i className={`status-dot status-${dot.status}`} />
+                <i
+                  className={`status-dot status-${dot.paused ? "paused" : dot.status}`}
+                />
               </div>
               <p>
                 {dot.description ||
@@ -250,36 +305,52 @@ export function Overview() {
                     ? "Paused"
                     : dot.status === "running"
                       ? "Working on it"
-                      : dot.status === "awaiting-approval"
-                        ? "Needs your approval"
-                        : "Here to help"}
+                      : dot.status === "queued"
+                        ? "Work queued"
+                        : dot.status === "awaiting-approval"
+                          ? "Needs your approval"
+                          : "Here to help"}
                 </span>
                 {dot.lastRunAt && <small>{relativeTime(dot.lastRunAt)}</small>}
               </div>
             </button>
           ))}
-          <button
-            className="create-dot-card"
-            onClick={() => setShowNewDotModal(true)}
-          >
-            <span>
-              <Plus size={25} />
-            </span>
-            <h3>Meet your next dot</h3>
-            <p>
-              Give it a name. Give it a purpose.
-              <br />
-              Let it take things from here.
-            </p>
-            <div>
-              Create a dot <ArrowRight size={15} />
-            </div>
-          </button>
+          {filter === "all" && !search.trim() && (
+            <button
+              className="create-dot-card"
+              onClick={() => setShowNewDotModal(true)}
+            >
+              <span>
+                <Plus size={25} />
+              </span>
+              <h3>Create a dot</h3>
+              <p>A teammate with its own memory, tools, and workspace.</p>
+              <div>
+                Create a dot <ArrowRight size={15} />
+              </div>
+            </button>
+          )}
         </div>
+        {!visibleDots.length && dots.length > 0 && (
+          <div className="quiet-state overview-no-results">
+            <Search size={23} />
+            <h3>No dots match</h3>
+            <p>Try another name or switch back to all dots.</p>
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                setSearch("");
+                setFilter("all");
+              }}
+            >
+              Show all dots
+            </button>
+          </div>
+        )}
         <div className="overview-lower">
           <section>
             <div className="section-heading">
-              <h2>Recently in motion</h2>
+              <h2>Recent work</h2>
               <button
                 className="text-button"
                 onClick={() => setView("activity")}
@@ -307,23 +378,20 @@ export function Overview() {
             </div>
           </section>
           <section className="getting-started-card">
-            <span className="eyebrow">BETTER TOGETHER</span>
-            <h3>
-              A dot becomes yours
-              <br />
-              as you work together.
-            </h3>
+            <span className="overview-team-icon">
+              <Users size={21} />
+            </span>
+            <span className="eyebrow">TEAMWORK</span>
+            <h3>Give your dots a shared goal.</h3>
             <p>
-              Share a preference. Hand over a responsibility. Set a follow-up.
-              Keep building on the same conversation.
+              Assign the work, let dots contribute in parallel, and bring the
+              results together.
             </p>
             <button
               className="text-button"
-              onClick={() =>
-                dots[0] ? openDot(dots[0].id) : setShowNewDotModal(true)
-              }
+              onClick={() => setView("teamwork")}
             >
-              Start a conversation <ArrowRight size={15} />
+              Open teamwork <ArrowRight size={15} />
             </button>
             <div className="tiny-mascots">
               {dots.slice(0, 3).map((d) => (
@@ -363,8 +431,8 @@ export function ActivityPage() {
       </header>
       <div className="page-inner">
         <div className="page-heading">
-          <span className="eyebrow">THE WHOLE PICTURE</span>
-          <h1>Work, as it happens.</h1>
+          <span className="eyebrow">WORKSPACE ACTIVITY</span>
+          <h1>Follow the work.</h1>
           <p>Every conversation, scheduled run, and follow-up in one place.</p>
         </div>
         <div className="filter-bar">
@@ -453,8 +521,8 @@ export function InboxPage() {
       </header>
       <div className="page-inner">
         <div className="page-heading">
-          <span className="eyebrow">YOU HAVE THE FINAL SAY</span>
-          <h1>A moment for your judgment.</h1>
+          <span className="eyebrow">PENDING DECISIONS</span>
+          <h1>Your dots need a hand.</h1>
           <p>Your dots bring you in when the next step needs a decision.</p>
         </div>
         {approvals.length ? (
@@ -531,6 +599,34 @@ export function ConnectionsPage() {
     refreshProviders,
   } = useApp();
   const [testing, setTesting] = useState(false);
+  const [providerTests, setProviderTests] = useState<
+    Record<string, { busy: boolean; ok?: boolean; message?: string }>
+  >({});
+  const providerTestsInFlight = useRef(new Set<string>());
+  const testProvider = async (id: string) => {
+    if (providerTestsInFlight.current.has(id)) return;
+    providerTestsInFlight.current.add(id);
+    setProviderTests((previous) => ({ ...previous, [id]: { busy: true } }));
+    try {
+      const result = await window.dots.api.testProvider(id);
+      setProviderTests((previous) => ({
+        ...previous,
+        [id]: { busy: false, ...result },
+      }));
+    } catch (error) {
+      setProviderTests((previous) => ({
+        ...previous,
+        [id]: {
+          busy: false,
+          ok: false,
+          message:
+            error instanceof Error ? error.message : "Connection check failed",
+        },
+      }));
+    } finally {
+      providerTestsInFlight.current.delete(id);
+    }
+  };
   const refresh = async () => {
     try {
       setTesting(true);
@@ -549,15 +645,23 @@ export function ConnectionsPage() {
     <main className="studio-page">
       <header className="page-topbar">
         <span>Connections</span>
-        <button className="btn-ghost" onClick={refresh} disabled={testing}>
-          <RefreshCw size={14} className={testing ? "spin" : ""} /> Check
-          connections
-        </button>
+        <div className="page-topbar-actions">
+          <button
+            className="btn-ghost"
+            onClick={() => setShowSettingsModal(true, "providers")}
+          >
+            <Plus size={14} /> Add provider
+          </button>
+          <button className="btn-ghost" onClick={refresh} disabled={testing}>
+            <RefreshCw size={14} className={testing ? "spin" : ""} /> Check
+            connections
+          </button>
+        </div>
       </header>
       <div className="page-inner">
         <div className="page-heading">
-          <span className="eyebrow">GIVE YOUR DOT ROOM TO HELP</span>
-          <h1>Connected to your world.</h1>
+          <span className="eyebrow">MODELS & TOOLS</span>
+          <h1>Make the right connections.</h1>
           <p>Manage the models, computer, and tools your dots can work with.</p>
         </div>
         <div className="connection-grid">
@@ -566,7 +670,7 @@ export function ConnectionsPage() {
               <Plug size={24} />
             </span>
             <span
-              className={`connection-badge ${auth?.loggedIn ? "connected" : ""}`}
+              className={`connection-badge ${auth?.installed && auth.loggedIn ? "connected" : ""}`}
             >
               {auth?.installed && auth.loggedIn ? "Connected" : "Setup needed"}
             </span>
@@ -649,7 +753,11 @@ export function ConnectionsPage() {
               <span className="connection-icon">
                 <Globe size={24} />
               </span>
-              <span className="connection-badge">Configured</span>
+              <span
+                className={`connection-badge ${providerTests[p.id]?.ok ? "connected" : ""}`}
+              >
+                {providerTests[p.id]?.ok ? "Checked" : "Configured"}
+              </span>
               <h3>{p.label}</h3>
               <p className="break-word">{p.baseUrl}</p>
               <div className="connection-detail">
@@ -657,17 +765,23 @@ export function ConnectionsPage() {
               </div>
               <button
                 className="btn-secondary"
-                onClick={() =>
-                  window.dots.api
-                    .testProvider(p.id)
-                    .then((r) =>
-                      showToast(r.message, r.ok ? "success" : "error"),
-                    )
-                    .catch((e) => showToast(e.message, "error"))
-                }
+                disabled={providerTests[p.id]?.busy}
+                onClick={() => void testProvider(p.id)}
               >
-                Test connection
+                {providerTests[p.id]?.busy ? (
+                  <><Loader2 size={14} className="spin" /> Testing…</>
+                ) : (
+                  <>Test connection <ArrowRight size={14} /></>
+                )}
               </button>
+              {providerTests[p.id]?.message && (
+                <p
+                  role="status"
+                  className={`connection-test-result ${providerTests[p.id]?.ok ? "success" : "error"}`}
+                >
+                  {providerTests[p.id].message}
+                </p>
+              )}
             </article>
           ))}
         </div>
@@ -713,9 +827,9 @@ export function CommandPalette() {
   } = useApp();
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
+  const results = useRef<HTMLDivElement>(null);
   const commands = [
     { label: "Overview", hint: "Your workspace", run: () => setView("home") },
-    { label: "Teamwork", hint: "Plan a task with several dots", run: () => setView("teamwork") },
     { label: "Teamwork", hint: "Plan a task with several dots", run: () => setView("teamwork") },
     {
       label: "Needs you",
@@ -752,13 +866,25 @@ export function CommandPalette() {
   );
   useEffect(() => {
     if (showCommandPalette) {
+      const previousFocus = document.activeElement;
       setQuery("");
       setIndex(0);
+      return () => {
+        if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
+          previousFocus.focus();
+      };
     }
+    return undefined;
   }, [showCommandPalette]);
+  useEffect(() => {
+    if (showCommandPalette)
+      results.current?.querySelector(".selected")?.scrollIntoView({ block: "nearest" });
+  }, [index, query, showCommandPalette]);
   if (!showCommandPalette) return null;
   const choose = (i: number) => {
-    commands[i]?.run();
+    const command = commands[i];
+    if (!command) return;
+    command.run();
     setShowCommandPalette(false);
   };
   return (
@@ -775,7 +901,7 @@ export function CommandPalette() {
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") {
             e.preventDefault();
-            setIndex((i) => Math.min(i + 1, commands.length - 1));
+            setIndex((i) => Math.max(0, Math.min(i + 1, commands.length - 1)));
           }
           if (e.key === "ArrowUp") {
             e.preventDefault();
@@ -783,7 +909,7 @@ export function CommandPalette() {
           }
           if (e.key === "Enter") {
             e.preventDefault();
-            choose(index);
+            choose(Math.min(index, commands.length - 1));
           }
           if (e.key === "Escape") setShowCommandPalette(false);
         }}
@@ -792,7 +918,7 @@ export function CommandPalette() {
           <Search size={20} />
           <input
             autoFocus
-            placeholder="Where would you like to go?"
+            placeholder="Find a dot or action…"
             aria-label="Search commands and dots"
             value={query}
             onChange={(e) => {
@@ -808,7 +934,7 @@ export function CommandPalette() {
             <X size={17} />
           </button>
         </div>
-        <div className="command-results">
+        <div className="command-results" ref={results}>
           {commands.map((c, i) => (
             <button
               key={c.label + i}

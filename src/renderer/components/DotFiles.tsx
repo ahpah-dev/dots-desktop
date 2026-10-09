@@ -105,12 +105,12 @@ export function DotFiles({ dotId }: { dotId: string }) {
   const [sort, setSort] = useState<"recent" | "name">("recent");
   const [opening, setOpening] = useState<string | null>(null);
   const generation = useRef(0);
-  const load = useCallback(async () => {
+  const load = useCallback(async (refresh = false) => {
     const request = ++generation.current;
     try {
       setLoading(true);
       setLoadError("");
-      const result = await window.dots.api.listWorkspaceFiles(dotId);
+      const result = await window.dots.api.listWorkspaceFiles(dotId, { refresh });
       if (request === generation.current) setFiles(result);
     } catch (error) {
       if (request === generation.current)
@@ -130,7 +130,7 @@ export function DotFiles({ dotId }: { dotId: string }) {
         event.run.dotId === dotId &&
         ["succeeded", "failed", "cancelled"].includes(event.run.status)
       )
-        void load();
+        void load(true);
     });
     return () => {
       generation.current++;
@@ -178,7 +178,7 @@ export function DotFiles({ dotId }: { dotId: string }) {
         title="Files & deliverables"
         description="Everything in your dot’s workspace, ready to open, review, and make your own."
         actions={
-          <button className="btn-secondary" onClick={load} disabled={loading}>
+          <button className="btn-secondary" onClick={() => void load(true)} disabled={loading}>
             <RefreshCw size={13} className={loading ? "spin" : ""} /> Refresh
           </button>
         }
@@ -265,7 +265,7 @@ export function DotFiles({ dotId }: { dotId: string }) {
             </div>
             <h3>Files couldn’t be loaded</h3>
             <p>{loadError}</p>
-            <button className="btn-secondary" onClick={load}>
+            <button className="btn-secondary" onClick={() => void load(true)}>
               Try again
             </button>
           </div>

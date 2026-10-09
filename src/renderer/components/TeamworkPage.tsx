@@ -252,8 +252,8 @@ export function TeamworkPage() {
                     <button
                       className="btn-secondary"
                       onClick={() => {
-                        void navigator.clipboard
-                          .writeText(job.result!)
+                        void window.dots.api
+                          .writeClipboardText(job.result!)
                           .then(() =>
                             showToast("Team result copied.", "success"),
                           )

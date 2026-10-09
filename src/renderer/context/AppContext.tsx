@@ -6,6 +6,8 @@ import React, {
   useCallback,
   useMemo,
   useRef,
+  useLayoutEffect,
+  useSyncExternalStore,
 } from "react";
 import type {
   AppSettings,
@@ -21,6 +23,7 @@ import type {
   RunEvent,
 } from "@shared/types";
 import type { DotsBridge } from "@shared/api";
+import { ConversationStream } from "./conversationStream";
 
 declare global {
   interface Window {
@@ -55,8 +58,6 @@ interface AppContextValue {
   selectedRunId: string | null;
   setSelectedRunId: (id: string | null) => void;
   runs: Run[];
-  activeRunEvents: RunEvent[];
-  streamingDraft: string | null;
   approvals: ApprovalRequest[];
   auth: CodexAuthStatus | null;
   loginProgress: LoginProgress | null;
@@ -79,6 +80,7 @@ interface AppContextValue {
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
+const ConversationContext = createContext<ConversationStream | null>(null);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -92,8 +94,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [activeTab, setActiveTab] = useState<TabType>("tasks");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
-  const [activeRunEvents, setActiveRunEvents] = useState<RunEvent[]>([]);
-  const [streamingDraft, setStreamingDraft] = useState<string | null>(null);
+  const [conversationStream] = useState(() => new ConversationStream());
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [auth, setAuth] = useState<CodexAuthStatus | null>(null);
   const [loginProgress, setLoginProgress] = useState<LoginProgress | null>(
@@ -119,9 +120,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const pushedRunsRef = useRef(
     new Map<string, { run: Run; version: number }>(),
   );
+  const selectedRun = runs.find(run => run.id === selectedRunId);
+  // A Dot switch can retain the previous selected id until listRuns returns.
+  // Never show that Dot's events in the newly selected conversation.
+  const eventsRunId = selectedRun?.dotId === activeDotId ? selectedRunId : null;
   activeDotRef.current = activeDotId;
-  runRef.current = selectedRunId;
-  conversationRef.current = runs.find(run => run.id === selectedRunId)?.conversationId;
+  runRef.current = eventsRunId;
+  conversationRef.current = selectedRun?.conversationId;
   const openDot = useCallback((id: string, runId?: string) => {
     setActiveDotId(id);
     if (runId) setSelectedRunId(runId);
@@ -231,33 +236,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     pushedRunsRef.current.clear();
     setRuns([]);
-    setActiveRunEvents([]);
-    setStreamingDraft(null);
     refreshRuns();
   }, [refreshRuns]);
+
+  useLayoutEffect(() => {
+    conversationStream.selectRun(eventsRunId);
+  }, [conversationStream, eventsRunId]);
 
   // When selected run changes, load its events
   useEffect(() => {
     let cancelled = false;
-    setActiveRunEvents([]);
-    setStreamingDraft(null);
-    if (!selectedRunId) {
-      setActiveRunEvents([]);
-      setStreamingDraft(null);
-      return;
-    }
+    if (!eventsRunId) return;
     window.dots.api
-      .getRunEvents(selectedRunId)
+      .getRunEvents(eventsRunId)
       .then((events) => {
         if (cancelled) return;
-        setActiveRunEvents((current) => {
-          const merged = new Map(
-            [...events, ...current]
-              .filter((e) => e.runId === selectedRunId)
-              .map((e) => [e.seq, e]),
-          );
-          return [...merged.values()].sort((a, b) => a.seq - b.seq);
-        });
+        conversationStream.mergeSnapshot(eventsRunId, events);
       })
       .catch((err) => {
         console.error("Failed to load events", err);
@@ -265,7 +259,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       cancelled = true;
     };
-  }, [selectedRunId]);
+  }, [conversationStream, eventsRunId]);
 
   // Listen to main process push events
   useEffect(() => {
@@ -295,6 +289,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           break;
         case "run":
           if (event.run.dotId !== activeDotRef.current) break;
+          if (event.run.id === runRef.current && event.run.status !== "running" && event.run.status !== "queued") {
+            conversationStream.flush();
+          }
           pushedRunsRef.current.set(event.run.id, {
             run: event.run,
             version: ++runUpdateVersionRef.current,
@@ -313,19 +310,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           }
           break;
         case "run-event":
-          if (event.event.type === "draft") {
-            if (event.event.runId === runRef.current) {
-              setStreamingDraft(event.event.text);
-            }
-            break;
-          }
-          if (event.event.runId === runRef.current) {
-            setActiveRunEvents((prev) =>
-              prev.some((e) => e.seq === event.event.seq)
-                ? prev
-                : [...prev, event.event],
-            );
-            setStreamingDraft(null);
+          if (event.event.runId === runRef.current && event.event.dotId === activeDotRef.current) {
+            conversationStream.receive(event.event);
           }
           break;
         case "auth":
@@ -367,8 +353,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     });
 
-    return () => unsubscribe();
-  }, [refreshProviders, showToast]);
+    return () => {
+      unsubscribe();
+      conversationStream.dispose();
+    };
+  }, [conversationStream, refreshProviders, showToast]);
 
   // Apply theme to document
   useEffect(() => {
@@ -411,8 +400,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     selectedRunId,
     setSelectedRunId,
     runs,
-    activeRunEvents,
-    streamingDraft,
     approvals,
     auth,
     loginProgress,
@@ -434,11 +421,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     refreshProviders,
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={value}>
+    <ConversationContext.Provider value={conversationStream}>{children}</ConversationContext.Provider>
+  </AppContext.Provider>;
 };
 
 export const useApp = () => {
   const context = useContext(AppContext);
   if (!context) throw new Error("useApp must be used within AppProvider");
   return context;
+};
+
+/** Subscribe to durable events without rerendering for streamed text. */
+export const useRunEvents = (): RunEvent[] => {
+  const stream = useContext(ConversationContext);
+  if (!stream) throw new Error("useRunEvents must be used within AppProvider");
+  return useSyncExternalStore(stream.subscribeEvents, stream.getEvents, stream.getEvents);
+};
+
+/** Only the visible conversation needs a subscription to token drafts. */
+export const useStreamingDraft = (): string | null => {
+  const stream = useContext(ConversationContext);
+  if (!stream) throw new Error("useStreamingDraft must be used within AppProvider");
+  return useSyncExternalStore(stream.subscribeDraft, stream.getDraft, stream.getDraft);
 };

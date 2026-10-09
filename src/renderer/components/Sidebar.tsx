@@ -8,7 +8,6 @@ import {
   Inbox,
   Plug,
   Users,
-  ChevronDown,
   Command,
   ArrowUpRight,
 } from "lucide-react";
@@ -32,6 +31,11 @@ export const Sidebar: React.FC = () => {
   } = useApp();
   const [search, setSearch] = useState("");
   const dots = bootstrap?.dots ?? [];
+  const filteredDots = dots.filter((dot) =>
+    `${dot.name} ${dot.description}`
+      .toLowerCase()
+      .includes(search.trim().toLowerCase()),
+  );
   const connected =
     !!(auth?.installed && auth?.loggedIn) ||
     providerOptions.some((p) => p.available);
@@ -63,14 +67,13 @@ export const Sidebar: React.FC = () => {
         <span>
           dots<span className="brand-edition">DESKTOP</span>
         </span>
-        <ChevronDown size={15} />
       </button>
       <button
         className="sidebar-search"
         onClick={() => setShowCommandPalette(true)}
       >
         <Search size={16} />
-        <span>Search anything</span>
+        <span>Find a dot or action</span>
         <kbd>Ctrl K</kbd>
       </button>
       <nav className="studio-nav" aria-label="Workspace">
@@ -78,6 +81,7 @@ export const Sidebar: React.FC = () => {
           <button
             key={n.id}
             className={`nav-item ${view === n.id ? "selected" : ""}`}
+            aria-current={view === n.id ? "page" : undefined}
             onClick={() => setView(n.id)}
           >
             {n.icon}
@@ -87,7 +91,9 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
       <div className="sidebar-section-title">
-        <span>YOUR DOTS</span>
+        <span>
+          YOUR DOTS <span className="sidebar-dot-count">{dots.length}</span>
+        </span>
         <button
           className="icon-button"
           aria-label="Create a dot"
@@ -108,34 +114,34 @@ export const Sidebar: React.FC = () => {
         </label>
       )}
       <div className="sidebar-dot-list">
-        {dots
-          .filter((d) =>
-            `${d.name} ${d.description}`
-              .toLowerCase()
-              .includes(search.toLowerCase()),
-          )
-          .map((dot) => (
+        {filteredDots.map((dot) => (
             <button
               key={dot.id}
               className={`sidebar-dot ${view === "dot" && activeDotId === dot.id ? "selected" : ""}`}
+              aria-current={
+                view === "dot" && activeDotId === dot.id ? "page" : undefined
+              }
+              title={dot.description || dot.name}
               onClick={() => openDot(dot.id)}
             >
               <DotAvatar dot={dot} size={37} />
               <span className="sidebar-dot-info">
                 <strong>{dot.name}</strong>
                 <span>
-                  {dot.status === "idle"
-                    ? "Here to help"
-                    : dot.status === "awaiting-approval"
-                      ? "Needs your approval"
-                      : dot.status === "running"
-                        ? "Working on it"
-                        : dot.status === "queued"
-                          ? "Work queued"
-                          : "Paused"}
+                  {dot.paused || dot.status === "paused"
+                    ? "Paused"
+                    : dot.status === "idle"
+                      ? "Here to help"
+                      : dot.status === "awaiting-approval"
+                        ? "Needs your approval"
+                        : dot.status === "running"
+                          ? "Working on it"
+                          : dot.status === "queued"
+                            ? "Work queued"
+                            : "Paused"}
                 </span>
               </span>
-              <i className={`status-dot status-${dot.status}`} />
+              <i className={`status-dot status-${dot.paused ? "paused" : dot.status}`} />
             </button>
           ))}
         {!dots.length && (
@@ -144,6 +150,9 @@ export const Sidebar: React.FC = () => {
             <br />
             Create your first dot.
           </p>
+        )}
+        {!!dots.length && !filteredDots.length && (
+          <p className="sidebar-empty">No dots match “{search}”.</p>
         )}
         <button
           className="sidebar-add"
@@ -181,7 +190,7 @@ export const Sidebar: React.FC = () => {
           className="sidebar-shortcuts"
           onClick={() => setShowCommandPalette(true)}
         >
-          <Command size={13} /> Keyboard shortcuts <ArrowUpRight size={12} />
+          <Command size={13} /> Quick actions <ArrowUpRight size={12} />
         </button>
       </div>
     </aside>

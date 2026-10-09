@@ -1,13 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Code2, Eye, FileCode, FolderOpen, Link, Monitor, Paperclip, RefreshCw, Search, Smartphone, Terminal, X } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Code2, Copy, Eye, FileCode, FolderOpen, Link, Monitor, Paperclip, RefreshCw, Search, Smartphone, Terminal, X } from 'lucide-react';
+import { useApp, useRunEvents } from '../context/AppContext';
 import { localPreviewUrl } from '@shared/coding';
+import { ProjectFileList, ProjectSource } from './ProjectSource';
 import './CodingWorkspace.css';
 
 type WorkspaceFile = { path: string; size: number; isDir: boolean; mtime: number };
 
 export function CodingWorkspace({ dotId, onAttach }: { dotId: string; onAttach: (path: string) => void }) {
-  const { activeDot, activeRunEvents, selectedRunId, showToast } = useApp();
+  const { activeDot, runs, selectedRunId, showToast } = useApp();
+  const activeRunEvents = useRunEvents();
   const [files, setFiles] = useState<WorkspaceFile[]>([]);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('');
@@ -21,67 +23,86 @@ export function CodingWorkspace({ dotId, onAttach }: { dotId: string; onAttach: 
   const [connect, setConnect] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [readRevision, setReadRevision] = useState(0);
   const [changedOnly, setChangedOnly] = useState(false);
   const fileRequest = useRef(0);
+  const fileSignature = useRef('');
+  const listRequest = useRef(0);
+  const loadedPath = useRef('');
+  const previewPath = useRef('');
   const root = activeDot?.workspacePath ?? '';
-  const relativeFile = (path: string) => {
+  const relativeFile = useCallback((path: string) => {
     const normalized = path.replace(/\\/g, '/');
     const workspace = root.replace(/\\/g, '/').replace(/\/$/, '');
     return normalized.toLowerCase().startsWith(workspace.toLowerCase() + '/') ? normalized.slice(workspace.length + 1) : normalized;
-  };
-  const changed = new Set(activeRunEvents.filter(event => event.type === 'file').map(event => event.type === 'file' ? relativeFile(event.path).toLowerCase() : ''));
-  const fileStamp = activeRunEvents.filter(event => event.type === 'file').map(event => event.seq).join(',');
+  }, [root]);
+  const { changed, fileStamp } = useMemo(() => {
+    const events = activeRunEvents.filter(event => event.type === 'file');
+    return { changed: new Set(events.map(event => event.type === 'file' ? relativeFile(event.path).toLowerCase() : '')), fileStamp: events.map(event => event.seq).join(',') };
+  }, [activeRunEvents, relativeFile]);
+  const selectedStatus = runs.find(run => run.id === selectedRunId)?.status;
   const latestTools = useMemo(() => {
     const tools = new Map<string, Extract<(typeof activeRunEvents)[number], { type: 'tool' }>>();
     for (const event of activeRunEvents) if (event.type === 'tool' && event.category === 'shell') tools.set(event.id, event);
     return [...tools.values()].slice(-5);
   }, [activeRunEvents]);
 
-  useEffect(() => {
-    let alive = true;
-    const timer = setTimeout(() => {
-      window.dots.api.listWorkspaceFiles(dotId).then(result => {
-        if (!alive) return;
+  const loadFiles = useCallback(async (force = false) => {
+    const request = ++listRequest.current;
+    try {
+      const result = await window.dots.api.listWorkspaceFiles(dotId, { refresh: force });
+      if (request === listRequest.current) {
         const next = result.filter(file => !file.isDir).sort((a, b) => a.path.localeCompare(b.path));
-        setFiles(next);
-        setSelected(current => current || next.find(file => /(^|[\\/])index\.html?$/i.test(file.path))?.path || next[0]?.path || '');
-        setRevision(value => value + 1);
-      }).catch(reason => { if (alive) setError(reason.message); });
-    }, 250);
-    return () => { alive = false; clearTimeout(timer); };
-  }, [dotId, fileStamp, selectedRunId]);
+        const signature = next.map(file => `${file.path}:${file.size}:${file.mtime}`).join('|');
+        if (signature !== fileSignature.current) { fileSignature.current = signature; setFiles(next); setRevision(value => value + 1); }
+        setSelected(current => next.some(file => file.path === current) ? current : next.find(file => /(^|[\\/])index\.html?$/i.test(file.path))?.path || next[0]?.path || '');
+      }
+    } catch (reason) { if (request === listRequest.current) setError(reason instanceof Error ? reason.message : 'Could not load files'); }
+  }, [dotId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => void loadFiles(), 180);
+    return () => clearTimeout(timer);
+  }, [loadFiles, fileStamp, selectedRunId, selectedStatus]);
+  useEffect(() => () => { listRequest.current++; }, []);
 
   const refresh = async () => {
     try {
-      const next = await window.dots.api.listWorkspaceFiles(dotId);
-      setFiles(next.filter(file => !file.isDir).sort((a, b) => a.path.localeCompare(b.path)));
+      await loadFiles(true);
+      setReadRevision(value => value + 1);
       setRevision(value => value + 1);
     } catch (reason) { showToast(reason instanceof Error ? reason.message : 'Could not refresh files', 'error'); }
   };
+  const selectedMtime = files.find(file => file.path === selected)?.mtime;
 
   useEffect(() => {
     const request = ++fileRequest.current;
-    setError(''); setContent('');
+    if (mode !== 'code') return;
+    setError('');
+    if (loadedPath.current !== selected) setContent('');
     if (!selected) { setLoading(false); return; }
     setLoading(true);
     window.dots.api.readWorkspaceFile(dotId, selected).then(result => {
-      if (request === fileRequest.current) setContent(result.content);
+      if (request === fileRequest.current) { loadedPath.current = selected; setContent(result.content); }
     }).catch(reason => { if (request === fileRequest.current) setError(reason.message); })
       .finally(() => { if (request === fileRequest.current) setLoading(false); });
     return () => { fileRequest.current++; };
-  }, [dotId, selected, revision]);
+  }, [dotId, selected, selectedMtime, readRevision, mode]);
 
   useEffect(() => {
     if (mode !== 'preview' || usingDevServer || !/\.html?$/i.test(selected)) return;
     let alive = true;
-    setUrl('');
+    setError('');
+    if (previewPath.current !== selected) { previewPath.current = selected; setUrl(''); }
     window.dots.api.startWorkspacePreview(dotId, selected).then(result => { if (alive) setUrl(result.url); })
       .catch(reason => { if (alive) setError(reason.message); });
     return () => { alive = false; };
   }, [dotId, selected, mode, usingDevServer, revision]);
 
-  const visible = files.filter(file => file.path.toLowerCase().includes(query.toLowerCase()) && (!changedOnly || changed.has(relativeFile(file.path).toLowerCase())));
-  const lines = content.split('\n');
+  const deferredQuery = useDeferredValue(query);
+  const visible = useMemo(() => files.filter(file => file.path.toLowerCase().includes(deferredQuery.toLowerCase()) && (!changedOnly || changed.has(relativeFile(file.path).toLowerCase()))), [files, deferredQuery, changedOnly, changed, relativeFile]);
+  const lineCount = useMemo(() => content.split('\n').length, [content]);
+  const selectFile = useCallback((path: string) => { setSelected(path); if (!usingDevServer && !/\.html?$/i.test(path)) setMode('code'); }, [usingDevServer]);
   const staticReady = /\.html?$/i.test(selected);
   return <aside className="coding-workspace" id={`project-panel-${dotId}`} aria-label="Coding workspace">
     <header className="build-heading"><div><Code2 size={17} /><strong>Your project</strong></div><div>
@@ -92,21 +113,20 @@ export function CodingWorkspace({ dotId, onAttach }: { dotId: string; onAttach: 
       <nav className="build-files" aria-label="Project files">
         <label className="build-search"><Search size={13} /><input aria-label="Search project files" placeholder="Find a file…" value={query} onChange={event => setQuery(event.target.value)} /></label>
         <div className="build-file-filters"><button aria-pressed={!changedOnly} onClick={() => setChangedOnly(false)}>All files</button><button aria-pressed={changedOnly} onClick={() => setChangedOnly(true)}>Changed {changed.size || ''}</button></div>
-        <div className="build-file-list">{visible.map(file => <button key={file.path} aria-pressed={selected === file.path} title={file.path} onClick={() => { setSelected(file.path); if (!usingDevServer && !/\.html?$/i.test(file.path)) setMode('code'); }}><FileCode size={13} /><span>{file.path.replace(/\\/g, '/')}</span>{changed.has(relativeFile(file.path).toLowerCase()) && <i aria-label="Changed file" />}</button>)}</div>
+        <ProjectFileList files={visible} selected={selected} changed={changed} onSelect={selectFile} />
         {!visible.length && <p className="build-empty-files">{files.length ? 'No matching files.' : 'Files appear here as your Dot builds.'}</p>}
         {files.length >= 900 && <small>Showing up to 1,000 entries. Open the folder for the full project.</small>}
       </nav>
       <section className="build-viewer">
         <div className="build-view-tabs"><div><button aria-pressed={mode === 'code'} onClick={() => setMode('code')}><Code2 size={14} />Code</button><button aria-pressed={mode === 'preview'} onClick={() => setMode('preview')}><Eye size={14} />Preview</button></div>
-          {selected && <button className="icon-button" aria-label="Reference selected file" title="Add this file to your message" onClick={() => onAttach(selected)}><Paperclip size={14} /></button>}
+          <div>{mode === 'code' && selected && !error && <button className="icon-button" aria-label="Copy file contents" title="Copy the entire file" disabled={loading || loadedPath.current !== selected} onClick={() => window.dots.api.writeClipboardText(content).then(() => showToast('File copied')).catch(() => showToast('Could not copy this file', 'error'))}><Copy size={14} /></button>}{selected && <button className="icon-button" aria-label="Reference selected file" title="Add this file to your message" onClick={() => onAttach(selected)}><Paperclip size={14} /></button>}</div>
         </div>
-        <div className="build-file-path" title={mode === 'preview' && usingDevServer ? url : selected}>{mode === 'preview' && usingDevServer ? url : selected || 'No file selected'}{mode === 'code' && selected && <small>{lines.length} lines · read only</small>}</div>
-        {mode === 'code' ? <div className="build-code" tabIndex={0} aria-label="File contents">
-          {loading ? <p>Reading file…</p> : error ? <p role="status">{error}</p> : selected ? <pre><span className="build-line-numbers" aria-hidden="true">{lines.map((_, index) => index + 1).join('\n')}</span><code>{content}</code></pre> : <div className="build-empty"><FileCode size={28} /><h3>From an idea to a working app</h3><p>Describe what you want in the conversation. Inspect the files here as your Dot works.</p></div>}
-        </div> : <>
+        <div className="build-file-path" title={mode === 'preview' && usingDevServer ? url : selected}>{mode === 'preview' && usingDevServer ? url : selected || 'No file selected'}{mode === 'code' && selected && <small>{loading ? 'Reading…' : `${lineCount} lines · read only`}</small>}</div>
+        {mode === 'code' ? error ? <div className="build-code"><p role="status">{error}</p></div> : selected && content ? <ProjectSource content={content} path={selected} /> : <div className="build-empty"><FileCode size={28} /><h3>{loading ? 'Reading file…' : selected ? 'Empty file' : 'From an idea to a working app'}</h3><p>{selected ? 'Your file contents appear here.' : 'Describe what you want in the conversation. Inspect the files here as your Dot works.'}</p></div> : <>
           <div className="build-preview-tools"><div><button aria-pressed={!mobile} aria-label="Desktop preview" onClick={() => setMobile(false)}><Monitor size={14} /></button><button aria-pressed={mobile} aria-label="Mobile preview" onClick={() => setMobile(true)}><Smartphone size={14} /></button><button aria-label="Reload preview" onClick={() => setRevision(value => value + 1)}><RefreshCw size={14} /></button></div><button onClick={() => setConnect(value => !value)}><Link size={13} />Dev server</button></div>
           {connect && <form className="build-connect" onSubmit={event => { event.preventDefault(); try { setUrl(localPreviewUrl(devUrl)); setUsingDevServer(true); setConnect(false); setError(''); } catch (reason) { showToast(reason instanceof Error ? reason.message : 'Invalid local URL', 'error'); } }}><input aria-label="Local dev server URL" placeholder="http://localhost:5173" value={devUrl} onChange={event => setDevUrl(event.target.value)} /><button className="btn-secondary" type="submit">Connect</button></form>}
           {usingDevServer && <div className="build-preview-note">Local dev server · must already be running<button aria-label="Disconnect dev server" onClick={() => { setUsingDevServer(false); setUrl(''); }}><X size={12} /></button></div>}
+          {error && url && <div className="build-preview-note" role="status">{error}</div>}
           <div className={`build-preview ${mobile ? 'is-mobile' : ''}`}>
             {url && (staticReady || usingDevServer) ? <iframe key={`${url}:${revision}`} src={url} title="App preview" sandbox="allow-scripts allow-forms" referrerPolicy="no-referrer" /> : <div className="build-empty"><Eye size={28} /><h3>{error ? 'Preview unavailable' : 'See what you’re building'}</h3><p>{error || (staticReady ? 'Starting preview…' : 'Select an HTML file for a live static preview. For a framework app, start its dev server and connect the local URL above.')}</p></div>}
           </div>

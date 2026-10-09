@@ -104,8 +104,11 @@ export interface DotsApi {
   pickFolder(initial?: string): Promise<string | null>;
   openPath(path: string): Promise<void>;
   openExternal(url: string): Promise<void>;
+  /** Writes plain text from the trusted app shell; clipboard reads are never exposed. */
+  writeClipboardText(text: string): Promise<void>;
   listWorkspaceFiles(
     dotId: string,
+    options?: { refresh?: boolean },
   ): Promise<{ path: string; size: number; isDir: boolean; mtime: number }[]>;
   readWorkspaceFile(dotId: string, path: string): Promise<{ path: string; content: string; size: number }>;
   startWorkspacePreview(dotId: string, path: string): Promise<{ url: string }>;
@@ -192,6 +195,7 @@ export const API_METHODS: DotsApiMethod[] = [
   "pickFolder",
   "openPath",
   "openExternal",
+  "writeClipboardText",
   "listWorkspaceFiles",
   "readWorkspaceFile",
   "startWorkspacePreview",

@@ -1,0 +1,90 @@
+/** Isolated real workspace: large source/file virtualization, resizing, and stable preview. */
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { createServer } from 'node:http';
+import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
+const require = createRequire(import.meta.url), { _electron } = require('playwright');
+const output = resolve('artifacts/qa/project-performance');
+await mkdir(output, { recursive: true });
+const checks = [], errors = [];
+const server = createServer(async (req, res) => {
+  if (req.method === 'GET') { res.end(JSON.stringify({ data: [{ id: 'file-fixture' }] })); return; }
+  for await (const chunk of req) { /* consume local fixture request */ }
+  res.writeHead(200, { 'content-type': 'application/json' });
+  res.end(JSON.stringify({ choices: [{ message: { content: 'Project fixture completed.' }, finish_reason: 'stop' }] }));
+});
+await new Promise(done => server.listen(0, '127.0.0.1', done));
+const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
+const app = await _electron.launch({ executablePath: process.env.DOTS_SMOKE_EXECUTABLE || require('electron'), args: process.env.DOTS_SMOKE_EXECUTABLE ? ['--demo-mode'] : [resolve('.'), '--demo-mode'], env, timeout: 60000 });
+const previousClipboard = await app.evaluate(({ clipboard }) => clipboard.readText());
+const check = (name, condition = true) => { assert.ok(condition, name); checks.push(name); console.log(`PASS ${name}`); };
+try {
+  const page = await app.firstWindow(); page.on('pageerror', error => errors.push(error.message));
+  await page.waitForSelector('.overview-dot-card');
+  await page.setViewportSize({ width: 1440, height: 920 });
+  const dot = await page.evaluate(async ({ output, baseUrl }) => {
+    await window.dots.api.updateSettings({ desktopDotEnabled: false, desktopNotifications: false, defaultWorkspaceRoot: output });
+    const provider = await window.dots.api.saveProviderProfile({ label: 'Project QA', baseUrl, defaultModel: 'file-fixture', requiresKey: false });
+    return window.dots.api.createDot({ name: 'Project QA', description: 'Large project fixture', color: '#7daea0', instructions: '', providerId: provider.id, model: 'file-fixture', notify: false });
+  }, { output, baseUrl: `http://127.0.0.1:${server.address().port}/v1` });
+  await page.evaluate(dotId => window.dots.api.startRun(dotId, 'First project conversation', { newSession: true }), dot.id);
+  await page.waitForFunction(async dotId => (await window.dots.api.listRuns(dotId))[0]?.status === 'succeeded', dot.id);
+  const content = Array.from({ length: 14000 }, (_, i) => `// source line ${i + 1}`).join('\n');
+  await writeFile(join(dot.workspacePath, 'index.html'), '<!doctype html><button>Count</button><output>0</output><script>let n=0;document.querySelector("button").onclick=()=>document.querySelector("output").textContent=++n</script>');
+  await writeFile(join(dot.workspacePath, 'a-unavailable.html'), '<h1>Temporary fixture</h1>');
+  await writeFile(join(dot.workspacePath, 'large.ts'), content);
+  for (let offset = 0; offset < 950; offset += 25) await Promise.all(Array.from({ length: Math.min(25, 950 - offset) }, (_, i) => writeFile(join(dot.workspacePath, `file-${String(offset + i).padStart(4, '0')}.txt`), 'small file')));
+  await page.locator('.sidebar-dot').filter({ hasText: 'Project QA' }).click();
+  await page.getByRole('button', { name: 'Open project panel', exact: true }).click();
+  await page.locator('.build-file-list [role="option"]').first().waitFor();
+  const listing = page.getByRole('listbox', { name: 'Workspace files' });
+  check('953 files render fewer than 50 visible rows', await listing.locator('[role="option"]').count() < 50 && await listing.locator('[role="option"]').first().getAttribute('aria-setsize') === '953');
+  await listing.focus(); await listing.press('End');
+  await page.getByLabel('File contents, 14000 lines').waitFor();
+  check('Keyboard End reaches a virtualized offscreen file', (await page.locator('.build-file-path').innerText()).includes('large.ts'));
+  check('Keyboard navigation retains listbox focus after virtualization', await listing.evaluate(el => document.activeElement === el && !!document.getElementById(el.getAttribute('aria-activedescendant'))));
+  const source = page.getByLabel('File contents, 14000 lines');
+  check('14,000 source lines render fewer than 60 rows', await source.locator('.build-source-line').count() < 60);
+  await source.evaluate(el => { el.scrollTop = el.scrollHeight; });
+  await page.waitForFunction(() => [...document.querySelectorAll('.build-source-line code')].some(el => el.textContent === '// source line 14000'));
+  check('Scrolling reaches the actual last source line', await source.locator('code').last().innerText() === '// source line 14000');
+  await app.evaluate(({ BrowserWindow }) => { const win = BrowserWindow.getAllWindows().find(win => win.webContents.getURL().includes('renderer/index.html')); win?.show(); win?.focus(); });
+  await page.getByRole('button', { name: 'Copy file contents', exact: true }).click();
+  for (let attempt = 0; attempt < 50 && (await app.evaluate(({ clipboard }) => clipboard.readText())).replace(/\r\n/g, '\n') !== content; attempt++) await page.waitForTimeout(50);
+  check('Copy file retains all source lines', (await app.evaluate(({ clipboard }) => clipboard.readText())).replace(/\r\n/g, '\n') === content);
+  const divider = page.getByRole('separator', { name: 'Resize project panel' });
+  await divider.focus(); await divider.press('ArrowRight');
+  await page.waitForFunction(() => document.querySelector('.project-resize-handle')?.getAttribute('aria-valuenow') === '42');
+  check('Project pane resizes with keyboard', await divider.getAttribute('aria-valuenow') === '42');
+  await page.getByLabel('Search project files').fill('index.html');
+  await listing.getByRole('option').filter({ hasText: 'index.html' }).click();
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  const frame = page.frameLocator('iframe[title="App preview"]');
+  await frame.getByRole('button', { name: 'Count', exact: true }).click();
+  check('Interactive preview works in a large project', await frame.locator('output').innerText() === '1');
+  // Selecting fresh history should not rebuild an unchanged project or reset its iframe state.
+  await page.locator('.history-toggle').click();
+  await page.getByRole('button', { name: 'New conversation', exact: true }).click();
+  await page.waitForTimeout(350);
+  check('Changing conversation preserves interactive preview state', await frame.locator('output').innerText() === '1');
+  await unlink(join(dot.workspacePath, 'a-unavailable.html'));
+  await page.getByLabel('Search project files').fill('a-unavailable.html');
+  await listing.getByRole('option').filter({ hasText: 'a-unavailable.html' }).click();
+  await page.getByRole('heading', { name: 'Preview unavailable', exact: true }).waitFor();
+  check('Failed preview cannot show a stale app under another filename', await page.locator('iframe[title="App preview"]').count() === 0);
+  await page.getByLabel('Search project files').fill('index.html');
+  await listing.getByRole('option').filter({ hasText: 'index.html' }).click();
+  await frame.getByRole('button', { name: 'Count', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Close project panel', exact: true }).click();
+  await page.getByRole('button', { name: 'Open project panel', exact: true }).click();
+  check('Project width persists on reopening', await divider.getAttribute('aria-valuenow') === '42');
+  await listing.locator('[role="option"]').first().waitFor();
+  await listing.focus(); await listing.press('End');
+  await page.getByLabel('File contents, 14000 lines').waitFor();
+  await page.screenshot({ path: join(output, 'large-project.png') });
+  await page.setViewportSize({ width: 900, height: 920 });
+  check('Narrow project layout fits the window', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  check('No renderer errors', errors.length === 0);
+  await writeFile(join(output, 'results.json'), JSON.stringify({ checks, errors }, null, 2));
+} finally { await app.evaluate(({ clipboard }, text) => clipboard.writeText(text), previousClipboard); await app.close(); await new Promise(done => { server.closeAllConnections(); server.close(done); }); }

@@ -49,7 +49,7 @@ try {
   });
   await widget.getByRole('button',{name:'Open Dots'}).click();
   await until(async()=>(await windows()).some(w=>!w.widget&&w.visible&&!w.minimized)&&(await windows()).some(w=>w.widget&&!w.visible));
-  check('Open Dots restores the correct conversation',(await page.locator('.workspace-breadcrumb').textContent()).includes('Desktop QA')&&(await page.locator('.conversation-context-title').textContent()).includes('Verify live desktop'));
+  check('Open Dots restores the correct conversation',(await page.locator('.workspace-breadcrumb').textContent()).includes('Desktop QA')&&(await page.locator('.user-message').last().textContent()).includes('Verify live desktop'));
   check('First click opens directly without changing widget focus during the gesture',await app.evaluate(()=>global.__desktopQaFocusChanges.length===0));
   await until(()=>widget.evaluate(()=>document.documentElement.classList.contains('desktop-dot-hidden')));
   check('Hidden companion pauses all animation',await widget.evaluate(()=>getComputedStyle(document.querySelector('.dot-mascot-motion')).animationPlayState==='paused'&&getComputedStyle(document.querySelector('.activity-glyph svg')).animationPlayState==='paused'));
@@ -113,8 +113,8 @@ try {
   await widget.waitForSelector('[data-activity="approval"]');
   check('Approval changes the dot and speech bubble',(await widget.locator('.widget-caption').textContent()).includes('approval'));
   await widget.getByRole('button',{name:'Review',exact:true}).click();
-  await until(async()=>(await page.locator('.conversation-context-title').textContent()).includes('Check approval'));
-  check('Review opens the pending task in its conversation',(await page.locator('.conversation-context-title').textContent()).includes('Check approval'));
+  await until(async()=>(await page.locator('.user-message').last().textContent()).includes('Check approval'));
+  check('Review opens the pending task in its conversation',(await page.locator('.workspace-breadcrumb').textContent()).includes('Desktop QA')&&(await page.locator('.user-message').last().textContent()).includes('Check approval'));
   await page.evaluate(id=>window.dots.api.cancelRun(id),approvalRun.id);
   await until(()=>page.evaluate(async id=>(await window.dots.api.listRuns(id))[0].status==='cancelled',dot.id));
   await page.evaluate(id=>window.dots.api.updateDot(id,{permissions:{files:'write',shell:true,web:false,outsideWorkspace:false,approval:'never'}}),dot.id);

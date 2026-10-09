@@ -1,5 +1,5 @@
 import {
-  BrowserWindow, Menu, Notification, Tray, app, dialog, ipcMain, nativeImage, nativeTheme,
+  BrowserWindow, Menu, Notification, Tray, app, clipboard, dialog, ipcMain, nativeImage, nativeTheme,
   powerSaveBlocker, safeStorage, session, shell, type IpcMainInvokeEvent
 } from 'electron';
 import { join } from 'node:path';
@@ -244,6 +244,7 @@ function registerIpc(svc: Services): void {
   for (const name of API_METHODS) {
     ipcMain.handle(`${API_CHANNEL_PREFIX}${name}`, async (e, ...args: unknown[]) => {
       if (!isTrustedSender(e)) throw new Error('Untrusted sender');
+      if (name === 'writeClipboardText' && e.senderFrame !== win?.webContents.mainFrame) throw new Error('Untrusted sender');
       const fn = (svc as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>)[name];
       try {
         return await fn.apply(svc, args);
@@ -374,6 +375,7 @@ async function bootstrap(): Promise<void> {
     push,
     openExternal: (url) => shell.openExternal(url),
     openPath: (p) => shell.openPath(p),
+    writeClipboardText: (text) => clipboard.writeText(text),
     pickFolder: async (initial) => {
       const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], defaultPath: initial });
       return r.canceled ? null : (r.filePaths[0] ?? null);
