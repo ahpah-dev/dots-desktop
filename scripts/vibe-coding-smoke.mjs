@@ -25,7 +25,12 @@ const server = createServer(async (req, res) => {
   if (req.method === 'GET') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ data: [{ id: 'small-coder' }] })); return; }
   let raw = ''; for await (const chunk of req) raw += chunk;
   const body = JSON.parse(raw); calls.push(body);
-  const action = actions[calls.length - 1];
+  const refinementActions = [
+    { name: 'read_file', args: { path: 'style.css' } },
+    { name: 'edit_file', args: { path: 'style.css', old_text: 'padding:15px 20px', new_text: 'padding:18px 24px' } },
+    { name: 'read_file', args: { path: 'style.css' } },
+  ];
+  const action = calls.length > 8 ? refinementActions[calls.length - 9] : actions[calls.length - 1];
   res.writeHead(200, { 'content-type': 'application/json' });
   res.end(JSON.stringify({ choices: [{ message: action ? { content: null, tool_calls: [{ id: `step${calls.length}`, type: 'function', function: { name: action.name, arguments: JSON.stringify(action.args) } }] } : { content: 'Implemented the app in index.html, style.css and app.js. Fixed the failing counter check and reran it successfully. Select index.html → Preview to try it.' }, finish_reason: action ? 'tool_calls' : 'stop' }], usage: { prompt_tokens: 16000, completion_tokens: 100 } }));
 });
@@ -63,7 +68,9 @@ try {
   check('Actual command output is inspectable', (await page.locator('.build-checks').innerText()).includes('Counter verification passed'));
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
   const frame = page.frameLocator('iframe[title="App preview"]');
+  await until(() => frame.getByRole('button', { name: 'Add a session' }).evaluate(element => typeof element.onclick === 'function' && getComputedStyle(element).backgroundColor === 'rgb(49, 90, 71)'));
   await frame.getByRole('button', { name: 'Add a session' }).click();
+  await until(() => frame.locator('output').innerText().then(value => value === '1'));
   check('HTML, local CSS, and JavaScript run in interactive preview', await frame.locator('output').innerText() === '1' && await frame.locator('button').evaluate(el => getComputedStyle(el).backgroundColor) === 'rgb(49, 90, 71)');
   check('Generated app cannot reach Dots IPC or parent DOM', await frame.locator('body').evaluate(() => { let isolated = false; try { void parent.document.body; } catch { isolated = true; } return isolated && typeof window.dots === 'undefined'; }));
   await page.getByRole('button', { name: 'Mobile preview', exact: true }).click();
@@ -85,10 +92,11 @@ try {
   await page.getByRole('button', { name: 'Conversation', exact: true }).click();
   check('Draft survives inspecting other Dot sections', await page.getByLabel('Message Builder').inputValue() === 'Make the session button easier to find.');
   await page.getByLabel('Message Builder').press('Enter');
-  await until(() => calls.length === 9);
-  const refinement = JSON.stringify(calls.at(-1).messages);
+  await until(() => calls.length >= 9);
+  const refinement = JSON.stringify(calls[8].messages);
   check('Refinement keeps conversation and sends current file references', refinement.includes('Build a polished session counter') && refinement.includes('Workspace file references') && refinement.includes('index.html'));
   await until(() => page.evaluate(id => window.dots.api.listRuns(id).then(runs => runs[0]?.status === 'succeeded'), dot.id));
+  check('Refinement edits and verifies the actual CSS', (await readFile(join(dot.workspacePath, 'style.css'), 'utf8')).includes('padding:18px 24px') && calls.length === 12);
   await page.locator('.build-file-list button').filter({ hasText: 'index.html' }).click();
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
   await page.getByRole('button', { name: 'Dev server', exact: true }).click();

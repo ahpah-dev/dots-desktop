@@ -1,6 +1,7 @@
 import { CancelledError, ProviderError } from '../types';
 import { sleep } from '../../util/misc';
 import type { ModelInfo } from '@shared/types';
+import { normalizeToolCalls } from './toolReliability';
 
 export interface ToolCall {
   id: string;
@@ -117,11 +118,14 @@ async function attemptChat(opts: ChatOptions): Promise<ChatResult> {
     // Server ignored `stream: true` — parse a normal JSON completion.
     const j: any = await res.json();
     const choice = j.choices?.[0];
-    const content = choice?.message?.content ?? '';
+    if (j.error) throw new ProviderError(j.error.message ?? 'The provider returned an error.');
+    if (!choice?.message) throw new ProviderError('The provider returned no completion.', 'tool-protocol');
+    const rawContent = choice.message.content;
+    const content = typeof rawContent === 'string' ? rawContent : Array.isArray(rawContent) ? rawContent.filter((part: any) => part?.type === 'text' && typeof part.text === 'string').map((part: any) => part.text).join('') : '';
     if (content) opts.onText?.(content);
     return {
       content,
-      toolCalls: (choice?.message?.tool_calls ?? []) as ToolCall[],
+      toolCalls: normalizedCalls(choice.message.tool_calls ?? (choice.message.function_call ? [{ function: choice.message.function_call }] : [])),
       finishReason: choice?.finish_reason ?? null,
       usage: j.usage ? { inputTokens: j.usage.prompt_tokens ?? 0, outputTokens: j.usage.completion_tokens ?? 0, cachedTokens: j.usage.prompt_tokens_details?.cached_tokens ?? 0 } : undefined
     };
@@ -134,11 +138,12 @@ async function attemptChat(opts: ChatOptions): Promise<ChatResult> {
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = '';
+  let ended = false;
 
   const handle = (data: string) => {
-    if (data === '[DONE]') return;
+    if (data === '[DONE]') { ended = true; return; }
     let j: any;
-    try { j = JSON.parse(data); } catch { return; }
+    try { j = JSON.parse(data); } catch { throw new ProviderError('The provider sent an invalid stream fragment. No tool actions from this response were executed.', 'tool-protocol'); }
     if (j.error) throw new ProviderError(j.error.message ?? 'The provider reported an error mid-stream.');
     if (j.usage) usage = { inputTokens: j.usage.prompt_tokens ?? 0, outputTokens: j.usage.completion_tokens ?? 0, cachedTokens: j.usage.prompt_tokens_details?.cached_tokens ?? 0 };
     const choice = j.choices?.[0];
@@ -148,12 +153,28 @@ async function attemptChat(opts: ChatOptions): Promise<ChatResult> {
       content += delta.content;
       opts.onText?.(content);
     }
-    for (const tc of delta.tool_calls ?? []) {
-      const i = tc.index ?? 0;
+    const deltas = delta.tool_calls ?? (delta.function_call ? [{ index: 0, function: delta.function_call }] : []);
+    if (!Array.isArray(deltas)) throw new ProviderError('The provider sent invalid tool calls.', 'tool-protocol');
+    for (const [position, tc] of deltas.entries()) {
+      const i = tc.index ?? position;
+      if (!Number.isInteger(i) || i < 0 || i > 1024 || !tc.function && !tc.id) throw new ProviderError('The provider sent an invalid tool-call index or fragment.', 'tool-protocol');
       calls[i] ??= { id: '', type: 'function', function: { name: '', arguments: '' } };
       if (tc.id) calls[i].id = tc.id;
-      if (tc.function?.name) calls[i].function.name += tc.function.name;
-      if (tc.function?.arguments) calls[i].function.arguments += tc.function.arguments;
+      if (typeof tc.function?.name === 'string') {
+        const previous = calls[i].function.name, next = tc.function.name;
+        calls[i].function.name = previous === next ? previous : next.startsWith(previous) ? next : previous + next;
+      }
+      if (tc.function?.arguments !== undefined) {
+        const next = typeof tc.function.arguments === 'string' ? tc.function.arguments : JSON.stringify(tc.function.arguments);
+        const previous = calls[i].function.arguments;
+        // Some routers send a whole accumulated JSON object instead of a delta. Only accept an
+        // unambiguous complete snapshot; repeated text inside a string remains untouched.
+        let snapshot = false;
+        if (previous && next.startsWith(previous) && next.startsWith('{')) {
+          try { const value = JSON.parse(next); snapshot = value !== null && typeof value === 'object' && !Array.isArray(value); } catch { /* ordinary fragment */ }
+        }
+        calls[i].function.arguments = snapshot ? next : previous + next;
+      }
     }
     if (choice.finish_reason) finishReason = choice.finish_reason;
   };
@@ -166,13 +187,17 @@ async function attemptChat(opts: ChatOptions): Promise<ChatResult> {
     while ((idx = buf.search(/\r?\n\r?\n/)) >= 0) {
       const block = buf.slice(0, idx);
       buf = buf.slice(idx).replace(/^\r?\n\r?\n/, '');
-      for (const line of block.split(/\r?\n/)) {
-        if (line.startsWith('data:')) handle(line.slice(5).trim());
-      }
+      const data = block.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
+      if (data) handle(data.trim());
     }
   }
   if (buf.trim().startsWith('data:')) handle(buf.trim().slice(5).trim());
-
-  const toolCalls = calls.filter(Boolean).map((c, i) => ({ ...c, id: c.id || `call_${Date.now()}_${i}` }));
+  if (calls.length && !ended && !finishReason) throw new ProviderError('The provider stream ended before completing its tool calls. No actions from this response were executed.', 'tool-protocol');
+  const toolCalls = normalizedCalls(calls.filter(Boolean));
   return { content, toolCalls, finishReason, usage };
+}
+
+function normalizedCalls(raw: unknown): ToolCall[] {
+  try { return normalizeToolCalls(raw); }
+  catch (error) { throw new ProviderError(`Invalid provider tool response: ${error instanceof Error ? error.message : error}`, 'tool-protocol'); }
 }

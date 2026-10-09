@@ -4,13 +4,19 @@
 
 **Your work, moving forward.** Personal AI teammates with ongoing responsibilities, durable context, and a thoughtful desktop home.
 
-[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.3.0/Dots-Setup-2.3.0.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.3.0/Dots-2.3.0-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.3.0)
+[Download Windows installer](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.3.1/Dots-Setup-2.3.1.exe) · [Portable build](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.3.1/Dots-2.3.1-portable.exe) · [Website](https://dotsdesktop.vercel.app) · [Release notes](https://github.com/ahpah-dev/dots-desktop/releases/tag/v2.3.1)
 
 ![Dots Desktop overview](assets/desktop-screenshot-v2.3.0.png)
 
 Dots Desktop is independent, open-source software inspired by [OpenAI Dots](https://learn.chatgpt.com/docs/dots). It runs locally and connects to your Codex installation or an OpenAI-compatible provider. It is not affiliated with OpenAI and does not include OpenAI's hosted Dots service. See the [capability comparison](docs/DOTS_PARITY.md) for the scope and remaining gaps.
 
 ## New in 2.3
+
+**2.3.1 adds tool execution recovery for OpenAI-compatible models and routers.** Dots validates arguments before descriptions, approvals, or execution; repairs complete JSON formatting without guessing missing content; rejects truncated tool responses; and feeds errors back for correction. Native stream and JSON responses handle legacy calls, missing or duplicate IDs, and accumulated argument snapshots. OpenAI requests use strict schemas; other endpoints keep compatible schemas.
+
+Direct file, command, web, memory, messaging, and scheduling requests receive conservative execution-evidence checks. Missing actions or file verification trigger corrective requests instead of accepting an unsupported “done”. Routers rejecting native tools, or models ignoring them twice, can use a validated JSON tool transport. Ordinary prose and examples are never extracted and executed. Duplicate calls within a batch and replays during recovery do not repeat successful side effects; denied actions stay denied. Your configured fallback models can continue after repeated protocol failures, keeping successful work. Automatic mode still has no preset tool/token quota; genuine command failures remain available for repair.
+
+These checks improve reliability on smaller models; they cannot guarantee correct reasoning or verify every requested requirement. Persistent protocol failures surface as failed tasks instead of silent success. A successful read or command is evidence, not proof that every app behavior works. Codex keeps its own tool executor; this recovery layer applies to compatible API providers.
 
 A clearer home across Overview, conversations, Teamwork, Connections, and settings. Search your Dots, filter working teammates or those needing you, and see consistent paused and task states. Neutral light and dark themes, compact cards, readable activity, and quieter backgrounds keep attention on the work. Connection checks show their progress and result beside the provider.
 
@@ -62,7 +68,7 @@ Token counts use provider usage when available, otherwise a UTF-8 based estimate
 
 ## Getting started
 
-1. Install [Dots-Setup-2.3.0.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.3.0/Dots-Setup-2.3.0.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
+1. Install [Dots-Setup-2.3.1.exe](https://github.com/ahpah-dev/dots-desktop/releases/download/v2.3.1/Dots-Setup-2.3.1.exe). Run the installer over an earlier version to keep local dots, settings, and workspaces.
 2. Connect a model provider in Settings.
 3. Create a dot, give it a purpose, and choose a local workspace.
 4. Start a conversation or add an ongoing responsibility. Review activity and approvals as work progresses.
@@ -124,6 +130,7 @@ Run the Electron smoke workflow after building:
 npm run test:smoke
 npm run test:desktop-dot
 npm run test:teamwork
+npm run test:tool-reliability
 node scripts/panel-smoke.mjs
 ```
 
@@ -137,7 +144,7 @@ Package a Windows installer and portable executable:
 npm run dist
 ```
 
-Artifacts are generated under `release/`: `Dots-Setup-2.3.0.exe` and `Dots-2.3.0-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
+Artifacts are generated under `release/`: `Dots-Setup-2.3.1.exe` and `Dots-2.3.1-portable.exe`. Packaged macOS and Linux targets are configured but are not included in this Windows release.
 
 ## Website and demo film
 

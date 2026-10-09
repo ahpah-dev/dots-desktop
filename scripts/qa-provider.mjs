@@ -103,6 +103,8 @@ export async function startQaProvider({ port = 0, chunkDelayMs = 25, promotional
               due_at: new Date(Date.now() + 3_600_000).toISOString(),
             },
           });
+      } else if (available.has('read_file') && toolResults.some(message => String(message.content).startsWith('Wrote ')) && !messages.slice(lastUserIndex + 1).some(message => message.tool_calls?.some(call => call.function.name === 'read_file'))) {
+        requested.push({ name: 'read_file', args: { path: promotional ? 'release-brief.md' : 'qa-output.txt' } });
       }
       if (requested.length) {
         send({
